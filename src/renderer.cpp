@@ -56,8 +56,25 @@ bool IsLayerSupported(const std::vector<VkLayerProperties> layers, const char* l
 	return false;
 }
 
-// TODO: Pass the desired extensions and layers into this function
-VkInstance createInstance(VkApplicationInfo appInfo) {
+bool IsExtensionSupported(const std::vector<VkExtensionProperties> extensions, const char* extensionName)
+{
+	for (const auto extension : extensions)
+	{
+		if (strstr(extension.extensionName, extensionName))
+		{
+			return true;
+		}
+	}
+
+#ifdef _DEBUG
+	std::cout << extensionName << " is not supported" << std::endl;
+	std::cout << std::endl;
+#endif
+
+	return false;
+}
+
+VkInstance createInstance(VkApplicationInfo appInfo, std::vector<const char*> desiredExtensions) {
 	// Querying for the supported Instance Extensions
 	uint32_t extensionsCount;
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr));
@@ -72,6 +89,10 @@ VkInstance createInstance(VkApplicationInfo appInfo) {
 	}
 	std::cout << std::endl;
 #endif
+
+	for(auto const extension : desiredExtensions) {
+		assert(IsExtensionSupported(extensions, extension));
+	}
 
 	// Querying for the list of supported layers
 	uint32_t layersCount;
@@ -88,8 +109,11 @@ VkInstance createInstance(VkApplicationInfo appInfo) {
 	std::cout << std::endl;
 #endif
 
+
 	VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 	createInfo.pApplicationInfo = &appInfo;
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(desiredExtensions.size());
+	createInfo.ppEnabledExtensionNames = desiredExtensions.size() > 0 ? desiredExtensions.data() : nullptr;
 
 #ifdef _DEBUG
 	// Enable validation layers when in DEBUG mode
@@ -114,11 +138,144 @@ VkInstance createInstance(VkApplicationInfo appInfo) {
 	return instance;
 }
 
+std::vector<VkExtensionProperties> getPhysicalDeviceExtensions(VkPhysicalDevice physicalDevice) {
+	uint32_t extensionsCount;
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, nullptr));
+	std::vector<VkExtensionProperties> extensions(extensionsCount);
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionsCount, extensions.data()));
+
+#ifdef _DEBUG
+	for (const auto extension : extensions) {
+		std::cout << "\t" << extension.extensionName << std::endl;
+	}
+	std::cout << std::endl;
+#endif
+
+	return extensions;
+}
+
+struct DiscreteGPU {
+	VkPhysicalDevice physicalDevice;
+	VkPhysicalDeviceProperties properties;
+	VkPhysicalDeviceFeatures features;
+	std::vector<VkExtensionProperties> extensions;
+};
+
+DiscreteGPU findDiscreteGPU(VkInstance instance, std::vector<const char*> desiredExtensions) {
+	uint32_t physicalDevicesCount;
+	VK_CHECK(vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, nullptr));
+	assert(physicalDevicesCount);
+	std::vector<VkPhysicalDevice> physicalDevices(physicalDevicesCount);
+	VK_CHECK(vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, physicalDevices.data()));
+
+	DiscreteGPU gpu = {};
+
+#ifdef _DEBUG
+	std::cout << "Found " << physicalDevicesCount << " GPUs: " << std::endl;
+#endif
+
+	for (const auto physicalDevice : physicalDevices) {
+		VkPhysicalDeviceProperties properties;
+		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+		#ifdef _DEBUG
+			std::cout << properties.deviceName << std::endl;
+		#endif
+
+		if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+			VkPhysicalDeviceFeatures features;
+			vkGetPhysicalDeviceFeatures(physicalDevice, &features);
+			std::vector<VkExtensionProperties> extensions = getPhysicalDeviceExtensions(physicalDevice);
+
+			float supported = true;
+
+			for (const auto desiredExtension : desiredExtensions) {
+				if (!IsExtensionSupported(extensions, desiredExtension)) {
+					supported = false;
+				}
+			}
+
+			if (supported) {
+				gpu.physicalDevice = physicalDevice;
+				gpu.properties = properties;
+				gpu.features = features;
+				gpu.extensions = extensions;
+
+				return gpu;
+			}
+		}
+	}
+
+	return gpu;
+}
+
+struct QueueInfo {
+	uint32_t familyIndex;
+	uint32_t queueCount;
+	std::vector<float> priorities;
+
+	VkQueueFlags flags;
+};
+
+std::vector<QueueInfo> findQueueFamilies(DiscreteGPU gpu, VkQueueFlags desiredCapabilities) {
+	uint32_t queueFamiliesCount;
+	vkGetPhysicalDeviceQueueFamilyProperties(gpu.physicalDevice, &queueFamiliesCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(gpu.physicalDevice, &queueFamiliesCount, queueFamilies.data());
+
+#ifdef _DEBUG
+	std::cout << gpu.properties.deviceName << " has " << queueFamiliesCount << " queue families" << std::endl;
+	std::cout << std::endl;
+#endif
+
+	std::vector<QueueInfo> queueInfos;
+
+	for (uint32_t index = 0; index < queueFamiliesCount; ++index)
+	{
+		if (queueFamilies[index].queueCount > 0 && queueFamilies[index].queueFlags & desiredCapabilities) {
+			std::vector<float> priorities(queueFamilies[index].queueCount);
+			// TODO: Document why properties are assigned this way
+			for (uint32_t i = 0; i < queueFamilies[index].queueCount; ++i) {
+				priorities.push_back((float)i / (float)queueFamilies[index].queueCount);
+			}
+			queueInfos.push_back({ index, queueFamilies[index].queueCount, priorities, queueFamilies[index].queueFlags });
+		}
+	}
+
+	assert(queueInfos.size() > 0);
+	return queueInfos;
+}
+
 int main()
 {
 	InitializeVulkan();
 	VkApplicationInfo appInfo = createApplicationInfo("Vulkan Rendere", 0, 0, 1);
-	VkInstance instance = createInstance(appInfo);
+
+	std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
+	VkInstance instance = createInstance(appInfo, instanceExtensions);
+
+	std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	DiscreteGPU gpu = findDiscreteGPU(instance, deviceExtensions);
+	assert(gpu.physicalDevice);
+
+	std::vector<QueueInfo> queueInfos = findQueueFamilies(gpu, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT);
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	for (auto &info : queueInfos) {
+		VkDeviceQueueCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+		createInfo.queueFamilyIndex = info.familyIndex;
+		createInfo.queueCount = info.queueCount;
+		createInfo.pQueuePriorities = info.priorities.data();
+		queueCreateInfos.push_back(createInfo);
+	}
+
+	VkDeviceCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	VkDevice device = 0;
+	VK_CHECK(vkCreateDevice(gpu.physicalDevice, &createInfo, nullptr, &device));
+	assert(device);
 
 	assert(glfwInit());
 
@@ -133,5 +290,6 @@ int main()
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
+	vkDestroyDevice(device, nullptr);
 	vkDestroyInstance(instance, nullptr);
 }
