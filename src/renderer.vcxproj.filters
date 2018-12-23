@@ -16,6 +16,9 @@
     <Filter Include="glfw">
       <UniqueIdentifier>{13aab602-6758-4c73-926d-7a03e07bd5d3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="volk">
+      <UniqueIdentifier>{ce2ea799-4c5f-420b-a908-47b6397f3393}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\glfw\src\egl_context.h">
@@ -82,6 +85,9 @@
     </ClCompile>
     <ClCompile Include="..\extern\glfw\src\window.c">
       <Filter>glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\volk\volk.c">
+      <Filter>volk</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
