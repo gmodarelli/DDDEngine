@@ -1,6 +1,8 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include <vulkan.h>
+
 #include <assert.h>
 
 int main()
@@ -9,6 +11,10 @@ int main()
 
 	GLFWwindow* window = glfwCreateWindow(1024, 768, "Renderer", 0, 0);
 	assert(window);
+
+	HMODULE vulkan_library = nullptr;
+	vulkan_library = LoadLibraryA("vulkan-1.dll");
+	assert(vulkan_library);
 
 	while (!glfwWindowShouldClose(window))
 	{
