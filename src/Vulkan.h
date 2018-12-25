@@ -161,6 +161,12 @@ namespace Renderer {
 			std::vector<VkExtensionProperties> extensions;
 		};
 
+		struct Queue {
+			VkQueue queue;
+			uint32_t familyIndex;
+			uint32_t queueIndex;
+		};
+
 		DiscreteGPU findDiscreteGPU(VkInstance instance, std::vector<const char*> desiredExtensions) {
 			uint32_t physicalDevicesCount;
 			VK_CHECK(vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, nullptr));
@@ -304,7 +310,7 @@ namespace Renderer {
 			return queueInfos;
 		}
 
-		VkDevice createDevice(const DiscreteGPU &gpu, std::vector<const char*> deviceExtensions, VkQueue &graphicsQueue, VkQueue &computeQueue) {
+		VkDevice createDevice(const DiscreteGPU &gpu, std::vector<const char*> deviceExtensions, Queue &graphicsQueue, Queue &computeQueue) {
 			QueueInfo queueInfo = findQueueFamily(gpu, 2, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
 
 		#ifdef _DEBUG
@@ -343,10 +349,32 @@ namespace Renderer {
 
 			volkLoadDevice(device);
 
-			vkGetDeviceQueue(device, queueInfo.familyIndex, 0, &graphicsQueue);
-			vkGetDeviceQueue(device, queueInfo.familyIndex, 1, &computeQueue);
+			VkQueue graphics = VK_NULL_HANDLE;
+			vkGetDeviceQueue(device, queueInfo.familyIndex, 0, &graphics);
+			assert(graphics != VK_NULL_HANDLE);
+			graphicsQueue = { graphics, queueInfo.familyIndex, 0 };
 
+			VkQueue compute = VK_NULL_HANDLE;
+			vkGetDeviceQueue(device, queueInfo.familyIndex, 1, &compute);
+			assert(compute != VK_NULL_HANDLE);
+			computeQueue = { compute, queueInfo.familyIndex, 1 };
+			
 			return device;
+		}
+
+		VkSurfaceKHR createSurface(VkInstance instance, const DiscreteGPU &gpu, const Queue &queue, HINSTANCE hinstance, HWND windowHandle) {
+			VkWin32SurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
+			createInfo.hinstance = hinstance;
+			createInfo.hwnd = windowHandle;
+			VkSurfaceKHR surface = VK_NULL_HANDLE;
+			VK_CHECK(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface));
+			assert(surface != VK_NULL_HANDLE);
+
+			VkBool32 supported = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(gpu.physicalDevice, queue.familyIndex, surface, &supported);
+			assert(supported == VK_TRUE);
+
+			return surface;
 		}
 
 		void destroyDevice(VkDevice &device) {
