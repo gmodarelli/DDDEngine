@@ -36,6 +36,9 @@
     <ClInclude Include="..\extern\glfw\src\win32_platform.h">
       <Filter>glfw</Filter>
     </ClInclude>
+    <ClInclude Include="Vulkan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer.cpp">
