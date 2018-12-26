@@ -64,9 +64,17 @@ int main()
 
 	VkSwapchainKHR swapchain = Renderer::Vulkan::createSwapchain(device, gpu, presentationSurface, presentMode, windowWidth, windowHeight);
 
+	VkSemaphore semaphore = Renderer::Vulkan::createSemaphore(device);
+	std::vector<VkImage> swapchainImages = Renderer::Vulkan::getSwapchainImages(device, swapchain);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
+
+		uint32_t imageIndex = Renderer::Vulkan::acquireImage(device, swapchain, semaphore);
+		Renderer::Vulkan::presentQueue(graphicsQueue.queue, swapchain, semaphore, imageIndex);
+		VkResult result = vkDeviceWaitIdle(device);
+		assert(result == VK_SUCCESS);
 	}
 
 	glfwDestroyWindow(window);
@@ -76,7 +84,9 @@ int main()
 	Renderer::Vulkan::destroyDebugCallback(instance, debugCallback, nullptr);
 #endif
 
+	Renderer::Vulkan::destroySemaphore(device, semaphore);
 	Renderer::Vulkan::destroySwapchain(device, swapchain);
+	Renderer::Vulkan::destroySurface(instance, presentationSurface);
 	Renderer::Vulkan::destroyDevice(device);
 	Renderer::Vulkan::destroyInstance(instance);
 }

@@ -537,6 +537,60 @@ namespace Renderer {
 
 			return swapchain;
 		}
+		
+		VkSemaphore createSemaphore(VkDevice device) {
+			VkSemaphore semaphore;
+			VkSemaphoreCreateInfo createInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+			VK_CHECK(vkCreateSemaphore(device, &createInfo, nullptr, &semaphore));
+
+			return semaphore;
+		}
+
+		std::vector<VkImage> getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) {
+			uint32_t swapchainImageCount;
+			VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, nullptr));
+			std::vector<VkImage> swapchainImages(swapchainImageCount);
+			VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &swapchainImageCount, swapchainImages.data()));
+
+		#ifdef _DEBUG
+			std::cout << "The swapchain has " << swapchainImageCount << " images" << std::endl;
+		#endif
+
+			return swapchainImages;
+		}
+
+		uint32_t acquireImage(VkDevice device, VkSwapchainKHR swapchain, VkSemaphore semaphore) {
+			uint32_t imageIndex;
+			VkResult result = vkAcquireNextImageKHR(device, swapchain, ~0ull, semaphore, VK_NULL_HANDLE, &imageIndex);
+			assert(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR);
+
+			return imageIndex;
+		}
+
+		void presentQueue(VkQueue queue, VkSwapchainKHR swapchain, VkSemaphore semaphore, uint32_t imageIndex) {
+			VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &swapchain;
+			presentInfo.pImageIndices = &imageIndex;
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &semaphore;
+
+			VK_CHECK(vkQueuePresentKHR(queue, &presentInfo));
+		}
+
+		void destroySemaphore(VkDevice device, VkSemaphore &semaphore) {
+			assert(device != VK_NULL_HANDLE);
+			assert(semaphore != VK_NULL_HANDLE);
+			vkDestroySemaphore(device, semaphore, nullptr);
+			semaphore = VK_NULL_HANDLE;
+		}
+
+		void destroySurface(VkInstance instance, VkSurfaceKHR &surface) {
+			assert(instance != VK_NULL_HANDLE);
+			assert(surface != VK_NULL_HANDLE);
+			vkDestroySurfaceKHR(instance, surface, nullptr);
+			surface = VK_NULL_HANDLE;
+		}
 
 		void destroySwapchain(VkDevice device, VkSwapchainKHR &swapchain) {
 			assert(device != VK_NULL_HANDLE);
