@@ -38,6 +38,31 @@ namespace Renderer {
 			return appInfo;
 		}
 
+#ifdef _DEBUG
+
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+			std::cerr << "[validation layer]: " << pCallbackData->pMessage << std::endl;
+			return VK_FALSE;
+		}
+
+		void destroyDebugCallback(VkInstance instance, VkDebugUtilsMessengerEXT callback, const VkAllocationCallbacks* pAllocator) {
+			vkDestroyDebugUtilsMessengerEXT(instance, callback, pAllocator);
+		}
+
+		VkDebugUtilsMessengerEXT setupDebugCallback(VkInstance instance, const VkAllocationCallbacks* pAllocator) {
+			VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+			createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			createInfo.pfnUserCallback = Renderer::Vulkan::debugCallback;
+			createInfo.pUserData = nullptr;
+
+			VkDebugUtilsMessengerEXT callback = VK_NULL_HANDLE;
+			VK_CHECK(vkCreateDebugUtilsMessengerEXT(instance, &createInfo, pAllocator, &callback));
+			return callback;
+		}
+#endif
+
 		bool IsLayerSupported(const std::vector<VkLayerProperties> layers, const char* layerName)
 		{
 			for (const auto layer : layers)
@@ -362,7 +387,7 @@ namespace Renderer {
 			return device;
 		}
 
-		VkSurfaceKHR createSurface(VkInstance instance, const DiscreteGPU &gpu, const Queue &queue, HINSTANCE hinstance, HWND windowHandle) {
+		VkSurfaceKHR createSurface(VkInstance instance, const DiscreteGPU &gpu, const Queue &queue, const HINSTANCE hinstance, const HWND windowHandle, VkPresentModeKHR *desiredPresentMode) {
 			VkWin32SurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
 			createInfo.hinstance = hinstance;
 			createInfo.hwnd = windowHandle;
@@ -371,20 +396,163 @@ namespace Renderer {
 			assert(surface != VK_NULL_HANDLE);
 
 			VkBool32 supported = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(gpu.physicalDevice, queue.familyIndex, surface, &supported);
+			VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(gpu.physicalDevice, queue.familyIndex, surface, &supported));
 			assert(supported == VK_TRUE);
+
+			uint32_t presentModeCount = 0;
+			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(gpu.physicalDevice, surface, &presentModeCount, nullptr));
+			std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(gpu.physicalDevice, surface, &presentModeCount, presentModes.data()));
+			assert(presentModeCount > 0);
+
+			float desiredModeSupported = false;
+			for (const auto presentMode : presentModes) {
+				if (presentMode == *desiredPresentMode) {
+
+				#ifdef _DEBUG
+					std::cout << "The selected GPU supports the desired present mode" << std::endl;
+					std::cout << std::endl;
+				#endif
+					desiredModeSupported = true;
+					break;
+				}
+			}
+
+			if (!desiredModeSupported) {
+			#ifdef _DEBUG
+				*desiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+				std::cout << "The selected GPU does not support the desired present mode. Falling back to FIFO." << std::endl;
+				std::cout << std::endl;
+			#endif
+			}
 
 			return surface;
 		}
 
+		VkSurfaceFormatKHR chooseSwapchainFormat(const DiscreteGPU &gpu, VkSurfaceKHR presentationSurface, VkSurfaceFormatKHR desiredFormat) {
+			uint32_t formatsCount;
+			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(gpu.physicalDevice, presentationSurface, &formatsCount, nullptr));
+			std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
+			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(gpu.physicalDevice, presentationSurface, &formatsCount, surfaceFormats.data()));
+
+			if (surfaceFormats.size() == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED) {
+		#ifdef _DEBUG
+				std::cout << "No restrictions for image format and colorspace. Assigning the desired ones." << std::endl;
+				std::cout << std::endl;
+		#endif
+				return desiredFormat;
+			}
+
+			for (const auto surfaceFormat : surfaceFormats) {
+				if (surfaceFormat.format == desiredFormat.format && surfaceFormat.colorSpace == desiredFormat.colorSpace) {
+				#ifdef _DEBUG
+					std::cout << "Found a matching format and colorspace pair. Assigning the desired ones." << std::endl;
+					std::cout << std::endl;
+				#endif
+					return desiredFormat;
+				}
+			}
+
+			for (const auto surfaceFormat : surfaceFormats) {
+				if (surfaceFormat.format == desiredFormat.format) {
+				#ifdef _DEBUG
+					std::cout << "Found a matching format. Assigning the desired format and matching color space." << std::endl;
+					std::cout << std::endl;
+				#endif
+					return { desiredFormat.format, surfaceFormat.colorSpace };
+				}
+			}
+
+		#ifdef _DEBUG
+			std::cout << "A matching format was not found. Assigning the first format and color space pair." << std::endl;
+			std::cout << std::endl;
+		#endif
+			return surfaceFormats[0];
+		}
+
+		uint32_t chooseNumberOfImages(VkSurfaceCapabilitiesKHR surfaceCapabilities) {
+			uint32_t numberOfImages = surfaceCapabilities.minImageCount + 1;
+			if (surfaceCapabilities.maxImageCount > 0 && numberOfImages > surfaceCapabilities.maxImageCount) {
+				numberOfImages = surfaceCapabilities.maxImageCount;
+			}
+
+			return numberOfImages;
+		}
+
+		VkExtent2D chooseExtent2D(VkSurfaceCapabilitiesKHR surfaceCapabilities, uint32_t windowWidth, uint32_t windowHeight) {
+			if (surfaceCapabilities.currentExtent.width != 0xFFFFFFFF) {
+				return surfaceCapabilities.currentExtent;
+			}
+			else {
+				VkExtent2D extent;
+				extent.width = windowWidth >= surfaceCapabilities.minImageExtent.width && windowWidth <= surfaceCapabilities.maxImageExtent.width ? windowWidth : surfaceCapabilities.maxImageExtent.width;
+				extent.height = windowHeight >= surfaceCapabilities.minImageExtent.height && windowHeight <= surfaceCapabilities.maxImageExtent.height ? windowHeight : surfaceCapabilities.maxImageExtent.height;
+
+				return extent;
+			}
+		}
+
+		VkSwapchainKHR createSwapchain(VkDevice device, DiscreteGPU &gpu, VkSurfaceKHR presentationSurface, VkPresentModeKHR presentMode, uint32_t windowWidth, uint32_t windowHeight) {
+			VkSurfaceCapabilitiesKHR surfaceCapabilities;
+			VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu.physicalDevice, presentationSurface, &surfaceCapabilities));
+
+			uint32_t numberOfImages = chooseNumberOfImages(surfaceCapabilities);
+			VkExtent2D imagesSize = chooseExtent2D(surfaceCapabilities, windowWidth, windowHeight);
+
+			VkImageUsageFlags desiredUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			bool supported = desiredUsage == (desiredUsage & surfaceCapabilities.supportedUsageFlags);
+			assert(supported == true);
+
+			VkSurfaceTransformFlagBitsKHR surfaceTransform;
+			VkSurfaceTransformFlagBitsKHR desiredTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+			if (surfaceCapabilities.supportedTransforms & desiredTransform) {
+				surfaceTransform = desiredTransform;
+			}
+			else {
+				surfaceTransform = surfaceCapabilities.currentTransform;
+			}
+
+			VkSurfaceFormatKHR surfaceFormat = chooseSwapchainFormat(gpu, presentationSurface, { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR });
+
+			VkSwapchainCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+			createInfo.surface = presentationSurface;
+			createInfo.minImageCount = numberOfImages;
+			createInfo.imageFormat = surfaceFormat.format;
+			createInfo.imageColorSpace = surfaceFormat.colorSpace;
+			createInfo.imageExtent = imagesSize;
+			createInfo.imageArrayLayers = 1;
+			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			createInfo.imageUsage = desiredUsage;
+			createInfo.queueFamilyIndexCount = 0;
+			createInfo.pQueueFamilyIndices = nullptr;
+			createInfo.preTransform = surfaceTransform;
+			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			createInfo.presentMode = presentMode;
+			createInfo.clipped = VK_TRUE;
+			createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+			VkSwapchainKHR swapchain;
+			VkResult result = vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapchain);
+			assert(result == VK_SUCCESS);
+
+			return swapchain;
+		}
+
+		void destroySwapchain(VkDevice device, VkSwapchainKHR &swapchain) {
+			assert(device != VK_NULL_HANDLE);
+			assert(swapchain != VK_NULL_HANDLE);
+			vkDestroySwapchainKHR(device, swapchain, nullptr);
+			swapchain = VK_NULL_HANDLE;
+		}
+
 		void destroyDevice(VkDevice &device) {
-			assert(device);
+			assert(device != VK_NULL_HANDLE);
 			vkDestroyDevice(device, nullptr);
 			device = VK_NULL_HANDLE;
 		}
 
 		void destroyInstance(VkInstance &instance) {
-			assert(instance);
+			assert(instance != VK_NULL_HANDLE);
 			vkDestroyInstance(instance, nullptr);
 			instance = VK_NULL_HANDLE;
 		}
