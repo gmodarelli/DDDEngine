@@ -36,7 +36,19 @@
     <ClInclude Include="..\extern\glfw\src\win32_platform.h">
       <Filter>glfw</Filter>
     </ClInclude>
-    <ClInclude Include="Vulkan.h">
+    <ClInclude Include="VulkanDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanDebug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanInstance.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanSwapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

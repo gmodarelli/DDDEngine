@@ -161,7 +161,11 @@
     <ClInclude Include="..\extern\glfw\src\wgl_context.h" />
     <ClInclude Include="..\extern\glfw\src\win32_joystick.h" />
     <ClInclude Include="..\extern\glfw\src\win32_platform.h" />
-    <ClInclude Include="Vulkan.h" />
+    <ClInclude Include="Types.h" />
+    <ClInclude Include="VulkanDebug.h" />
+    <ClInclude Include="VulkanDevice.h" />
+    <ClInclude Include="VulkanInstance.h" />
+    <ClInclude Include="VulkanSwapchain.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\glfw\src\context.c" />

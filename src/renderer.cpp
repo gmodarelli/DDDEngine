@@ -1,47 +1,27 @@
-#include <assert.h>
-#include "Vulkan.h"
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 #include <iostream>
+#include "Types.h"
+#include "VulkanDebug.h"
+#include "VulkanInstance.h"
+#include "VulkanDevice.h"
+#include "VulkanSwapchain.h"
 
 int main()
 {
-	Renderer::Vulkan::Initialize();
-	VkApplicationInfo appInfo = Renderer::Vulkan::createApplicationInfo("Vulkan Renderer", 0, 0, 1);
+	VK_CHECK(volkInitialize());
 
-	std::vector<const char*> instanceExtensions = {
-		VK_KHR_SURFACE_EXTENSION_NAME,
-		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-#ifdef _DEBUG
-		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-#endif
-	};
-
-	uint32_t glfwExtensionCount = 0;
-	const char** glfwRequiredExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-	for (uint32_t i = 0; i < glfwExtensionCount; ++i) {
-		instanceExtensions.push_back(glfwRequiredExtensions[i]);
-#ifdef _DEBUG
-		std::cout << "glfw requires extension " << glfwRequiredExtensions[i] << std::endl;
-#endif
-	}
-
-	VkInstance instance = Renderer::Vulkan::createInstance(appInfo, instanceExtensions);
-
-#ifdef _DEBUG
-	VkDebugUtilsMessengerEXT debugCallback = Renderer::Vulkan::setupDebugCallback(instance, nullptr);
-	assert(debugCallback);
-#endif
+	std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+	ddd::VulkanInstance vulkanInstance = {};
+	DDD_ASSERT(ddd::createInstance(&vulkanInstance, instanceExtensions));
 
 	std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-	Renderer::Vulkan::DiscreteGPU gpu = Renderer::Vulkan::findDiscreteGPU(instance, deviceExtensions);
+	ddd::VulkanDevice vulkanDevice = {};
+	DDD_ASSERT(ddd::pickSuitableGPU(&vulkanDevice, vulkanInstance.instance, deviceExtensions));
+	DDD_ASSERT(ddd::createLogicalDevice(&vulkanDevice, deviceExtensions, VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT));
 
-	Renderer::Vulkan::Queue graphicsQueue;
-	Renderer::Vulkan::Queue computeQueue;
-	VkDevice device = Renderer::Vulkan::createDevice(gpu, deviceExtensions, graphicsQueue, computeQueue);
-
-	assert(glfwInit());
+	DDD_ASSERT(glfwInit());
 	// NOTE: If we don't tell glfw not to use any API it'll automatically associate its surface to OpenGL.
 	// When creating a surface with glfwCreateWindowSurface you'll get a VK_ERROR_NATIVE_WINDOW_IN_USE_KHR error,
 	// but if you use the vkCreateWin32SurfaceKHR function you won't get any validation error. Only when trying
@@ -49,44 +29,32 @@ int main()
 	// VK_ERROR_VALIDATION_FAILED_EXT error and no validation layer messages
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	uint32_t windowWidth = 1024;
-	uint32_t windowHeight = 768;
+	uint32_t windowWidth = 1920;
+	uint32_t windowHeight = 1080;
 	GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Renderer", 0, 0);
-	assert(window);
+	DDD_ASSERT(window);
 
 	HINSTANCE hinstance = GetModuleHandle(nullptr);
-	assert(hinstance);
+	DDD_ASSERT(hinstance);
 	HWND windowHandle = glfwGetWin32Window(window);
-	assert(windowHandle);
+	DDD_ASSERT(windowHandle);
 
-	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-	VkSurfaceKHR presentationSurface = Renderer::Vulkan::createSurface(instance, gpu, graphicsQueue, hinstance, windowHandle, &presentMode);
+	ddd::VulkanSwapchain vulkanSwapchain = {};
+	DDD_ASSERT(ddd::createSurface(&vulkanSwapchain, &vulkanInstance, &vulkanDevice, VK_PRESENT_MODE_MAILBOX_KHR, hinstance, windowHandle));
+	DDD_ASSERT(ddd::createSwapchain(&vulkanSwapchain, &vulkanDevice, windowWidth, windowHeight));
 
-	VkSwapchainKHR swapchain = Renderer::Vulkan::createSwapchain(device, gpu, presentationSurface, presentMode, windowWidth, windowHeight);
-
-	VkSemaphore semaphore = Renderer::Vulkan::createSemaphore(device);
-	std::vector<VkImage> swapchainImages = Renderer::Vulkan::getSwapchainImages(device, swapchain);
+	VkCommandBuffer commandBuffer = ddd::createCommandBuffer(&vulkanDevice, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	DDD_ASSERT(commandBuffer);
 
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
-
-		uint32_t imageIndex = Renderer::Vulkan::acquireImage(device, swapchain, semaphore);
-		Renderer::Vulkan::presentQueue(graphicsQueue.queue, swapchain, semaphore, imageIndex);
-		VkResult result = vkDeviceWaitIdle(device);
-		assert(result == VK_SUCCESS);
 	}
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
 
-#ifdef _DEBUG
-	Renderer::Vulkan::destroyDebugCallback(instance, debugCallback, nullptr);
-#endif
-
-	Renderer::Vulkan::destroySemaphore(device, semaphore);
-	Renderer::Vulkan::destroySwapchain(device, swapchain);
-	Renderer::Vulkan::destroySurface(instance, presentationSurface);
-	Renderer::Vulkan::destroyDevice(device);
-	Renderer::Vulkan::destroyInstance(instance);
+	ddd::destroySwapchain(&vulkanSwapchain, vulkanInstance.instance, vulkanDevice.logicalDevice);
+	ddd::destroyVulkanDevice(&vulkanInstance, &vulkanDevice);
+	ddd::destroyVulkanInstance(&vulkanInstance);
 }
