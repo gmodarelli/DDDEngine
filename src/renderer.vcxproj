@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/glfw/include;../extern/vulkan/include;../extern/volk</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/glfw/include;../extern/volk;../extern/Vulkan-Headers/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
