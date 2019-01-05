@@ -44,6 +44,15 @@ void LogInstanceExtensions(const std::vector<VkExtensionProperties>* availableEx
 	}
 }
 
+void LogDeviceExtensions(const std::vector<VkExtensionProperties>* availableExtensions)
+{
+	printf("\n\n======= Available Device Extensions =======\n\n");
+	for (const auto extension : *availableExtensions)
+	{
+		printf("\t%s\n", extension.extensionName);
+	}
+}
+
 VkBool32 debugReportErrorCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
 	char message[4096];
@@ -84,6 +93,7 @@ VkBool32 debugReportWarningCallback(VkDebugReportFlagsEXT flags, VkDebugReportOb
 void LogPhysicalDeviceProperties(const std::vector<VkPhysicalDeviceProperties>* physicalDevicesProperties) {}
 void LogInstanceLayers(const std::vector<VkLayerProperties>* availableLayers) {}
 void LogInstanceExtensions(const std::vector<VkExtensionProperties>* availableExtensions) {}
+void LogDeviceExtensions(const std::vector<VkExtensionProperties>* availableExtensions) {}
 
 VkBool32 debugReportErrorCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {}
 VkBool32 debugReportWarningCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {}

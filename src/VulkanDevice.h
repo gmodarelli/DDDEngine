@@ -15,9 +15,9 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 	VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data()));
 	R_ASSERT(physicalDevices.size() > 0);
 
-	VkPhysicalDeviceFeatures desiredFeatures = {};
-	desiredFeatures.geometryShader = VK_TRUE;
-	desiredFeatures.shaderClipDistance = VK_TRUE;
+	VkPhysicalDeviceFeatures requiredFeatures = {};
+	requiredFeatures.geometryShader = VK_TRUE;
+	requiredFeatures.shaderClipDistance = VK_TRUE;
 
 	std::vector<VkPhysicalDeviceProperties> physicalDevicesProperties;
 
@@ -68,15 +68,24 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 	qci.pQueuePriorities = queuePriorities;
 
 	// Device extensions
-	// TODO: Check if desired extensions are available
-	const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
+	uint32_t extensionCount = 0;
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(*outPhysicalDevice, nullptr, &extensionCount, nullptr));
+	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+	VK_CHECK(vkEnumerateDeviceExtensionProperties(*outPhysicalDevice, nullptr, &extensionCount, availableExtensions.data()));
+
+	LogDeviceExtensions(&availableExtensions);
+
+	VkBool32 supported = CheckExtensionsSupport(&requiredExtensions, &availableExtensions);
+	R_ASSERT(supported == VK_TRUE && L"Required instance extensions not supported!");
 
 	VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 	dci.queueCreateInfoCount = 1;
 	dci.pQueueCreateInfos = &qci;
-	dci.enabledExtensionCount = ARRAYSIZE(deviceExtensions);
-	dci.ppEnabledExtensionNames = ARRAYSIZE(deviceExtensions) > 0 ? deviceExtensions : nullptr;
-	dci.pEnabledFeatures = &desiredFeatures;
+	dci.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
+	dci.ppEnabledExtensionNames = requiredExtensions.size() > 0 ? requiredExtensions.data() : nullptr;
+	dci.pEnabledFeatures = &requiredFeatures;
 
 	VK_CHECK(vkCreateDevice(*outPhysicalDevice, &dci, nullptr, outDevice));
 	volkLoadDevice(*outDevice);

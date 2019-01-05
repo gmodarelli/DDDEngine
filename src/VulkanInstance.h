@@ -5,30 +5,6 @@
 #include <vector>
 #include <stdio.h>
 
-VkBool32 IsExtensionSupported(const char* extensionName, const std::vector<VkExtensionProperties>* availableExtensions)
-{
-	for (const auto extension : *availableExtensions)
-	{
-		if (strstr(extension.extensionName, extensionName)) return VK_TRUE;
-	}
-
-	return VK_FALSE;
-}
-
-VkBool32 CheckAvailableInstanceExtensions(const std::vector<const char*>* extensionNames, const std::vector<VkExtensionProperties>* availableExtensions)
-{
-	for (const auto extensionName : *extensionNames)
-	{
-		if (IsExtensionSupported(extensionName, availableExtensions) != VK_TRUE)
-		{
-			printf("The required %s extension is not supported.\n", extensionName);
-			return VK_FALSE;
-		}
-	}
-
-	return VK_TRUE;
-}
-
 void SetupVulkanInstance(WindowParameters window, VkInstance* outInstance, VkSurfaceKHR* outSurface, VkDebugReportCallbackEXT* outErrorCallback, VkDebugReportCallbackEXT* outWarningCallback)
 {
 	// Load the vulkan library
@@ -70,7 +46,7 @@ void SetupVulkanInstance(WindowParameters window, VkInstance* outInstance, VkSur
 #endif
 	};
 
-	VkBool32 supported = CheckAvailableInstanceExtensions(&desiredExtensions, &availableExtensions);
+	VkBool32 supported = CheckExtensionsSupport(&desiredExtensions, &availableExtensions);
 	R_ASSERT(supported == VK_TRUE && L"Required instance extensions not supported!");
 
 	{

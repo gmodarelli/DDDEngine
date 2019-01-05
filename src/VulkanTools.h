@@ -70,6 +70,30 @@ struct Vertex
 	float r, g, b, a;
 };
 
+VkBool32 IsExtensionSupported(const char* extensionName, const std::vector<VkExtensionProperties>* availableExtensions)
+{
+	for (const auto extension : *availableExtensions)
+	{
+		if (strstr(extension.extensionName, extensionName)) return VK_TRUE;
+	}
+
+	return VK_FALSE;
+}
+
+VkBool32 CheckExtensionsSupport(const std::vector<const char*>* extensionNames, const std::vector<VkExtensionProperties>* availableExtensions)
+{
+	for (const auto extensionName : *extensionNames)
+	{
+		if (IsExtensionSupported(extensionName, availableExtensions) != VK_TRUE)
+		{
+			printf("The required %s extension is not supported.\n", extensionName);
+			return VK_FALSE;
+		}
+	}
+
+	return VK_TRUE;
+}
+
 #include "VulkanDebug.h"
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
