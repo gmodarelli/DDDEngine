@@ -39,5 +39,6 @@ struct Vertex
 #include "VulkanRenderPass.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanVertexBuffer.h"
+#include "VulkanShaderAndUniforms.h"
 
 #endif // VULKAN_TOOLS_H_

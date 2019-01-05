@@ -137,6 +137,11 @@ int main()
 	uint32_t triangleCount;
 	SetupVertexBuffer(device, physicalDevice, &triangleCount, &vertexInputBuffer);
 
+	VkShaderModule vertShaderModule;
+	VkShaderModule fragShaderModule;
+	Buffer uniformBuffer;
+	SetupShaderandUniforms(device, physicalDevice, sWidth, sHeight, &vertShaderModule, &fragShaderModule, &uniformBuffer);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -155,6 +160,10 @@ int main()
 	}
 
 	// Cleanup
+	DestroyShaderModule(device, &vertShaderModule);
+	DestroyShaderModule(device, &fragShaderModule);
+	// TODO: Rename DestroyVertexBuffer to DestroyBuffer once we have a buffer helper file
+	DestroyVertexBuffer(device, &uniformBuffer);
 	DestroyVertexBuffer(device, &vertexInputBuffer);
 	DestroyCommandBuffer(device, &commandPool, &commandBuffer);
 	DestroyBufferImage(device, &depthBufferImage);
