@@ -133,6 +133,10 @@ int main()
 	VkCommandBuffer commandBuffer;
 	SetupCommandBuffer(device, physicalDevice, queueFamilyIndex, &commandPool, &commandBuffer);
 
+	Buffer vertexInputBuffer;
+	uint32_t triangleCount;
+	SetupVertexBuffer(device, physicalDevice, &triangleCount, &vertexInputBuffer);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -151,6 +155,7 @@ int main()
 	}
 
 	// Cleanup
+	DestroyVertexBuffer(device, &vertexInputBuffer);
 	DestroyCommandBuffer(device, &commandPool, &commandBuffer);
 	DestroyBufferImage(device, &depthBufferImage);
 	DestroyRenderPass(device, &renderPass, &framebuffers);

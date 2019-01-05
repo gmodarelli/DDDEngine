@@ -16,10 +16,21 @@
 #endif
 #include "volk.h"
 
+struct Buffer {
+	VkBuffer buffer;
+	VkDeviceMemory memory;
+};
+
 struct BufferImage {
 	VkImage image;
 	VkImageView imageView;
 	VkDeviceMemory imageMemory;
+};
+
+struct Vertex
+{
+	float x, y, z, w;
+	float r, g, b, a;
 };
 
 #include "VulkanInstance.h"
@@ -27,5 +38,6 @@ struct BufferImage {
 #include "VulkanSwapchain.h"
 #include "VulkanRenderPass.h"
 #include "VulkanCommandBuffer.h"
+#include "VulkanVertexBuffer.h"
 
 #endif // VULKAN_TOOLS_H_
