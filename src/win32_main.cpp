@@ -124,6 +124,11 @@ int main()
 	uint32_t sHeight;
 	SetupSwapChain(device, physicalDevice, surface, queueFamilyIndex, &sWidth, &sHeight, &swapChain, &presentImages, &presentImageViews);
 
+	VkRenderPass renderPass;
+	std::vector<VkFramebuffer> framebuffers;
+	BufferImage depthBufferImage;
+	SetupRenderPass(device, physicalDevice, sWidth, sHeight, &presentImageViews, &renderPass, &framebuffers, &depthBufferImage);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -142,6 +147,8 @@ int main()
 	}
 
 	// Cleanup
+	DestroyBufferImage(device, &depthBufferImage);
+	DestroyRenderPass(device, &renderPass, &framebuffers);
 	DestroySwapChain(device, &swapChain, &presentImages, &presentImageViews);
 	DestroyDevice(&device);
 	DestroyDebugReportCallback(instance, &errorCallback);
