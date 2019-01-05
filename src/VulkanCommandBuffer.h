@@ -3,7 +3,7 @@
 
 void SetupCommandBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, uint32_t commandBufferCount, Command* outCommand)
 {
-	assert(commandBufferCount >= 0 && "You need to create at least one command buffer");
+	R_ASSERT(commandBufferCount >= 0 && "You need to create at least one command buffer");
 	// Get the device queue to submit commands to
 	VkQueue presentQueue;
 	vkGetDeviceQueue(device, queueFamilyIndex, 0, &presentQueue);

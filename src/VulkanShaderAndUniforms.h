@@ -6,7 +6,7 @@ void ReadCode(const char* path, char* outCode, uint32_t* outCodeSize)
 	FILE* fileHandle = NULL;
 	fileHandle = fopen(path, "rb");
 	printf("Trying to open: %s\n", path);
-	assert(fileHandle != NULL && "Could not find the file");
+	R_ASSERT(fileHandle != NULL && "Could not find the file");
 	*outCodeSize = static_cast<uint32_t>(fread(outCode, 1, 10000, fileHandle));
 	fclose(fileHandle);
 	fileHandle = NULL;

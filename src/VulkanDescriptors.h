@@ -3,7 +3,7 @@
 
 void SetupDescriptors(VkDevice device, VkBuffer uniformBuffer, uint32_t descriptorSetCount, Descriptor *outDescriptor)
 {
-	assert(descriptorSetCount >= 1 && "You must allocate at least on DescriptorSet");
+	R_ASSERT(descriptorSetCount >= 1 && "You must allocate at least on DescriptorSet");
 
 	VkDescriptorSetLayoutBinding bindings[1];
 	bindings[0].binding = 0;

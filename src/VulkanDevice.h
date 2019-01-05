@@ -1,7 +1,6 @@
 #ifndef VULKAN_DEVICE_H_
 #define VULKAN_DEVICE_H_
 
-#include <assert.h>
 #include <vector>
 #include <stdio.h>
 
@@ -11,14 +10,16 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 	uint32_t deviceCount;
 
 	VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr));
-	assert(deviceCount > 0 && "Could find any suitable device");
+	R_ASSERT(deviceCount > 0 && "Could find any suitable device");
 	std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
 	VK_CHECK(vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices.data()));
-	assert(physicalDevices.size() > 0);
+	R_ASSERT(physicalDevices.size() > 0);
 
 	VkPhysicalDeviceFeatures desiredFeatures = {};
 	desiredFeatures.geometryShader = VK_TRUE;
 	desiredFeatures.shaderClipDistance = VK_TRUE;
+
+	std::vector<VkPhysicalDeviceProperties> physicalDevicesProperties;
 
 	// Enumerate all physical devices and print out the details
 	for (uint32_t i = 0; i < deviceCount; ++i)
@@ -28,10 +29,7 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 
 		vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProperties);
 
-		printf("Driver Version: %d\n", deviceProperties.driverVersion);
-		printf("Device Name: %s\n", deviceProperties.deviceName);
-		printf("Device Type: %d\n", deviceProperties.deviceType);
-		printf("API Version: %d.%d.%d\n", VK_VERSION_MAJOR(deviceProperties.apiVersion), VK_VERSION_MINOR(deviceProperties.apiVersion), VK_VERSION_PATCH(deviceProperties.apiVersion));
+		physicalDevicesProperties.push_back(deviceProperties);
 
 		if (deviceProperties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
 		{
@@ -47,13 +45,15 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 			continue;
 		}
 
-		*outPhysicalDevice = physicalDevices[i];
-		break;
+		if (*outPhysicalDevice == VK_NULL_HANDLE)
+			*outPhysicalDevice = physicalDevices[i];
 	}
+
+	LogPhysicalDeviceProperties(&physicalDevicesProperties);
 
 	uint32_t queueCount;
 	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, nullptr);
-	assert(queueCount > 0 && "No queue families found");
+	R_ASSERT(queueCount > 0 && "No queue families found");
 	std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, queueFamilyProperties.data());
 

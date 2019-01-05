@@ -16,7 +16,7 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 		{
 			VkBool32 surfaceSupported = VK_FALSE;
 			VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, &surfaceSupported));
-			assert(surfaceSupported == VK_TRUE && "The physical device does not have support for this surface");
+			R_ASSERT(surfaceSupported == VK_TRUE && "The physical device does not have support for this surface");
 
 			scci.surface = surface;
 		}
@@ -28,7 +28,7 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 		// Image count support (for double or triple buffering)
 		{
 			// We need at least 2 image for double buffering
-			assert(surfaceCapabilities.minImageCount >= 2 && "The surface does not support 2 images for double buffering");
+			R_ASSERT(surfaceCapabilities.minImageCount >= 2 && "The surface does not support 2 images for double buffering");
 			imageCount = surfaceCapabilities.maxImageCount >= surfaceCapabilities.minImageCount + 1 ? surfaceCapabilities.minImageCount + 1 : surfaceCapabilities.maxImageCount;
 
 			scci.minImageCount = imageCount;
@@ -38,7 +38,7 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 		{
 			uint32_t formatCount;
 			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr));
-			assert(formatCount > 0 && "No surface formats found for the physical device.");
+			R_ASSERT(formatCount > 0 && "No surface formats found for the physical device.");
 			std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
 			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormats.data()));
 			VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
@@ -105,7 +105,7 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 
 			uint32_t presentModeCount = 0;
 			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr));
-			assert(presentModeCount > 0 && "This physical device does not support any present mode");
+			R_ASSERT(presentModeCount > 0 && "This physical device does not support any present mode");
 			std::vector<VkPresentModeKHR> presentModes(presentModeCount);
 			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data()));
 			
@@ -130,7 +130,7 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 		VK_CHECK(vkCreateSwapchainKHR(device, &scci, nullptr, outSwapChain));
 	}
 
-	assert(imageCount >= 2);
+	R_ASSERT(imageCount >= 2);
 
 	// Create the images for the double/triple buffering
 	outPresentImage->resize(imageCount);
