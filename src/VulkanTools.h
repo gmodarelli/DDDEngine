@@ -37,6 +37,14 @@ struct Command
 	std::vector<VkCommandBuffer> buffers;
 };
 
+struct Descriptor
+{
+	VkDescriptorSetLayout layout;
+	VkDescriptorPool pool;
+	uint32_t setCount;
+	std::vector<VkDescriptorSet> sets;
+};
+
 struct Vertex
 {
 	float x, y, z, w;
@@ -50,5 +58,6 @@ struct Vertex
 #include "VulkanCommandBuffer.h"
 #include "VulkanVertexBuffer.h"
 #include "VulkanShaderAndUniforms.h"
+#include "VulkanDescriptors.h"
 
 #endif // VULKAN_TOOLS_H_

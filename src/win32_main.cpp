@@ -142,6 +142,9 @@ int main()
 	Buffer uniformBuffer;
 	SetupShaderandUniforms(device, physicalDevice, sWidth, sHeight, &vertShaderModule, &fragShaderModule, &uniformBuffer);
 
+	Descriptor descriptor;
+	SetupDescriptors(device, uniformBuffer.buffer, 1, &descriptor);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -160,6 +163,7 @@ int main()
 	}
 
 	// Cleanup
+	DestroyDescriptor(device, &descriptor);
 	DestroyShaderModule(device, &vertShaderModule);
 	DestroyShaderModule(device, &fragShaderModule);
 	// TODO: Rename DestroyVertexBuffer to DestroyBuffer once we have a buffer helper file

@@ -158,6 +158,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="VulkanDescriptors.h" />
     <ClInclude Include="VulkanShaderAndUniforms.h" />
     <ClInclude Include="VulkanVertexBuffer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
