@@ -13,42 +13,61 @@
 
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
+#elif defined __linux__
+#define VK_USE_PLATFORM_XLIB_KHR
+#elif defined __APPLE__
+#define VK_USE_PLATFORM_XCB_KHR
 #endif
+
 #include "volk.h"
 #include <vector>
 
+struct WindowParameters
+{
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+	HINSTANCE Hinstance;
+	HWND HWnd;
+#elif defined VK_USE_PLATFORM_XLIB_KHR
+	Display* Dpy;
+	Window Window;
+#elif defined VK_USE_PLATFORM_XCB_KHR
+	xcb_connection_t* Connection;
+	xcb_window_t Window;
+#endif
+};
+
 struct Buffer
 {
-	VkBuffer buffer;
-	VkDeviceMemory memory;
+	VkBuffer Buffer;
+	VkDeviceMemory DeviceMemory;
 };
 
 struct BufferImage
 {
-	VkImage image;
-	VkImageView imageView;
-	VkDeviceMemory imageMemory;
+	VkImage Image;
+	VkImageView ImageView;
+	VkDeviceMemory ImageMemory;
 };
 
 struct Command
 {
-	VkCommandPool pool;
-	uint32_t bufferCount;
-	std::vector<VkCommandBuffer> buffers;
+	VkCommandPool CommandPool = VK_NULL_HANDLE;
+	uint32_t CommandBufferCount = 0;
+	std::vector<VkCommandBuffer> CommandBuffers;
 };
 
 struct Descriptor
 {
-	VkDescriptorSetLayout layout;
-	VkDescriptorPool pool;
-	uint32_t setCount;
-	std::vector<VkDescriptorSet> sets;
+	VkDescriptorSetLayout DescriptorSetLayout;
+	VkDescriptorPool DescriptorPool;
+	uint32_t DescriptorSetCount;
+	std::vector<VkDescriptorSet> DescriptorSets;
 };
 
 struct Pipeline
 {
-	VkPipeline pipeline;
-	VkPipelineLayout pipelineLayout;
+	VkPipeline Pipeline;
+	VkPipelineLayout PipelineLayout;
 };
 
 struct Vertex

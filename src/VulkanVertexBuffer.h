@@ -55,11 +55,11 @@ void SetupVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_
 	vbi.queueFamilyIndexCount = 0;
 	vbi.pQueueFamilyIndices = nullptr;
 
-	VK_CHECK(vkCreateBuffer(device, &vbi, nullptr, &outVertexInputBuffer->buffer));
+	VK_CHECK(vkCreateBuffer(device, &vbi, nullptr, &outVertexInputBuffer->Buffer));
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(device, outVertexInputBuffer->buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(device, outVertexInputBuffer->Buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo bufferAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	bufferAllocateInfo.allocationSize = memoryRequirements.size;
@@ -77,11 +77,11 @@ void SetupVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_
 		}
 	}
 
-	VK_CHECK(vkAllocateMemory(device, &bufferAllocateInfo, nullptr, &outVertexInputBuffer->memory));
+	VK_CHECK(vkAllocateMemory(device, &bufferAllocateInfo, nullptr, &outVertexInputBuffer->DeviceMemory));
 
 	// Set buffer content
 	void* mapped = NULL;
-	VK_CHECK(vkMapMemory(device, outVertexInputBuffer->memory, 0, VK_WHOLE_SIZE, 0, &mapped));
+	VK_CHECK(vkMapMemory(device, outVertexInputBuffer->DeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapped));
 
 	Vertex* vertices = (Vertex*)mapped;
 	for (uint32_t i = 0; i < vertexCount; ++i)
@@ -97,17 +97,17 @@ void SetupVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_
 		vertices[i].a = 1;
 	}
 
-	vkUnmapMemory(device, outVertexInputBuffer->memory);
-	VK_CHECK(vkBindBufferMemory(device, outVertexInputBuffer->buffer, outVertexInputBuffer->memory, 0));
+	vkUnmapMemory(device, outVertexInputBuffer->DeviceMemory);
+	VK_CHECK(vkBindBufferMemory(device, outVertexInputBuffer->Buffer, outVertexInputBuffer->DeviceMemory, 0));
 }
 
 void DestroyVertexBuffer(VkDevice device, Buffer* buffer)
 {
-	vkFreeMemory(device, buffer->memory, nullptr);
-	vkDestroyBuffer(device, buffer->buffer, nullptr);
+	vkFreeMemory(device, buffer->DeviceMemory, nullptr);
+	vkDestroyBuffer(device, buffer->Buffer, nullptr);
 
-	buffer->memory = nullptr;
-	buffer->buffer = VK_NULL_HANDLE;
+	buffer->DeviceMemory = nullptr;
+	buffer->Buffer = VK_NULL_HANDLE;
 }
 
 #endif // VULKAN_VERTEX_BUFFER_H_ 

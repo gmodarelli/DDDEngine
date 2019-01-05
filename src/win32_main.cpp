@@ -99,16 +99,18 @@ bool SetupWindow(uint32_t width, uint32_t height, HINSTANCE instance, HWND* wind
 
 int main()
 {
-	HINSTANCE hInstance = GetModuleHandle(0);
-	HWND window = NULL;
-	SetupWindow(800, 600, hInstance, &window);
-	assert(window != NULL && L"Window is NULL");
+	HINSTANCE hInstance = GetModuleHandle(nullptr);
+	HWND windowHandle = NULL;
+	SetupWindow(800, 600, hInstance, &windowHandle);
+	assert(windowHandle != NULL && L"Window is NULL");
 
 	VkInstance instance = nullptr;
 	VkSurfaceKHR surface = nullptr;
 	VkDebugReportCallbackEXT errorCallback = nullptr;
 	VkDebugReportCallbackEXT warningCallback = nullptr;
-	SetupVulkanInstance(window, hInstance, &instance, &surface, &errorCallback, &warningCallback);
+	WindowParameters windowParams = { hInstance, windowHandle };
+
+	SetupVulkanInstance(windowParams, &instance, &surface, &errorCallback, &warningCallback);
 	assert(instance != nullptr && L"The Vulkan instance is nullptr");
 	assert(surface != nullptr && L"The Vulkan surface is nullptr");
 
@@ -143,10 +145,10 @@ int main()
 	SetupShaderandUniforms(device, physicalDevice, sWidth, sHeight, &vertShaderModule, &fragShaderModule, &uniformBuffer);
 
 	Descriptor descriptor;
-	SetupDescriptors(device, uniformBuffer.buffer, 1, &descriptor);
+	SetupDescriptors(device, uniformBuffer.Buffer, 1, &descriptor);
 
 	Pipeline pipeline;
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.layout };
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
 	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
 	MSG msg = { 0 };
@@ -165,6 +167,8 @@ int main()
 			RenderLoop(device, sWidth, sHeight, triangleCount, swapChain, command, presentImages, framebuffers, renderPass, queueFamilyIndex, vertexInputBuffer, descriptor, pipeline);
 		}
 	}
+
+	vkDeviceWaitIdle(device);
 
 	// Cleanup
 	DestroyPipeline(device, &pipeline);

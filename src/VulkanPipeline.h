@@ -10,7 +10,7 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	layoutCreateInfo.pushConstantRangeCount = 0;
 	layoutCreateInfo.pPushConstantRanges = nullptr;
 
-	VK_CHECK(vkCreatePipelineLayout(device, &layoutCreateInfo, nullptr, &outPipeline->pipelineLayout));
+	VK_CHECK(vkCreatePipelineLayout(device, &layoutCreateInfo, nullptr, &outPipeline->PipelineLayout));
 
 	// Setup the shader stages
 	VkPipelineShaderStageCreateInfo shaderStageCreateInfo[2] = {};
@@ -137,21 +137,21 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	pipelineCreateInfo.pDepthStencilState = &depthStencilCreateInfo;
 	pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 	pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-	pipelineCreateInfo.layout = outPipeline->pipelineLayout;
+	pipelineCreateInfo.layout = outPipeline->PipelineLayout;
 	pipelineCreateInfo.renderPass = renderPass;
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineCreateInfo.basePipelineIndex = 0;
 
-	VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &outPipeline->pipeline))
+	VK_CHECK(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &outPipeline->Pipeline))
 }
 
 void DestroyPipeline(VkDevice device, Pipeline* pipeline)
 {
-	vkDestroyPipeline(device, pipeline->pipeline, nullptr);
-	vkDestroyPipelineLayout(device, pipeline->pipelineLayout, nullptr);
-	pipeline->pipeline = VK_NULL_HANDLE;
-	pipeline->pipelineLayout = VK_NULL_HANDLE;
+	vkDestroyPipeline(device, pipeline->Pipeline, nullptr);
+	vkDestroyPipelineLayout(device, pipeline->PipelineLayout, nullptr);
+	pipeline->Pipeline = VK_NULL_HANDLE;
+	pipeline->PipelineLayout = VK_NULL_HANDLE;
 }
 
 #endif // VULKAN_PIPELINE_H_ 

@@ -35,7 +35,7 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 
 	VK_CHECK(vkCreateShaderModule(device, &fragmentShaderCreateInfo, nullptr, outFragShaderModule));
 
-	delete code;
+	delete[] code;
 	code = NULL;
 
 	// Create a uniform buffer for passing constant data to the shader
@@ -86,11 +86,11 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 	bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	VK_CHECK(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &outBuffer->buffer));
+	VK_CHECK(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &outBuffer->Buffer));
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(device, outBuffer->buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(device, outBuffer->Buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo bufferAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	bufferAllocateInfo.allocationSize = memoryRequirements.size;
@@ -108,24 +108,24 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 		}
 	}
 
-	VK_CHECK(vkAllocateMemory(device, &bufferAllocateInfo, nullptr, &outBuffer->memory));
-	VK_CHECK(vkBindBufferMemory(device, outBuffer->buffer, outBuffer->memory, 0));
+	VK_CHECK(vkAllocateMemory(device, &bufferAllocateInfo, nullptr, &outBuffer->DeviceMemory));
+	VK_CHECK(vkBindBufferMemory(device, outBuffer->Buffer, outBuffer->DeviceMemory, 0));
 
 	// Set buffer content
 	void* mapped = NULL;
-	VK_CHECK(vkMapMemory(device, outBuffer->memory, 0, VK_WHOLE_SIZE, 0, &mapped));
+	VK_CHECK(vkMapMemory(device, outBuffer->DeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapped));
 
 	memcpy(mapped, &lhProjectionMatrix[0], sizeof(lhProjectionMatrix));
 	memcpy(((float*)mapped + 16), &lhViewMatrix[0], sizeof(lhViewMatrix));
 	memcpy(((float*)mapped + 32), &lhModelMatrix[0], sizeof(lhModelMatrix));
 
-	vkUnmapMemory(device, outBuffer->memory);
+	vkUnmapMemory(device, outBuffer->DeviceMemory);
 }
 
 void DestroyShaderModule(VkDevice device, VkShaderModule* shaderModule)
 {
 	vkDestroyShaderModule(device, *shaderModule, nullptr);
-	*shaderModule = nullptr;
+	*shaderModule = VK_NULL_HANDLE;
 }
 
 #endif // VULKAN_SHADER_AND_UNIFORMS_H_ 

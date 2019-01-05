@@ -51,11 +51,6 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 		break;
 	}
 
-	// Fill out the physical device memory properties
-	// TODO: This will be needed for buffers
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-	vkGetPhysicalDeviceMemoryProperties(*outPhysicalDevice, &memoryProperties);
-
 	uint32_t queueCount;
 	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, nullptr);
 	assert(queueCount > 0 && "No queue families found");

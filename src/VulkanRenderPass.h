@@ -21,11 +21,11 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 		ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 		
-		VK_CHECK(vkCreateImage(device, &ici, nullptr, &outDepthBufferImage->image));
+		VK_CHECK(vkCreateImage(device, &ici, nullptr, &outDepthBufferImage->Image));
 
 		// Query for the memory requirements of the depth buffer
 		VkMemoryRequirements memoryRequirements;
-		vkGetImageMemoryRequirements(device, outDepthBufferImage->image, &memoryRequirements);
+		vkGetImageMemoryRequirements(device, outDepthBufferImage->Image, &memoryRequirements);
 
 		// Allocate memory for the depth buffer
 		VkMemoryAllocateInfo imageAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
@@ -51,14 +51,14 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 			memoryTypeBits = memoryTypeBits >> 1;
 		}
 
-		outDepthBufferImage->imageMemory = { 0 };
-		VK_CHECK(vkAllocateMemory(device, &imageAllocateInfo, nullptr, &outDepthBufferImage->imageMemory));
-		VK_CHECK(vkBindImageMemory(device, outDepthBufferImage->image, outDepthBufferImage->imageMemory, 0));
+		outDepthBufferImage->ImageMemory = { 0 };
+		VK_CHECK(vkAllocateMemory(device, &imageAllocateInfo, nullptr, &outDepthBufferImage->ImageMemory));
+		VK_CHECK(vkBindImageMemory(device, outDepthBufferImage->Image, outDepthBufferImage->ImageMemory, 0));
 
 		// Create the depth image view
 		VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		VkImageViewCreateInfo ivci = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		ivci.image = outDepthBufferImage->image;
+		ivci.image = outDepthBufferImage->Image;
 		ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		ivci.format = ici.format;
 		ivci.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
@@ -68,7 +68,7 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 		ivci.subresourceRange.baseArrayLayer = 0;
 		ivci.subresourceRange.layerCount = 1;
 
-		VK_CHECK(vkCreateImageView(device, &ivci, nullptr, &outDepthBufferImage->imageView));
+		VK_CHECK(vkCreateImageView(device, &ivci, nullptr, &outDepthBufferImage->ImageView));
 	}
 
 
@@ -125,7 +125,7 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 		// Create the frame buffers
 		VkImageView frameBufferAttachments[2] = { 0 };
 		frameBufferAttachments[0] = (*presentImageViews)[i];
-		frameBufferAttachments[1] = outDepthBufferImage->imageView;
+		frameBufferAttachments[1] = outDepthBufferImage->ImageView;
 
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 		fbci.renderPass = *outRenderPass;
@@ -141,13 +141,13 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 
 void DestroyBufferImage(VkDevice device, BufferImage* bufferImage)
 {
-	vkFreeMemory(device, bufferImage->imageMemory, nullptr);
-	vkDestroyImageView(device, bufferImage->imageView, nullptr);
-	vkDestroyImage(device, bufferImage->image, nullptr);
+	vkFreeMemory(device, bufferImage->ImageMemory, nullptr);
+	vkDestroyImageView(device, bufferImage->ImageView, nullptr);
+	vkDestroyImage(device, bufferImage->Image, nullptr);
 
-	bufferImage->image = nullptr;
-	bufferImage->imageView = nullptr;
-	bufferImage->imageMemory = { 0 };
+	bufferImage->Image = nullptr;
+	bufferImage->ImageView = nullptr;
+	bufferImage->ImageMemory = { 0 };
 }
 
 void DestroyRenderPass(VkDevice device, VkRenderPass* renderPass, std::vector<VkFramebuffer>* framebuffers)

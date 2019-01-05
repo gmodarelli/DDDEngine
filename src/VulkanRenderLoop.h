@@ -16,7 +16,7 @@ void RenderLoop(VkDevice device, uint32_t width, uint32_t height, uint32_t trian
 	VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VK_CHECK(vkBeginCommandBuffer(commandBuffer.buffers[0], &beginInfo));
+	VK_CHECK(vkBeginCommandBuffer(commandBuffer.CommandBuffers[0], &beginInfo));
 
 	// Activate the render pass
 	VkClearValue clearValue[] = { { 1.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } };
@@ -27,30 +27,30 @@ void RenderLoop(VkDevice device, uint32_t width, uint32_t height, uint32_t trian
 	renderPassBeginInfo.clearValueCount = ARRAYSIZE(clearValue);
 	renderPassBeginInfo.pClearValues = clearValue;
 	
-	vkCmdBeginRenderPass(commandBuffer.buffers[0], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(commandBuffer.CommandBuffers[0], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	// Bind the graphics pipeline to the command buffer. 
 	// Any vkDraw command afterward is affected by this pipeline.
-	vkCmdBindPipeline(commandBuffer.buffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+	vkCmdBindPipeline(commandBuffer.CommandBuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
 
 	// Take care of the dynamic state (what does it mean?)
 	VkViewport viewport = { 0, 0, (float)width, (float)height, 0, 1 };
-	vkCmdSetViewport(commandBuffer.buffers[0], 0, 1, &viewport);
+	vkCmdSetViewport(commandBuffer.CommandBuffers[0], 0, 1, &viewport);
 	VkRect2D scissors = { 0, 0, width, height };
-	vkCmdSetScissor(commandBuffer.buffers[0], 0, 1, &scissors);
+	vkCmdSetScissor(commandBuffer.CommandBuffers[0], 0, 1, &scissors);
 
 	// Bind the shaders parameters
-	vkCmdBindDescriptorSets(commandBuffer.buffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 0, descriptor.setCount, descriptor.sets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[0], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
 
 	// Render the triangles
 	VkDeviceSize offsets = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer.buffers[0], 0, 1, &vertexInputBuffer.buffer, &offsets);
+	vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[0], 0, 1, &vertexInputBuffer.Buffer, &offsets);
 
-	vkCmdDraw(commandBuffer.buffers[0], triangleCount * 3, 1, 0, 0);
+	vkCmdDraw(commandBuffer.CommandBuffers[0], triangleCount * 3, 1, 0, 0);
 
-	vkCmdEndRenderPass(commandBuffer.buffers[0]);
+	vkCmdEndRenderPass(commandBuffer.CommandBuffers[0]);
 
-	vkEndCommandBuffer(commandBuffer.buffers[0]);
+	vkEndCommandBuffer(commandBuffer.CommandBuffers[0]);
 
 	// Present
 	VkFence renderFence;
@@ -66,7 +66,7 @@ void RenderLoop(VkDevice device, uint32_t width, uint32_t height, uint32_t trian
 	submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
 	submitInfo.pWaitDstStageMask = &waitStageMask;
 	submitInfo.commandBufferCount = 1; // commandBuffer.bufferCount;
-	submitInfo.pCommandBuffers = &commandBuffer.buffers[0];
+	submitInfo.pCommandBuffers = &commandBuffer.CommandBuffers[0];
 	submitInfo.signalSemaphoreCount = 0;
 	submitInfo.pSignalSemaphores = VK_NULL_HANDLE;
 

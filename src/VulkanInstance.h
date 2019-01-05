@@ -12,9 +12,6 @@ VkBool32 debugReportErrorCallback(VkDebugReportFlagsEXT flags, VkDebugReportObje
 	snprintf(message, ARRAYSIZE(message), "ERROR: %s\n", pMessage);
 
 	printf(message);
-#ifdef _WIN32
-	OutputDebugStringA(message);
-#endif
 
 	assert(!"Validation error encountered!");
 	return VK_FALSE;
@@ -31,15 +28,11 @@ VkBool32 debugReportWarningCallback(VkDebugReportFlagsEXT flags, VkDebugReportOb
 	snprintf(message, ARRAYSIZE(message), "%s: %s\n", type, pMessage);
 
 	printf(message);
-#ifdef _WIN32
-	OutputDebugStringA(message);
-#endif
 
 	return VK_FALSE;
 }
 
-// TODO: The first 2 params should be abstracted to a platorm independent Window struct
-void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance* outInstance, VkSurfaceKHR* outSurface, VkDebugReportCallbackEXT* outErrorCallback, VkDebugReportCallbackEXT* outWarningCallback)
+void SetupVulkanInstance(WindowParameters window, VkInstance* outInstance, VkSurfaceKHR* outSurface, VkDebugReportCallbackEXT* outErrorCallback, VkDebugReportCallbackEXT* outWarningCallback)
 {
 	// Load the vulkan library
 	VK_CHECK(volkInitialize());
@@ -61,10 +54,16 @@ void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &count, instanceExtensions.data()));
 
 	const char* extensions[] = {
-		"VK_KHR_surface",
-#ifdef _WIN32
-		"VK_KHR_win32_surface",
+		VK_KHR_SURFACE_EXTENSION_NAME,
+
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+#elif defined VK_USE_PLATFORM_XLIB_KHR
+		VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+#elif defined VK_USE_PLATFORM_XCB_KHR
+		VK_KHR_XCB_SURFACE_EXTENSION_NAME,
 #endif
+
 #ifdef ENABLE_VULKAN_DEBUG_CALLBACK
 		"VK_EXT_debug_report",
 #endif
@@ -108,16 +107,39 @@ void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance
 	}
 #endif
 
-	// TODO: Implement alternatives for other platforms
-#ifdef _WIN32
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+
 	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(*outInstance, "vkCreateWin32SurfaceKHR");
 	assert(vkCreateWin32SurfaceKHR != nullptr);
 
 	VkWin32SurfaceCreateInfoKHR sci = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-	sci.hinstance = instanceHandle;
-	sci.hwnd = windowHandle;
+	sci.hinstance = window.Hinstance;
+	sci.hwnd = window.HWnd;
 
 	VK_CHECK(vkCreateWin32SurfaceKHR(*outInstance, &sci, nullptr, outSurface));
+
+#elif defined VK_USE_PLATFORM_XLIB_KHR
+
+	PFN_vkCreateXlibSurfaceKHR vkCreateXlibSurfaceKHR = (PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(*outInstance, "vkCreateXlibSurfaceKHR");
+	assert(vkCreateXlibSurfaceKHR != nullptr);
+
+	VkXlibSurfaceCreateInfoKHR sci = { VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR };
+	sci.dpy = window.Dpy;
+	sci.Window = window.Window;
+
+	VK_CHECK(vkCreateXlibSurfaceKHR(*outInstance, &sci, nullptr, outSurface));
+
+#elif defined VK_USE_PLATFORM_XCB_KHR
+
+	PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR = (PFN_vkCreateXcbSurfaceKHR)vkGetInstanceProcAddr(*outInstance, "vkCreateXcbSurfaceKHR");
+	assert(vkCreateXcbSurfaceKHR != nullptr);
+
+	VkXcbSurfaceCreateInfoKHR sci = { VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR };
+	sci.connection = window.Connection;
+	sci.window = window.Window;
+
+	VK_CHECK(vkCreateXcbSurfaceKHR(*outInstance, &sci, nullptr, outSurface));
+
 #endif
 }
 
