@@ -5,7 +5,7 @@
 #include <vector>
 #include <stdio.h>
 
-void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice)
+void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, uint32_t* outQueueFamilyIndex)
 {
 	// Query how many devices are present in the system
 	uint32_t deviceCount;
@@ -63,10 +63,11 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, queueFamilyProperties.data());
 
 	// Initialize the queue(s)
+	*outQueueFamilyIndex = 0;
 	VkDeviceQueueCreateInfo qci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
 	// TODO: Enumerate all available queue and query for graphics, transfer and compute queue indices
 	// for not we pick the first one
-	qci.queueFamilyIndex = 0;
+	qci.queueFamilyIndex = *outQueueFamilyIndex;
 	qci.queueCount = 1;
 	float queuePriorities[] = { 1.0f };
 	qci.pQueuePriorities = queuePriorities;

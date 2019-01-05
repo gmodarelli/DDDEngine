@@ -18,5 +18,6 @@
 
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
+#include "VulkanSwapchain.h"
 
 #endif // VULKAN_TOOLS_H_

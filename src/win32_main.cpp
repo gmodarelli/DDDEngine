@@ -114,7 +114,15 @@ int main()
 
 	VkPhysicalDevice physicalDevice = nullptr;
 	VkDevice device = nullptr;
-	SetupPhysicalDevice(instance, &physicalDevice, &device);
+	uint32_t queueFamilyIndex;
+	SetupPhysicalDevice(instance, &physicalDevice, &device, &queueFamilyIndex);
+	
+	VkSwapchainKHR swapChain = nullptr;
+	std::vector<VkImage> presentImages;
+	std::vector<VkImageView> presentImageViews;
+	uint32_t sWidth;
+	uint32_t sHeight;
+	SetupSwapChain(device, physicalDevice, surface, queueFamilyIndex, &sWidth, &sHeight, &swapChain, &presentImages, &presentImageViews);
 
 	MSG msg = { 0 };
 
@@ -134,6 +142,7 @@ int main()
 	}
 
 	// Cleanup
+	DestroySwapChain(device, &swapChain, &presentImages, &presentImageViews);
 	DestroyDevice(&device);
 	DestroyDebugReportCallback(instance, &errorCallback);
 	DestroyDebugReportCallback(instance, &warningCallback);
