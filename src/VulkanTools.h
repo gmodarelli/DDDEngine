@@ -66,5 +66,6 @@ struct Vertex
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"
 #include "VulkanPipeline.h"
+#include "VulkanRenderLoop.h"
 
 #endif // VULKAN_TOOLS_H_

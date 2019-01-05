@@ -82,8 +82,8 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 	pass[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	pass[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	pass[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	pass[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	pass[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	pass[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	pass[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference car = {};
 	car.attachment = 0;
@@ -96,7 +96,7 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 	pass[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	pass[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	pass[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	pass[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	pass[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	pass[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference dar = {};

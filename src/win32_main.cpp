@@ -162,7 +162,7 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			
+			RenderLoop(device, sWidth, sHeight, triangleCount, swapChain, command, presentImages, framebuffers, renderPass, queueFamilyIndex, vertexInputBuffer, descriptor, pipeline);
 		}
 	}
 

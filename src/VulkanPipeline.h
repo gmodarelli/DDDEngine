@@ -73,7 +73,7 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
 	rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
 	rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_NONE; // Should be VK_CULL_MODE_BACK_BIT
+	rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
 	rasterizationStateCreateInfo.depthBiasConstantFactor = 0;
