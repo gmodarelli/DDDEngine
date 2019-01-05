@@ -1,4 +1,4 @@
-#ifndef VULKAN_TOOLS_H
+#ifndef VULKAN_TOOLS_H_
 #define VULKAN_TOOLS_H_
 
 #define VK_CHECK(call) \
@@ -16,9 +16,16 @@
 #endif
 #include "volk.h"
 
+struct BufferImage {
+	VkImage image;
+	VkImageView imageView;
+	VkDeviceMemory imageMemory;
+};
+
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
 #include "VulkanSwapchain.h"
 #include "VulkanRenderPass.h"
+#include "VulkanCommandBuffer.h"
 
 #endif // VULKAN_TOOLS_H_

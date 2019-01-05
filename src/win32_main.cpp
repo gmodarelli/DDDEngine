@@ -129,6 +129,10 @@ int main()
 	BufferImage depthBufferImage;
 	SetupRenderPass(device, physicalDevice, sWidth, sHeight, &presentImageViews, &renderPass, &framebuffers, &depthBufferImage);
 
+	VkCommandPool commandPool;
+	VkCommandBuffer commandBuffer;
+	SetupCommandBuffer(device, physicalDevice, queueFamilyIndex, &commandPool, &commandBuffer);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -147,6 +151,7 @@ int main()
 	}
 
 	// Cleanup
+	DestroyCommandBuffer(device, &commandPool, &commandBuffer);
 	DestroyBufferImage(device, &depthBufferImage);
 	DestroyRenderPass(device, &renderPass, &framebuffers);
 	DestroySwapChain(device, &swapChain, &presentImages, &presentImageViews);

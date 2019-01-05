@@ -1,11 +1,5 @@
-#ifndef VULKAN_RENDER_PASS_H
-#define VULKAN_RENDER_PASS_H
-
-struct BufferImage {
-	VkImage image;
-	VkImageView imageView;
-	VkDeviceMemory imageMemory;
-};
+#ifndef VULKAN_RENDER_PASS_H_
+#define VULKAN_RENDER_PASS_H_
 
 void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, std::vector<VkImageView>* presentImageViews,
 	VkRenderPass* outRenderPass, std::vector<VkFramebuffer>* outFrameBuffers, BufferImage* outDepthBufferImage)
@@ -167,4 +161,4 @@ void DestroyRenderPass(VkDevice device, VkRenderPass* renderPass, std::vector<Vk
 	*renderPass = nullptr;
 }
 
-#endif // VULKAN_RENDER_PASS_H 
+#endif // VULKAN_RENDER_PASS_H_
