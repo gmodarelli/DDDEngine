@@ -129,9 +129,9 @@ int main()
 	BufferImage depthBufferImage;
 	SetupRenderPass(device, physicalDevice, sWidth, sHeight, &presentImageViews, &renderPass, &framebuffers, &depthBufferImage);
 
-	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
-	SetupCommandBuffer(device, physicalDevice, queueFamilyIndex, &commandPool, &commandBuffer);
+	Command command;
+	uint32_t commandBufferCount = 1;
+	SetupCommandBuffer(device, physicalDevice, queueFamilyIndex, 1, &command);
 
 	Buffer vertexInputBuffer;
 	uint32_t triangleCount;
@@ -165,7 +165,7 @@ int main()
 	// TODO: Rename DestroyVertexBuffer to DestroyBuffer once we have a buffer helper file
 	DestroyVertexBuffer(device, &uniformBuffer);
 	DestroyVertexBuffer(device, &vertexInputBuffer);
-	DestroyCommandBuffer(device, &commandPool, &commandBuffer);
+	DestroyCommandBuffer(device, &command);
 	DestroyBufferImage(device, &depthBufferImage);
 	DestroyRenderPass(device, &renderPass, &framebuffers);
 	DestroySwapChain(device, &swapChain, &presentImages, &presentImageViews);

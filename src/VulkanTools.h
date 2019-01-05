@@ -15,16 +15,26 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 #include "volk.h"
+#include <vector>
 
-struct Buffer {
+struct Buffer
+{
 	VkBuffer buffer;
 	VkDeviceMemory memory;
 };
 
-struct BufferImage {
+struct BufferImage
+{
 	VkImage image;
 	VkImageView imageView;
 	VkDeviceMemory imageMemory;
+};
+
+struct Command
+{
+	VkCommandPool pool;
+	uint32_t bufferCount;
+	std::vector<VkCommandBuffer> buffers;
 };
 
 struct Vertex
