@@ -45,6 +45,12 @@ struct Descriptor
 	std::vector<VkDescriptorSet> sets;
 };
 
+struct Pipeline
+{
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
 struct Vertex
 {
 	float x, y, z, w;
@@ -59,5 +65,6 @@ struct Vertex
 #include "VulkanVertexBuffer.h"
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"
+#include "VulkanPipeline.h"
 
 #endif // VULKAN_TOOLS_H_

@@ -145,6 +145,10 @@ int main()
 	Descriptor descriptor;
 	SetupDescriptors(device, uniformBuffer.buffer, 1, &descriptor);
 
+	Pipeline pipeline;
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.layout };
+	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -163,6 +167,7 @@ int main()
 	}
 
 	// Cleanup
+	DestroyPipeline(device, &pipeline);
 	DestroyDescriptor(device, &descriptor);
 	DestroyShaderModule(device, &vertShaderModule);
 	DestroyShaderModule(device, &fragShaderModule);
