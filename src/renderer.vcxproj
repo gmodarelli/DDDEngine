@@ -158,7 +158,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Vulkan.h" />
+    <ClInclude Include="VulkanDevice.h" />
+    <ClInclude Include="VulkanTools.h" />
+    <ClInclude Include="VulkanInstance.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c" />

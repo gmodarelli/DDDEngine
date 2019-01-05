@@ -1,25 +1,10 @@
-#pragma once
+#ifndef VULKAN_INSTANCE_H_
+#define VULKAN_INSTANCE_H_
+
 #include <stdint.h>
-
-#ifdef _WIN32
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-#include "volk.h"
-
 #include <assert.h>
 #include <vector>
 #include <stdio.h>
-
-// Macro to check Vulkan function results
-#define VK_CHECK(call) \
-	do { \
-		VkResult result = call; \
-		assert(result == VK_SUCCESS); \
-	} while (0);
-
-#ifndef ARRAYSIZE
-#define ARRAYSIZE(x) (sizeof(x) / sizeof(x[0]))
-#endif
 
 VkBool32 debugReportErrorCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
@@ -65,16 +50,14 @@ void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance
 	VK_CHECK(vkEnumerateInstanceLayerProperties(&count, nullptr));
 	assert(count > 0 && L"Could not find any instance layer properties");
 
-	std::vector<VkLayerProperties> instanceLayers;
-	instanceLayers.resize(count);
+	std::vector<VkLayerProperties> instanceLayers(count);
 	VK_CHECK(vkEnumerateInstanceLayerProperties(&count, instanceLayers.data()));
 
 	// Extensions Properties
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr));
 	assert(count > 0 && L"Could not find any instance extension properties");
 
-	std::vector<VkExtensionProperties> instanceExtensions;
-	instanceExtensions.resize(count);
+	std::vector<VkExtensionProperties> instanceExtensions(count);
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &count, instanceExtensions.data()));
 
 	const char* extensions[] = {
@@ -88,10 +71,13 @@ void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance
 	};
 
 	{
+		uint32_t apiVersion;
+		VK_CHECK(vkEnumerateInstanceVersion(&apiVersion));
+
 		VkApplicationInfo ai = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 		ai.pApplicationName = "Vulkan Renderer";
 		ai.engineVersion = VK_MAKE_VERSION(0, 0, 1);
-		ai.apiVersion = VK_API_VERSION_1_0;
+		ai.apiVersion = apiVersion;
 
 		VkInstanceCreateInfo ici = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		ici.pApplicationInfo = &ai;
@@ -134,3 +120,17 @@ void SetupVulkanInstance(HWND windowHandle, HINSTANCE instanceHandle, VkInstance
 	VK_CHECK(vkCreateWin32SurfaceKHR(*outInstance, &sci, nullptr, outSurface));
 #endif
 }
+
+void DestroyInstance(VkInstance* outInstance)
+{
+	vkDestroyInstance(*outInstance, nullptr);
+	*outInstance = nullptr;
+}
+
+void DestroyDebugReportCallback(VkInstance instance, VkDebugReportCallbackEXT* outCallback)
+{
+	vkDestroyDebugReportCallbackEXT(instance, *outCallback, nullptr);
+	*outCallback = nullptr;
+}
+
+#endif // VULKAN_INSTANCE_H_

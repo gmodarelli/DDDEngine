@@ -1,7 +1,8 @@
-#define ENABLE_VULKAN_DEBUG_CALLBACK
-#include "Vulkan.h"
-
 #include <Windows.h>
+
+#define ENABLE_VULKAN_DEBUG_CALLBACK
+#include "VulkanTools.h"
+
 #include <assert.h>
 #include <stdio.h>
 
@@ -17,12 +18,12 @@ MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if (LOWORD(wParam) == WA_INACTIVE)
 		{
 
-			printf("The window is inactive, should pause the app");
+			printf("The window is inactive, should pause the app\n");
 			OutputDebugString(L"The window is inactive, should pause the app");
 		}
 		else
 		{
-			printf("The window is active, should start the app");
+			printf("The window is active, should start the app\n");
 			OutputDebugString(L"The window is active, should start the app");
 		}
 		return 0;
@@ -111,6 +112,10 @@ int main()
 	assert(instance != nullptr && L"The Vulkan instance is nullptr");
 	assert(surface != nullptr && L"The Vulkan surface is nullptr");
 
+	VkPhysicalDevice physicalDevice = nullptr;
+	VkDevice device = nullptr;
+	SetupPhysicalDevice(instance, &physicalDevice, &device);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -127,6 +132,12 @@ int main()
 			
 		}
 	}
+
+	// Cleanup
+	DestroyDevice(&device);
+	DestroyDebugReportCallback(instance, &errorCallback);
+	DestroyDebugReportCallback(instance, &warningCallback);
+	DestroyInstance(&instance);
 
 	return (int)msg.wParam;
 }
