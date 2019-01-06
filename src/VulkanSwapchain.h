@@ -134,6 +134,9 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 
 	// Create the images for the double/triple buffering
 	outPresentImage->resize(imageCount);
+	uint32_t swapchainImageCount;
+	VK_CHECK(vkGetSwapchainImagesKHR(device, *outSwapChain, &swapchainImageCount, nullptr));
+	R_ASSERT(swapchainImageCount >= imageCount && "The swapchain does not have enough images");
 	VK_CHECK(vkGetSwapchainImagesKHR(device, *outSwapChain, &imageCount, outPresentImage->data()));
 
 	// Create the image views for the double/triple buffering

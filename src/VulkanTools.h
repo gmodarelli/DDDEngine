@@ -30,6 +30,14 @@ struct WindowParameters
 #endif
 };
 
+struct QueueFamilyIndices
+{
+	int32_t GraphicsFamilyIndex = -1;
+	int32_t PresentFamilyIndex  = -1;
+	int32_t TransferFamilyIndex = -1;
+	int32_t ComputeFamilyIndex  = -1;
+};
+
 struct Buffer
 {
 	VkBuffer Buffer;

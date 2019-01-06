@@ -116,15 +116,16 @@ int main()
 
 	VkPhysicalDevice physicalDevice = nullptr;
 	VkDevice device = nullptr;
-	uint32_t queueFamilyIndex;
-	SetupPhysicalDevice(instance, &physicalDevice, &device, &queueFamilyIndex);
+	QueueFamilyIndices queueFamilyIndices = {};
+	VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT;
+	SetupPhysicalDevice(instance, surface, requiredQueues, &physicalDevice, &device, &queueFamilyIndices);
 	
 	VkSwapchainKHR swapChain = nullptr;
 	std::vector<VkImage> presentImages;
 	std::vector<VkImageView> presentImageViews;
 	uint32_t sWidth;
 	uint32_t sHeight;
-	SetupSwapChain(device, physicalDevice, surface, queueFamilyIndex, &sWidth, &sHeight, &swapChain, &presentImages, &presentImageViews);
+	SetupSwapChain(device, physicalDevice, surface, queueFamilyIndices.GraphicsFamilyIndex, &sWidth, &sHeight, &swapChain, &presentImages, &presentImageViews);
 
 	VkRenderPass renderPass;
 	std::vector<VkFramebuffer> framebuffers;
@@ -133,7 +134,7 @@ int main()
 
 	Command command;
 	uint32_t commandBufferCount = 1;
-	SetupCommandBuffer(device, physicalDevice, queueFamilyIndex, 1, &command);
+	SetupCommandBuffer(device, physicalDevice, queueFamilyIndices.GraphicsFamilyIndex, 1, &command);
 
 	Buffer vertexInputBuffer;
 	uint32_t triangleCount;
@@ -164,7 +165,7 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, sWidth, sHeight, triangleCount, swapChain, command, presentImages, framebuffers, renderPass, queueFamilyIndex, vertexInputBuffer, descriptor, pipeline);
+			RenderLoop(device, sWidth, sHeight, triangleCount, swapChain, command, presentImages, framebuffers, renderPass, queueFamilyIndices.GraphicsFamilyIndex, vertexInputBuffer, descriptor, pipeline);
 		}
 	}
 

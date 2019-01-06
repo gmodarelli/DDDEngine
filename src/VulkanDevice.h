@@ -4,7 +4,7 @@
 #include <vector>
 #include <stdio.h>
 
-void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, uint32_t* outQueueFamilyIndex)
+void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags requiredQueues, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, QueueFamilyIndices* outQueueFamilyIndices)
 {
 	// Query how many devices are present in the system
 	uint32_t deviceCount;
@@ -51,21 +51,95 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 
 	LogPhysicalDeviceProperties(&physicalDevicesProperties);
 
+	// Initialize the queue(s)
+	// TODO: This queue-related code can be simplified and moved out of this function.
+	// TODO: Add support for finding a Compute-capable queue.
+	// TODO: Figure out if we need to take more than one queue per queue family index
+
 	uint32_t queueCount;
 	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, nullptr);
 	R_ASSERT(queueCount > 0 && "No queue families found");
-	std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, queueFamilyProperties.data());
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(*outPhysicalDevice, &queueCount, queueFamilies.data());
 
-	// Initialize the queue(s)
-	*outQueueFamilyIndex = 0;
-	VkDeviceQueueCreateInfo qci = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-	// TODO: Enumerate all available queue and query for graphics, transfer and compute queue indices
-	// for not we pick the first one
-	qci.queueFamilyIndex = *outQueueFamilyIndex;
-	qci.queueCount = 1;
+	// Try to find a queue for graphics/present and a separate one for tranfser
+	if (requiredQueues & VK_QUEUE_GRAPHICS_BIT && requiredQueues & VK_QUEUE_TRANSFER_BIT)
+	{
+		for (uint32_t i = 0; i < queueCount; ++i)
+		{
+			if (outQueueFamilyIndices->GraphicsFamilyIndex == -1 && queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				outQueueFamilyIndices->GraphicsFamilyIndex = i;
+
+			if (outQueueFamilyIndices->TransferFamilyIndex == -1 && queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT && !(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+				outQueueFamilyIndices->TransferFamilyIndex = i;
+
+			if (outQueueFamilyIndices->PresentFamilyIndex == -1)
+			{
+				VkBool32 presentSupport = VK_FALSE;
+				vkGetPhysicalDeviceSurfaceSupportKHR(*outPhysicalDevice, i, surface, &presentSupport);
+				if (queueFamilies[i].queueCount > 0 && presentSupport)
+					outQueueFamilyIndices->PresentFamilyIndex = i;
+			}
+
+			if (outQueueFamilyIndices->GraphicsFamilyIndex >= 0 && outQueueFamilyIndices->PresentFamilyIndex >= 0 && outQueueFamilyIndices->TransferFamilyIndex >= 0)
+				break;
+		}
+	}
+	// Try to find a Queue for Graphics and for presenting to the surface
+	else if (requiredQueues & VK_QUEUE_GRAPHICS_BIT)
+	{
+		for (uint32_t i = 0; i < queueCount; ++i)
+		{
+			if (queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				outQueueFamilyIndices->GraphicsFamilyIndex = i;
+
+			VkBool32 presentSupport = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(*outPhysicalDevice, i, surface, &presentSupport);
+			if (queueFamilies[i].queueCount > 0 && presentSupport)
+				outQueueFamilyIndices->PresentFamilyIndex = i;
+
+			if (outQueueFamilyIndices->GraphicsFamilyIndex >= 0 && outQueueFamilyIndices->PresentFamilyIndex >= 0)
+				break;
+		}
+	}
+
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	float queuePriorities[] = { 1.0f };
-	qci.pQueuePriorities = queuePriorities;
+
+	if (requiredQueues & VK_QUEUE_GRAPHICS_BIT)
+	{
+		R_ASSERT(outQueueFamilyIndices->GraphicsFamilyIndex >= 0 && "Could not find a graphics capable queue");
+		R_ASSERT(outQueueFamilyIndices->PresentFamilyIndex >= 0 && "Could not find a present capable queue");
+
+		VkDeviceQueueCreateInfo graphicsQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+		graphicsQueueInfo.queueFamilyIndex = outQueueFamilyIndices->GraphicsFamilyIndex;
+		graphicsQueueInfo.queueCount = 1;
+		graphicsQueueInfo.pQueuePriorities = queuePriorities;
+		queueCreateInfos.push_back(graphicsQueueInfo);
+
+		if (outQueueFamilyIndices->PresentFamilyIndex != outQueueFamilyIndices->GraphicsFamilyIndex)
+		{
+			VkDeviceQueueCreateInfo presentQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+			presentQueueInfo.queueFamilyIndex = outQueueFamilyIndices->PresentFamilyIndex;
+			presentQueueInfo.queueCount = 1;
+			presentQueueInfo.pQueuePriorities = queuePriorities;
+			queueCreateInfos.push_back(presentQueueInfo);
+		}
+	}
+
+	if (requiredQueues & VK_QUEUE_TRANSFER_BIT)
+	{
+		R_ASSERT(outQueueFamilyIndices->TransferFamilyIndex >= 0 && "Could not find a transfer capable queue");
+
+		if (outQueueFamilyIndices->TransferFamilyIndex != outQueueFamilyIndices->GraphicsFamilyIndex)
+		{
+			VkDeviceQueueCreateInfo transferQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+			transferQueueInfo.queueFamilyIndex = outQueueFamilyIndices->TransferFamilyIndex;
+			transferQueueInfo.queueCount = 1;
+			transferQueueInfo.pQueuePriorities = queuePriorities;
+			queueCreateInfos.push_back(transferQueueInfo);
+		}
+	}
 
 	// Device extensions
 	std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
@@ -78,11 +152,11 @@ void SetupPhysicalDevice(VkInstance instance, VkPhysicalDevice* outPhysicalDevic
 	LogDeviceExtensions(&availableExtensions);
 
 	VkBool32 supported = CheckExtensionsSupport(&requiredExtensions, &availableExtensions);
-	R_ASSERT(supported == VK_TRUE && L"Required instance extensions not supported!");
+	R_ASSERT(supported == VK_TRUE && "Required instance extensions not supported!");
 
 	VkDeviceCreateInfo dci = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	dci.queueCreateInfoCount = 1;
-	dci.pQueueCreateInfos = &qci;
+	dci.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+	dci.pQueueCreateInfos = queueCreateInfos.data();
 	dci.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
 	dci.ppEnabledExtensionNames = requiredExtensions.size() > 0 ? requiredExtensions.data() : nullptr;
 	dci.pEnabledFeatures = &requiredFeatures;
