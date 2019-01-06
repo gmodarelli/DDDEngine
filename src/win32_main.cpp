@@ -155,6 +155,12 @@ int main()
 
 	VkQueue presentQueue = GetQueue(device, queueFamilyIndices.PresentFamilyIndex);
 
+	size_t maxFramesInFlight = framebuffers.size();
+	SyncObjects syncObjects;
+
+	CreateSyncObjects(device, maxFramesInFlight, &syncObjects);
+	uint32_t currentFrameIndex = 0;
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -168,13 +174,15 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, swapChain, command, presentImages, presentQueue);
+			RenderLoop(device, swapChain, command, presentImages, presentQueue, syncObjects, currentFrameIndex);
+			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 		}
 	}
 
 	vkDeviceWaitIdle(device);
 
 	// Cleanup
+	DestroySyncObjects(device, &syncObjects);
 	DestroyPipeline(device, &pipeline);
 	DestroyDescriptor(device, &descriptor);
 	DestroyShaderModule(device, &vertShaderModule);

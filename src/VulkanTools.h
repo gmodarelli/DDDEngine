@@ -72,6 +72,13 @@ struct Pipeline
 	VkPipelineLayout PipelineLayout;
 };
 
+struct SyncObjects
+{
+	std::vector<VkSemaphore> ImageAvailableSemaphores;
+	std::vector<VkSemaphore> RenderFinishedSemaphores;
+	std::vector<VkFence> InFlightFences;
+};
+
 struct Vertex
 {
 	float x, y, z, w;
@@ -113,5 +120,6 @@ VkBool32 CheckExtensionsSupport(const std::vector<const char*>* extensionNames, 
 #include "VulkanDescriptors.h"
 #include "VulkanPipeline.h"
 #include "VulkanRenderLoop.h"
+#include "VulkanSynchronization.h"
 
 #endif // VULKAN_TOOLS_H_

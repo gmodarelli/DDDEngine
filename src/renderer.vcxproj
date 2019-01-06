@@ -163,6 +163,7 @@
     <ClInclude Include="VulkanPipeline.h" />
     <ClInclude Include="VulkanRenderLoop.h" />
     <ClInclude Include="VulkanShaderAndUniforms.h" />
+    <ClInclude Include="VulkanSynchronization.h" />
     <ClInclude Include="VulkanVertexBuffer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
     <ClInclude Include="VulkanDevice.h" />

@@ -46,49 +46,43 @@ void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t tr
 	}
 }
 
-void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue presentQueue)
+void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
 {
 #if 1
-	uint32_t nextImageIndex;
-	VkSemaphore semaphore;
-	VkSemaphoreCreateInfo semaphoreCreateInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-	vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore);
+	vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
 
-	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &nextImageIndex));
+	uint32_t nextImageIndex;
+	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));
 
 	// Present
-	VkFence renderFence;
-	VkFenceCreateInfo fenceCreateInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-	VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &renderFence));
-
-	VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	VkSemaphore waitSemaphores[] = { syncObjects.ImageAvailableSemaphores[currentFrameIndex] };
+	VkPipelineStageFlags waitStageMask[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.waitSemaphoreCount = 0;
-	submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
-	submitInfo.pWaitDstStageMask = &waitStageMask;
-	submitInfo.commandBufferCount = 1; // commandBuffer.bufferCount;
+	submitInfo.waitSemaphoreCount = ARRAYSIZE(waitSemaphores);
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStageMask;
+	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer.CommandBuffers[nextImageIndex];
-	submitInfo.signalSemaphoreCount = 0;
-	submitInfo.pSignalSemaphores = VK_NULL_HANDLE;
+
+	VkSemaphore signalSemaphores[] = { syncObjects.RenderFinishedSemaphores[currentFrameIndex] };
+	submitInfo.signalSemaphoreCount = ARRAYSIZE(signalSemaphores);
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	vkResetFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Submit command buffer
-	vkQueueSubmit(presentQueue, 1, &submitInfo, renderFence);
-
-	// Wait for the command queue to finish
-	vkWaitForFences(device, 1, &renderFence, VK_TRUE, UINT64_MAX);
-
-	vkDestroyFence(device, renderFence, nullptr);
-	vkDestroySemaphore(device, semaphore, nullptr);
+	vkQueueSubmit(presentQueue, 1, &submitInfo, syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Present the backbuffer
 	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+	presentInfo.waitSemaphoreCount = ARRAYSIZE(signalSemaphores);
+	presentInfo.pWaitSemaphores = signalSemaphores;
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &swapchain;
 	presentInfo.pImageIndices = &nextImageIndex;
-	presentInfo.pResults = nullptr;
 
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	VK_CHECK(vkQueuePresentKHR(presentQueue, &presentInfo));
 #endif
 }
 
