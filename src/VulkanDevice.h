@@ -4,6 +4,14 @@
 #include <vector>
 #include <stdio.h>
 
+VkQueue GetQueue(VkDevice device, uint32_t queueFamilyIndex)
+{
+	VkQueue queue;
+	vkGetDeviceQueue(device, queueFamilyIndex, 0, &queue);
+
+	return queue;
+}
+
 void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags requiredQueues, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, QueueFamilyIndices* outQueueFamilyIndices)
 {
 	// Query how many devices are present in the system

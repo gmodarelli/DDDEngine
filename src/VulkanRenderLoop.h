@@ -46,7 +46,7 @@ void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t tr
 	}
 }
 
-void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, uint32_t queueFamilyIndex)
+void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue presentQueue)
 {
 #if 1
 	uint32_t nextImageIndex;
@@ -62,8 +62,6 @@ void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer
 	VK_CHECK(vkCreateFence(device, &fenceCreateInfo, nullptr, &renderFence));
 
 	VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	VkQueue presentQueue;
-	vkGetDeviceQueue(device, queueFamilyIndex, 0, &presentQueue);
 
 	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.waitSemaphoreCount = 0;

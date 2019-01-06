@@ -153,6 +153,8 @@ int main()
 
 	RecordCommands(command, vertexInputBuffer, triangleCount, framebuffers, renderPass, descriptor, pipeline, sWidth, sHeight);
 
+	VkQueue presentQueue = GetQueue(device, queueFamilyIndices.PresentFamilyIndex);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -166,7 +168,7 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, swapChain, command, presentImages, queueFamilyIndices.GraphicsFamilyIndex);
+			RenderLoop(device, swapChain, command, presentImages, presentQueue);
 		}
 	}
 
