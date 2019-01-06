@@ -133,8 +133,7 @@ int main()
 	SetupRenderPass(device, physicalDevice, sWidth, sHeight, &presentImageViews, &renderPass, &framebuffers, &depthBufferImage);
 
 	Command command;
-	uint32_t commandBufferCount = 1;
-	SetupCommandBuffer(device, physicalDevice, queueFamilyIndices.GraphicsFamilyIndex, 1, &command);
+	SetupCommandBuffer(device, physicalDevice, queueFamilyIndices.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
 
 	Buffer vertexInputBuffer;
 	uint32_t triangleCount;
@@ -152,6 +151,8 @@ int main()
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
 	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
+	RecordCommands(command, vertexInputBuffer, triangleCount, framebuffers, renderPass, descriptor, pipeline, sWidth, sHeight);
+
 	MSG msg = { 0 };
 
 	while (msg.message != WM_QUIT)
@@ -165,7 +166,7 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, sWidth, sHeight, triangleCount, swapChain, command, presentImages, framebuffers, renderPass, queueFamilyIndices.GraphicsFamilyIndex, vertexInputBuffer, descriptor, pipeline);
+			RenderLoop(device, swapChain, command, presentImages, queueFamilyIndices.GraphicsFamilyIndex);
 		}
 	}
 
