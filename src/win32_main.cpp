@@ -2,9 +2,28 @@
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "VulkanTools.h"
+#include "MeshLoader.h"
 
 #include <assert.h>
 #include <stdio.h>
+
+#define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
+#define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
+
+void OnMouseDown(WPARAM btnState, int x, int y)
+{
+	
+}
+
+void OnMouseUp(WPARAM btnState, int x, int y)
+{
+	
+}
+
+void OnMouseMove(WPARAM btnState, int x, int y)
+{
+	
+}
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -44,6 +63,22 @@ MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		// Catch this message so to prevent the window from becoming too small.
 		((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
 		((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+		return 0;
+
+	case WM_LBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+		OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
+	case WM_LBUTTONUP:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONUP:
+		OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+
+	case WM_MOUSEMOVE:
+		OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 
 	case WM_KEYUP:
@@ -135,9 +170,12 @@ int main()
 	Command command;
 	SetupCommandBuffer(device, physicalDevice, queueFamilyIndices.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
 
-	Buffer vertexInputBuffer;
-	uint32_t triangleCount;
-	SetupVertexBuffer(device, physicalDevice, &triangleCount, &vertexInputBuffer);
+	Mesh mesh;
+	bool meshLoaded = LoadMesh(mesh, "../data/models/kitten.obj");
+	R_ASSERT(meshLoaded && "Could not load the mesh");
+	Buffer vertexBuffer;
+	Buffer indexBuffer;
+	CreateBuffersForMesh(device, physicalDevice, mesh, &vertexBuffer, &indexBuffer);
 
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
@@ -151,8 +189,9 @@ int main()
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
 	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
-	RecordCommands(command, vertexInputBuffer, triangleCount, framebuffers, renderPass, descriptor, pipeline, sWidth, sHeight);
+	RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, sWidth, sHeight);
 
+	VkQueue graphycsQueue = GetQueue(device, queueFamilyIndices.GraphicsFamilyIndex);
 	VkQueue presentQueue = GetQueue(device, queueFamilyIndices.PresentFamilyIndex);
 
 	size_t maxFramesInFlight = framebuffers.size();
@@ -174,7 +213,7 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, swapChain, command, presentImages, presentQueue, syncObjects, currentFrameIndex);
+			RenderLoop(device, swapChain, command, presentImages, graphycsQueue, presentQueue, syncObjects, currentFrameIndex);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 		}
 	}
@@ -187,9 +226,11 @@ int main()
 	DestroyDescriptor(device, &descriptor);
 	DestroyShaderModule(device, &vertShaderModule);
 	DestroyShaderModule(device, &fragShaderModule);
-	// TODO: Rename DestroyVertexBuffer to DestroyBuffer once we have a buffer helper file
-	DestroyVertexBuffer(device, &uniformBuffer);
-	DestroyVertexBuffer(device, &vertexInputBuffer);
+
+	DestroyBuffer(device, &vertexBuffer);
+	DestroyBuffer(device, &indexBuffer);
+	DestroyBuffer(device, &uniformBuffer);
+
 	DestroyCommandBuffer(device, &command);
 	DestroyBufferImage(device, &depthBufferImage);
 	DestroyRenderPass(device, &renderPass, &framebuffers);

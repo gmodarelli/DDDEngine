@@ -1,7 +1,7 @@
 #ifndef VULKAN_RENDER_LOOP_H_
 #define VULKAN_RENDER_LOOP_H_
 
-void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t triangleCount, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, uint32_t width, uint32_t height)
+void RecordCommands(Command commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, uint32_t indicesSize, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, uint32_t width, uint32_t height)
 {
 	for (uint32_t i = 0; i < commandBuffer.CommandBufferCount; ++i)
 	{
@@ -11,7 +11,7 @@ void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t tr
 		VK_CHECK(vkBeginCommandBuffer(commandBuffer.CommandBuffers[i], &beginInfo));
 
 		// Activate the render pass
-		VkClearValue clearValue[] = { { 1.0f, 0.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } };
+		VkClearValue clearValue[] = { { 135 / 255.0f, 206 / 255.0f, 250 / 255.0f, 1.0f }, { 1.0f, 0.0f } };
 		VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 		renderPassBeginInfo.renderPass = renderPass;
 		renderPassBeginInfo.framebuffer = framebuffers[i];
@@ -31,14 +31,16 @@ void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t tr
 		VkRect2D scissors = { 0, 0, width, height };
 		vkCmdSetScissor(commandBuffer.CommandBuffers[i], 0, 1, &scissors);
 
-		// Bind the shaders parameters
-		vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
 
 		// Render the triangles
 		VkDeviceSize offsets = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[i], 0, 1, &vertexInputBuffer.Buffer, &offsets);
+		vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[i], 0, 1, &vertexBuffer.Buffer, &offsets);
+		vkCmdBindIndexBuffer(commandBuffer.CommandBuffers[i], indexBuffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDraw(commandBuffer.CommandBuffers[i], triangleCount * 3, 1, 0, 0);
+		// Bind the shaders parameters
+		vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
+
+		vkCmdDrawIndexed(commandBuffer.CommandBuffers[i], indicesSize, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffer.CommandBuffers[i]);
 
@@ -46,7 +48,7 @@ void RecordCommands(Command commandBuffer, Buffer vertexInputBuffer, uint32_t tr
 	}
 }
 
-void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
+void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
 {
 #if 1
 	vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
@@ -72,7 +74,7 @@ void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer
 	vkResetFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Submit command buffer
-	vkQueueSubmit(presentQueue, 1, &submitInfo, syncObjects.InFlightFences[currentFrameIndex]);
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Present the backbuffer
 	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };

@@ -4,3 +4,12 @@
 [submodule "extern/Vulkan-Headers"]
 	path = extern/Vulkan-Headers
 	url = https://github.com/KhronosGroup/Vulkan-Headers
+[submodule "extern/glm"]
+	path = extern/glm
+	url = https://github.com/g-truc/glm
+[submodule "extern/OBJ-Loader"]
+	path = extern/OBJ-Loader
+	url = https://github.com/Bly7/OBJ-Loader.git
+[submodule "extern/meshoptimizer"]
+	path = extern/meshoptimizer
+	url = http://github.com/zeux/meshoptimizer.git

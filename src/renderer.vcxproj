@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/volk;../extern/Vulkan-Headers/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/volk;../extern/glm;../extern/Vulkan-Headers/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -158,6 +158,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
+    <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h" />
+    <ClInclude Include="MeshLoader.h" />
+    <ClInclude Include="VulkanTypes.h" />
+    <ClInclude Include="VulkanBuffer.h" />
     <ClInclude Include="VulkanDebug.h" />
     <ClInclude Include="VulkanDescriptors.h" />
     <ClInclude Include="VulkanPipeline.h" />
@@ -173,6 +178,19 @@
     <ClInclude Include="VulkanInstance.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\extern\meshoptimizer\src\clusterizer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\indexcodec.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\indexgenerator.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\overdrawanalyzer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\overdrawoptimizer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\simplifier.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\stripifier.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\vcacheanalyzer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\vcacheoptimizer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\vertexcodec.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\vfetchanalyzer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\src\vfetchoptimizer.cpp" />
+    <ClCompile Include="..\extern\meshoptimizer\tools\objparser.cpp" />
     <ClCompile Include="..\extern\volk\volk.c" />
     <ClCompile Include="win32_main.cpp" />
   </ItemGroup>

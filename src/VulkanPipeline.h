@@ -33,24 +33,31 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	vertexBindingDescription.stride = sizeof(Vertex);
 	vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	VkVertexInputAttributeDescription vertexAttributeDescription[2];
+
+	VkVertexInputAttributeDescription vertexAttributeDescription[3];
 
 	// Position
 	vertexAttributeDescription[0].location = 0;
 	vertexAttributeDescription[0].binding = 0;
-	vertexAttributeDescription[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexAttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertexAttributeDescription[0].offset = 0;
 
-	// Color
+	// Normal
 	vertexAttributeDescription[1].location = 1;
 	vertexAttributeDescription[1].binding = 0;
-	vertexAttributeDescription[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	vertexAttributeDescription[1].offset = 4 * sizeof(float);
+	vertexAttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexAttributeDescription[1].offset = sizeof(float) * 3;
+
+	// UV
+	vertexAttributeDescription[2].location = 2;
+	vertexAttributeDescription[2].binding = 0;
+	vertexAttributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexAttributeDescription[2].offset = sizeof(float) * 6;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
 	vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexBindingDescription;
-	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 2;
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = ARRAYSIZE(vertexAttributeDescription);
 	vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexAttributeDescription;
 
 	// Vertex Topology Configuration

@@ -38,6 +38,7 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 	delete[] code;
 	code = NULL;
 
+	// TODO: Extract this code into a camera struct
 	// Create a uniform buffer for passing constant data to the shader
 	const float PI = 3.14159265359f;
 	const float TO_RAD = PI / 180.0f;
@@ -54,7 +55,7 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 	static float lhProjectionMatrix[16] =
 	{
 		t / aspectRatio, 0, 0, 0,
-		0, t, 0, 0,
+		0, -1 * t, 0, 0,
 		0, 0, (-nearZ - farZ) / nf, (2 * nearZ * farZ) / nf,
 		0, 0, 1, 0
 	};
@@ -67,10 +68,11 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 		0, 0, 0, 1
 	};
 
+	// TODO: This matrix needs to be attached to a model
 	// Position of the object
 	float positionX = 0;
-	float positionY = 2;
-	float positionZ = 10;
+	float positionY = 0;
+	float positionZ = 5;
 
 	static float lhModelMatrix[16] =
 	{

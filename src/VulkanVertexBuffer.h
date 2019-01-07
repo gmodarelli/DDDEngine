@@ -1,6 +1,27 @@
 #ifndef VULKAN_VERTEX_BUFFER_H_
 #define VULKAN_VERTEX_BUFFER_H_
 
+void CreateBuffersForMesh(VkDevice device, VkPhysicalDevice physicalDevice, Mesh mesh, Buffer* outVertexBuffer, Buffer* outIndexBuffer)
+{
+	VkDeviceSize vertexBufferSize = sizeof(Vertex) * mesh.Vertices.size();
+	// TODO: We could also create a staging buffer and use the transfer queue to upload to the GPU
+	CreateBuffer(device, physicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, outVertexBuffer);
+
+	void* vertexData;
+	vkMapMemory(device, outVertexBuffer->DeviceMemory, 0, vertexBufferSize, 0, &vertexData);
+	memcpy(vertexData, mesh.Vertices.data(), (size_t)vertexBufferSize);
+	vkUnmapMemory(device, outVertexBuffer->DeviceMemory);
+
+	VkDeviceSize indexBufferSize = sizeof(uint32_t) * mesh.Indices.size();
+	// TODO: We could also create a staging buffer and use the transfer queue to upload to the GPU
+	CreateBuffer(device, physicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, outIndexBuffer);
+
+	void* indexData;
+	vkMapMemory(device, outIndexBuffer->DeviceMemory, 0, indexBufferSize, 0, &indexData);
+	memcpy(indexData, mesh.Indices.data(), (size_t)indexBufferSize);
+	vkUnmapMemory(device, outIndexBuffer->DeviceMemory);
+}
+
 void SetupVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t* outTriangleNumber, Buffer* outVertexInputBuffer)
 {
 	// A cube
@@ -86,28 +107,13 @@ void SetupVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, uint32_
 	Vertex* vertices = (Vertex*)mapped;
 	for (uint32_t i = 0; i < vertexCount; ++i)
 	{
-		vertices[i].x = verticesForCube[i * 3 + 0];
-		vertices[i].y = verticesForCube[i * 3 + 1];
-		vertices[i].z = verticesForCube[i * 3 + 2];
-		vertices[i].w = 1;
-
-		vertices[i].r = vertices[i].x;
-		vertices[i].g = (float(i % 10) * 0.1f);
-		vertices[i].b = vertices[i].z;
-		vertices[i].a = 1;
+		vertices[i].vx = verticesForCube[i * 3 + 0];
+		vertices[i].vy = verticesForCube[i * 3 + 1];
+		vertices[i].vz = verticesForCube[i * 3 + 2];
 	}
 
 	vkUnmapMemory(device, outVertexInputBuffer->DeviceMemory);
 	VK_CHECK(vkBindBufferMemory(device, outVertexInputBuffer->Buffer, outVertexInputBuffer->DeviceMemory, 0));
-}
-
-void DestroyVertexBuffer(VkDevice device, Buffer* buffer)
-{
-	vkFreeMemory(device, buffer->DeviceMemory, nullptr);
-	vkDestroyBuffer(device, buffer->Buffer, nullptr);
-
-	buffer->DeviceMemory = nullptr;
-	buffer->Buffer = VK_NULL_HANDLE;
 }
 
 #endif // VULKAN_VERTEX_BUFFER_H_ 
