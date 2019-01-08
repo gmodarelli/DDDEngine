@@ -37,6 +37,9 @@ struct Buffer
 {
 	VkBuffer Buffer;
 	VkDeviceMemory DeviceMemory;
+	VkDeviceSize size;
+	VkBufferUsageFlags usage;
+	void* data;
 };
 
 struct BufferImage

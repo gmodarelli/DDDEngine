@@ -82,46 +82,17 @@ void SetupShaderandUniforms(VkDevice device, VkPhysicalDevice physicalDevice, ui
 		0, 0, 0, 1
 	};
 
-	// Create uniform buffers
-	VkBufferCreateInfo bufferCreateInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	bufferCreateInfo.size = sizeof(float) * 16 * 3; // 3 4x4 matrices
-	bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	VK_CHECK(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &outBuffer->Buffer));
-
-	// Allocate memory for the buffer
-	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(device, outBuffer->Buffer, &memoryRequirements);
-
-	VkMemoryAllocateInfo bufferAllocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	bufferAllocateInfo.allocationSize = memoryRequirements.size;
-
-	VkPhysicalDeviceMemoryProperties memoryProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-
-	for (uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; ++i)
-	{
-		VkMemoryType memoryType = memoryProperties.memoryTypes[i];
-		if ((memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
-		{
-			bufferAllocateInfo.memoryTypeIndex = i;
-			break;
-		}
-	}
-
-	VK_CHECK(vkAllocateMemory(device, &bufferAllocateInfo, nullptr, &outBuffer->DeviceMemory));
-	VK_CHECK(vkBindBufferMemory(device, outBuffer->Buffer, outBuffer->DeviceMemory, 0));
+	VkDeviceSize bufferSize = sizeof(float) * 16 * 3;
+	// TODO: We could also create a staging buffer and use the transfer queue to upload to the GPU
+	// NOTE: This is the optimal path for mobile GPUs, where the memory unified.
+	CreateBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, outBuffer);
 
 	// Set buffer content
-	void* mapped = NULL;
-	VK_CHECK(vkMapMemory(device, outBuffer->DeviceMemory, 0, VK_WHOLE_SIZE, 0, &mapped));
+	VK_CHECK(vkMapMemory(device, outBuffer->DeviceMemory, 0, VK_WHOLE_SIZE, 0, &outBuffer->data));
 
-	memcpy(mapped, &lhProjectionMatrix[0], sizeof(lhProjectionMatrix));
-	memcpy(((float*)mapped + 16), &lhViewMatrix[0], sizeof(lhViewMatrix));
-	memcpy(((float*)mapped + 32), &lhModelMatrix[0], sizeof(lhModelMatrix));
-
-	vkUnmapMemory(device, outBuffer->DeviceMemory);
+	memcpy(outBuffer->data, &lhProjectionMatrix[0], sizeof(lhProjectionMatrix));
+	memcpy(((float*)outBuffer->data + 16), &lhViewMatrix[0], sizeof(lhViewMatrix));
+	memcpy(((float*)outBuffer->data + 32), &lhModelMatrix[0], sizeof(lhModelMatrix));
 }
 
 void DestroyShaderModule(VkDevice device, VkShaderModule* shaderModule)

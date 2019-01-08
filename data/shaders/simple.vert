@@ -20,9 +20,9 @@ void main()
 	
 	// Hard-coded lamber diffuse light
 	vec3 lightDirection = vec3(0, 5, 2);
-	vec3 lightColor = vec3(1, 1, 1);
-	vec3 surfaceColor = vec3(0.8, 0.8, 0);
-	float lightAttenuation = 0.5f;
+	vec3 lightColor = vec3(0.8, 0.8, 0.8);
+	vec3 surfaceColor = vec3(1, 1, 1);
+	float lightAttenuation = 0.25f;
 	
 	float NdotL = max(0.0, dot(inNormal, lightDirection));
 	vec3 LambertDiffuse = NdotL * surfaceColor;

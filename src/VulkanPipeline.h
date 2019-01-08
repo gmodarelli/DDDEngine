@@ -27,15 +27,14 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	shaderStageCreateInfo[1].pName = "main"; // Shader entry point
 	shaderStageCreateInfo[1].pSpecializationInfo = nullptr;
 
+	// TODO: Temporary, legacy FFA IA
 	// Vertex input configuration
 	VkVertexInputBindingDescription vertexBindingDescription = {};
 	vertexBindingDescription.binding = 0;
 	vertexBindingDescription.stride = sizeof(Vertex);
 	vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-
 	VkVertexInputAttributeDescription vertexAttributeDescription[3];
-
 	// Position
 	vertexAttributeDescription[0].location = 0;
 	vertexAttributeDescription[0].binding = 0;

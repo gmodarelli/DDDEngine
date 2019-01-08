@@ -35,7 +35,7 @@ bool LoadMesh(Mesh& mesh, const char* path)
 		v.tv = vti < 0 ? 0.0f : file.vt[vti * 3 + 1];
 	}
 
-	if (1)
+	if (0)
 	{
 		// Unoptimized, duplicated vertices
 
@@ -44,7 +44,7 @@ bool LoadMesh(Mesh& mesh, const char* path)
 
 		for (size_t i = 0; i < indexCount; ++i)
 		{
-			mesh.Indices[i] = i;
+			mesh.Indices[i] = (uint32_t)i;
 		}
 	}
 	else
@@ -57,7 +57,7 @@ bool LoadMesh(Mesh& mesh, const char* path)
 		mesh.Vertices.resize(vertexCount);
 		mesh.Indices.resize(indexCount);
 
-		meshopt_remapVertexBuffer(mesh.Vertices.data(), vertices.data(), vertexCount, sizeof(Vertex), remap.data());
+		meshopt_remapVertexBuffer(mesh.Vertices.data(), vertices.data(), indexCount, sizeof(Vertex), remap.data());
 		meshopt_remapIndexBuffer(mesh.Indices.data(), 0, indexCount, remap.data());
 
 		// TODO: optimize the mesh for more efficient GPU rendering

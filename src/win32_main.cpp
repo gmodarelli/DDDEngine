@@ -136,7 +136,7 @@ int main()
 {
 	HINSTANCE hInstance = GetModuleHandle(nullptr);
 	HWND windowHandle = NULL;
-	SetupWindow(800, 600, hInstance, &windowHandle);
+	SetupWindow(1600, 1200, hInstance, &windowHandle);
 	assert(windowHandle != NULL && L"Window is NULL");
 
 	VkInstance instance = nullptr;
