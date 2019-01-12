@@ -1,8 +1,8 @@
 #ifndef VULKAN_RENDER_PASS_H_
 #define VULKAN_RENDER_PASS_H_
 
-void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, std::vector<VkImageView>* presentImageViews,
-	VkRenderPass* outRenderPass, std::vector<VkFramebuffer>* outFrameBuffers, BufferImage* outDepthBufferImage)
+void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, VkImageView* presentImageViews,
+	uint32_t imageViewsCount, VkRenderPass* outRenderPass, std::vector<VkFramebuffer>* outFrameBuffers, BufferImage* outDepthBufferImage)
 {
 	{
 		// Create a depth image
@@ -71,7 +71,6 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 		VK_CHECK(vkCreateImageView(device, &ivci, nullptr, &outDepthBufferImage->ImageView));
 	}
 
-
 	VkAttachmentDescription pass[2] = {};
 
 	// 0 - Color screen buffer
@@ -119,12 +118,12 @@ void SetupRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t 
 
 	VK_CHECK(vkCreateRenderPass(device, &rpci, nullptr, outRenderPass));
 
-	outFrameBuffers->resize(presentImageViews->size());
+	outFrameBuffers->resize(imageViewsCount);
 	for (uint32_t i = 0; i < outFrameBuffers->size(); ++i)
 	{
 		// Create the frame buffers
 		VkImageView frameBufferAttachments[2] = { 0 };
-		frameBufferAttachments[0] = (*presentImageViews)[i];
+		frameBufferAttachments[0] = presentImageViews[i];
 		frameBufferAttachments[1] = outDepthBufferImage->ImageView;
 
 		VkFramebufferCreateInfo fbci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };

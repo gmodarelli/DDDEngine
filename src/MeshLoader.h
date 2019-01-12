@@ -59,8 +59,8 @@ bool LoadMesh(Mesh& mesh, const char* path)
 
 		meshopt_remapVertexBuffer(mesh.Vertices.data(), vertices.data(), indexCount, sizeof(Vertex), remap.data());
 		meshopt_remapIndexBuffer(mesh.Indices.data(), 0, indexCount, remap.data());
-
-		// TODO: optimize the mesh for more efficient GPU rendering
+		meshopt_optimizeVertexCache(mesh.Indices.data(), mesh.Indices.data(), indexCount, vertexCount);
+		meshopt_optimizeVertexFetch(mesh.Vertices.data(), mesh.Indices.data(), indexCount, mesh.Vertices.data(), vertexCount, sizeof(Vertex));
 	}
 
 	return true;

@@ -1,4 +1,6 @@
 #include <Windows.h>
+#include "vkr/device.h" 
+#include "vkr/swapchain.h"
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "VulkanTools.h"
@@ -134,73 +136,55 @@ bool SetupWindow(uint32_t width, uint32_t height, HINSTANCE instance, HWND* wind
 
 int main()
 {
-	HINSTANCE hInstance = GetModuleHandle(nullptr);
-	HWND windowHandle = NULL;
-	SetupWindow(1600, 1200, hInstance, &windowHandle);
-	assert(windowHandle != NULL && L"Window is NULL");
+	WindowParameters windowParams = { GetModuleHandle(nullptr) };
+	uint32_t windowWidth = 1600;
+	uint32_t windowHeight = 1200;
 
-	VkInstance instance = nullptr;
-	VkSurfaceKHR surface = nullptr;
-	VkDebugReportCallbackEXT errorCallback = nullptr;
-	VkDebugReportCallbackEXT warningCallback = nullptr;
-	WindowParameters windowParams = { hInstance, windowHandle };
+	SetupWindow(windowWidth, windowHeight, windowParams.Hinstance, &windowParams.HWnd);
 
-	SetupVulkanInstance(windowParams, &instance, &surface, &errorCallback, &warningCallback);
-	assert(instance != nullptr && L"The Vulkan instance is nullptr");
-	assert(surface != nullptr && L"The Vulkan surface is nullptr");
-
-	VkPhysicalDevice physicalDevice = nullptr;
-	VkPhysicalDeviceProperties properties;
-	VkDevice device = nullptr;
-	QueueFamilyIndices queueFamilyIndices = {};
 	VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT;
-	SetupPhysicalDevice(instance, surface, requiredQueues, &physicalDevice, &device, &queueFamilyIndices, &properties);
-	R_ASSERT(properties.limits.timestampComputeAndGraphics);
-	
-	VkSwapchainKHR swapChain = nullptr;
-	std::vector<VkImage> presentImages;
-	std::vector<VkImageView> presentImageViews;
-	uint32_t sWidth;
-	uint32_t sHeight;
-	SetupSwapChain(device, physicalDevice, surface, queueFamilyIndices.GraphicsFamilyIndex, &sWidth, &sHeight, &swapChain, &presentImages, &presentImageViews);
+	vkr::VulkanDevice vulkanDevice(windowParams, requiredQueues);
+	VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
+	VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+	vkr::VulkanSwapchain vulkanSwapchain(vulkanDevice, desiredFormat, desiredPresentMode, windowWidth, windowHeight);
 
 	VkRenderPass renderPass;
 	std::vector<VkFramebuffer> framebuffers;
 	BufferImage depthBufferImage;
-	SetupRenderPass(device, physicalDevice, sWidth, sHeight, &presentImageViews, &renderPass, &framebuffers, &depthBufferImage);
+	SetupRenderPass(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, vulkanSwapchain.ImageViews, vulkanSwapchain.ImageCount, &renderPass, &framebuffers, &depthBufferImage);
 
 	Command command;
-	SetupCommandBuffer(device, physicalDevice, queueFamilyIndices.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
+	SetupCommandBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanDevice.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
 
 	Mesh mesh;
 	bool meshLoaded = LoadMesh(mesh, "../data/models/kitten.obj");
 	R_ASSERT(meshLoaded && "Could not load the mesh");
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
-	CreateBuffersForMesh(device, physicalDevice, mesh, &vertexBuffer, &indexBuffer);
+	CreateBuffersForMesh(vulkanDevice.Device, vulkanDevice.PhysicalDevice, mesh, &vertexBuffer, &indexBuffer);
 
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
 	Buffer uniformBuffer;
-	SetupShaderandUniforms(device, physicalDevice, sWidth, sHeight, &vertShaderModule, &fragShaderModule, &uniformBuffer);
+	SetupShaderandUniforms(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, &vertShaderModule, &fragShaderModule, &uniformBuffer);
 
 	Descriptor descriptor;
-	SetupDescriptors(device, uniformBuffer.Buffer, 1, &descriptor);
+	SetupDescriptors(vulkanDevice.Device, uniformBuffer.Buffer, 1, &descriptor);
 
 	Pipeline pipeline;
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
-	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
+	SetupPipeline(vulkanDevice.Device, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
-	VkQueryPool queryPool = CreateQueryPool(device, 128);
+	VkQueryPool queryPool = CreateQueryPool(vulkanDevice.Device, 128);
 	// RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight);
 
-	VkQueue graphycsQueue = GetQueue(device, queueFamilyIndices.GraphicsFamilyIndex);
-	VkQueue presentQueue = GetQueue(device, queueFamilyIndices.PresentFamilyIndex);
+	VkQueue graphycsQueue = GetQueue(vulkanDevice.Device, vulkanDevice.GraphicsFamilyIndex);
+	VkQueue presentQueue = GetQueue(vulkanDevice.Device, vulkanDevice.PresentFamilyIndex);
 
 	size_t maxFramesInFlight = framebuffers.size();
 	SyncObjects syncObjects;
 
-	CreateSyncObjects(device, maxFramesInFlight, &syncObjects);
+	CreateSyncObjects(vulkanDevice.Device, maxFramesInFlight, &syncObjects);
 
 	uint32_t currentFrameIndex = 0;
 
@@ -217,34 +201,31 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RecordCommands(device, syncObjects, command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight, currentFrameIndex);
-			RenderLoop(device, properties, swapChain, command, queryPool, presentImages, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
+			RecordCommands(vulkanDevice.Device, syncObjects, command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, currentFrameIndex);
+			RenderLoop(vulkanDevice.Device, vulkanDevice.PhysicalDeviceProperties, vulkanSwapchain.Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 		}
 	}
 
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(vulkanDevice.Device);
 
 	// Cleanup
-	DestroyQueryPool(device, queryPool);
-	DestroySyncObjects(device, &syncObjects);
-	DestroyPipeline(device, &pipeline);
-	DestroyDescriptor(device, &descriptor);
-	DestroyShaderModule(device, &vertShaderModule);
-	DestroyShaderModule(device, &fragShaderModule);
+	DestroyQueryPool(vulkanDevice.Device, queryPool);
+	DestroySyncObjects(vulkanDevice.Device, &syncObjects);
+	DestroyPipeline(vulkanDevice.Device, &pipeline);
+	DestroyDescriptor(vulkanDevice.Device, &descriptor);
+	DestroyShaderModule(vulkanDevice.Device, &vertShaderModule);
+	DestroyShaderModule(vulkanDevice.Device, &fragShaderModule);
 
-	DestroyBuffer(device, &vertexBuffer);
-	DestroyBuffer(device, &indexBuffer);
-	DestroyBuffer(device, &uniformBuffer);
+	DestroyBuffer(vulkanDevice.Device, &vertexBuffer);
+	DestroyBuffer(vulkanDevice.Device, &indexBuffer);
+	DestroyBuffer(vulkanDevice.Device, &uniformBuffer);
 
-	DestroyCommandBuffer(device, &command);
-	DestroyBufferImage(device, &depthBufferImage);
-	DestroyRenderPass(device, &renderPass, &framebuffers);
-	DestroySwapChain(device, &swapChain, &presentImages, &presentImageViews);
-	DestroyDevice(&device);
-	DestroyDebugReportCallback(instance, &errorCallback);
-	DestroyDebugReportCallback(instance, &warningCallback);
-	DestroyInstance(&instance);
+	DestroyCommandBuffer(vulkanDevice.Device, &command);
+	DestroyBufferImage(vulkanDevice.Device, &depthBufferImage);
+	DestroyRenderPass(vulkanDevice.Device, &renderPass, &framebuffers);
+	// DestroySwapChain(vulkanDevice.Device, &swapChain, &presentImages, &presentImageViews);
+	// DestroyDevice(&vulkanDevicDevice);
 
 	return (int)msg.wParam;
 }

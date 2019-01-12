@@ -30,7 +30,6 @@ void SetupSwapChain(VkDevice device, VkPhysicalDevice physicalDevice, VkSurfaceK
 			// We need at least 2 image for double buffering
 			R_ASSERT(surfaceCapabilities.minImageCount >= 2 && "The surface does not support 2 images for double buffering");
 			imageCount = surfaceCapabilities.maxImageCount >= surfaceCapabilities.minImageCount + 1 ? surfaceCapabilities.minImageCount + 1 : surfaceCapabilities.maxImageCount;
-
 			scci.minImageCount = imageCount;
 		}
 
