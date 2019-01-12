@@ -12,7 +12,7 @@ VkQueue GetQueue(VkDevice device, uint32_t queueFamilyIndex)
 	return queue;
 }
 
-void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags requiredQueues, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, QueueFamilyIndices* outQueueFamilyIndices)
+void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags requiredQueues, VkPhysicalDevice* outPhysicalDevice, VkDevice* outDevice, QueueFamilyIndices* outQueueFamilyIndices, VkPhysicalDeviceProperties* outProps)
 {
 	// Query how many devices are present in the system
 	uint32_t deviceCount;
@@ -54,7 +54,10 @@ void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags
 		}
 
 		if (*outPhysicalDevice == VK_NULL_HANDLE)
+		{
 			*outPhysicalDevice = physicalDevices[i];
+			*outProps = deviceProperties;
+		}
 	}
 
 	LogPhysicalDeviceProperties(&physicalDevicesProperties);
@@ -150,7 +153,9 @@ void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags
 	}
 
 	// Device extensions
-	std::vector<const char*> requiredExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+	std::vector<const char*> requiredExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
 
 	uint32_t extensionCount = 0;
 	VK_CHECK(vkEnumerateDeviceExtensionProperties(*outPhysicalDevice, nullptr, &extensionCount, nullptr));
@@ -173,10 +178,27 @@ void SetupPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, VkQueueFlags
 	volkLoadDevice(*outDevice);
 }
 
+VkQueryPool CreateQueryPool(VkDevice device, uint32_t queryCount)
+{
+	VkQueryPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+	createInfo.queryCount = queryCount;
+	createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+	VkQueryPool queryPool;
+	VK_CHECK(vkCreateQueryPool(device, &createInfo, nullptr, &queryPool));
+
+	return queryPool;
+}
+
 void DestroyDevice(VkDevice* outDevice)
 {
 	vkDestroyDevice(*outDevice, nullptr);
-	*outDevice = nullptr;
+	*outDevice = VK_NULL_HANDLE;
+}
+
+void DestroyQueryPool(VkDevice device, VkQueryPool& queryPool)
+{
+	vkDestroyQueryPool(device, queryPool, nullptr);
+	queryPool = VK_NULL_HANDLE;
 }
 
 #endif // VULKAN_DEVICE_H_

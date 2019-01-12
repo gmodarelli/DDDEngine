@@ -6,14 +6,16 @@ void SetupDescriptors(VkDevice device, VkBuffer uniformBuffer, uint32_t descript
 	R_ASSERT(descriptorSetCount >= 1 && "You must allocate at least on DescriptorSet");
 
 	VkDescriptorSetLayoutBinding bindings[1];
+
+	// Unfiform buffer (MVP matrices)
 	bindings[0].binding = 0;
 	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	bindings[0].descriptorCount = 1;
 	bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	bindings[0].pImmutableSamplers = nullptr;
-
+	
 	VkDescriptorSetLayoutCreateInfo setLayoutCreateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	setLayoutCreateInfo.bindingCount = 1;
+	setLayoutCreateInfo.bindingCount = ARRAYSIZE(bindings);
 	setLayoutCreateInfo.pBindings = bindings;
 
 	VK_CHECK(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &outDescriptor->DescriptorSetLayout));

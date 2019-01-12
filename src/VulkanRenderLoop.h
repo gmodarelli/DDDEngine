@@ -1,58 +1,61 @@
 #ifndef VULKAN_RENDER_LOOP_H_
 #define VULKAN_RENDER_LOOP_H_
 
-void RecordCommands(Command commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, uint32_t indicesSize, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, uint32_t width, uint32_t height)
+void RecordCommands(VkDevice device, SyncObjects syncObjects, Command commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, uint32_t indicesSize, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, VkQueryPool queryPool, uint32_t width, uint32_t height, uint32_t currentFrameIndex)
 {
-	for (uint32_t i = 0; i < commandBuffer.CommandBufferCount; ++i)
-	{
+	//for (uint32_t i = 0; i < commandBuffer.CommandBufferCount; ++i)
+	//{
+		vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
+
 		VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-		VK_CHECK(vkBeginCommandBuffer(commandBuffer.CommandBuffers[i], &beginInfo));
+		VK_CHECK(vkBeginCommandBuffer(commandBuffer.CommandBuffers[currentFrameIndex], &beginInfo));
+
+		// Use the ith and i+1th queries from the query pool
+		vkCmdResetQueryPool(commandBuffer.CommandBuffers[currentFrameIndex], queryPool, 2 * currentFrameIndex, 2);
+		vkCmdWriteTimestamp(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex);
 
 		// Activate the render pass
 		VkClearValue clearValue[] = { { 135 / 255.0f, 206 / 255.0f, 250 / 255.0f, 1.0f }, { 1.0f, 0.0f } };
 		VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 		renderPassBeginInfo.renderPass = renderPass;
-		renderPassBeginInfo.framebuffer = framebuffers[i];
+		renderPassBeginInfo.framebuffer = framebuffers[currentFrameIndex];
 		renderPassBeginInfo.renderArea = { { 0, 0 }, { width, height } };
 		renderPassBeginInfo.clearValueCount = ARRAYSIZE(clearValue);
 		renderPassBeginInfo.pClearValues = clearValue;
 		
-		vkCmdBeginRenderPass(commandBuffer.CommandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(commandBuffer.CommandBuffers[currentFrameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Bind the graphics pipeline to the command buffer. 
 		// Any vkDraw command afterward is affected by this pipeline.
-		vkCmdBindPipeline(commandBuffer.CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
+		vkCmdBindPipeline(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
 
 		// Take care of the dynamic state (what does it mean?)
 		VkViewport viewport = { 0, 0, (float)width, (float)height, 0, 1 };
-		vkCmdSetViewport(commandBuffer.CommandBuffers[i], 0, 1, &viewport);
+		vkCmdSetViewport(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &viewport);
 		VkRect2D scissors = { 0, 0, width, height };
-		vkCmdSetScissor(commandBuffer.CommandBuffers[i], 0, 1, &scissors);
-
+		vkCmdSetScissor(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &scissors);
 
 		// Render the triangles
 		VkDeviceSize offsets = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[i], 0, 1, &vertexBuffer.Buffer, &offsets);
-		vkCmdBindIndexBuffer(commandBuffer.CommandBuffers[i], indexBuffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &vertexBuffer.Buffer, &offsets);
+		vkCmdBindIndexBuffer(commandBuffer.CommandBuffers[currentFrameIndex], indexBuffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		// Bind the shaders parameters
-		vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffer.CommandBuffers[i], indicesSize, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer.CommandBuffers[currentFrameIndex], indicesSize, 1, 0, 0, 0);
 
-		vkCmdEndRenderPass(commandBuffer.CommandBuffers[i]);
+		vkCmdEndRenderPass(commandBuffer.CommandBuffers[currentFrameIndex]);
 
-		vkEndCommandBuffer(commandBuffer.CommandBuffers[i]);
-	}
+		vkCmdWriteTimestamp(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex + 1);
+		vkEndCommandBuffer(commandBuffer.CommandBuffers[currentFrameIndex]);
+	//}
 }
 
-void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer, std::vector<VkImage> presentImages, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
+void RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, std::vector<VkImage> presentImages, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex, WindowParameters window)
 {
-#if 1
-	vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
-
 	uint32_t nextImageIndex;
 	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));
 
@@ -85,6 +88,17 @@ void RenderLoop(VkDevice device, VkSwapchainKHR swapchain, Command commandBuffer
 	presentInfo.pImageIndices = &nextImageIndex;
 
 	VK_CHECK(vkQueuePresentKHR(presentQueue, &presentInfo));
+
+	uint64_t queryResults[2] = {};
+	VK_CHECK(vkGetQueryPoolResults(device, queryPool, currentFrameIndex * 2, ARRAYSIZE(queryResults), sizeof(queryResults), queryResults, sizeof(queryResults[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+
+	double frameGpuBegin = double(queryResults[0]) * properties.limits.timestampPeriod * 1e-6;
+	double frameGpuEnd = double(queryResults[1]) * properties.limits.timestampPeriod * 1e-6;
+	char title[256];
+	sprintf(title, "gpu: %.2f ms", (frameGpuEnd - frameGpuBegin));
+
+#if _WIN32
+	SetWindowTextA(window.HWnd, title);
 #endif
 }
 

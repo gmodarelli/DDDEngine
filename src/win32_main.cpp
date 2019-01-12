@@ -150,10 +150,12 @@ int main()
 	assert(surface != nullptr && L"The Vulkan surface is nullptr");
 
 	VkPhysicalDevice physicalDevice = nullptr;
+	VkPhysicalDeviceProperties properties;
 	VkDevice device = nullptr;
 	QueueFamilyIndices queueFamilyIndices = {};
 	VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT;
-	SetupPhysicalDevice(instance, surface, requiredQueues, &physicalDevice, &device, &queueFamilyIndices);
+	SetupPhysicalDevice(instance, surface, requiredQueues, &physicalDevice, &device, &queueFamilyIndices, &properties);
+	R_ASSERT(properties.limits.timestampComputeAndGraphics);
 	
 	VkSwapchainKHR swapChain = nullptr;
 	std::vector<VkImage> presentImages;
@@ -189,7 +191,8 @@ int main()
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
 	SetupPipeline(device, sWidth, sHeight, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
-	RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, sWidth, sHeight);
+	VkQueryPool queryPool = CreateQueryPool(device, 128);
+	// RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight);
 
 	VkQueue graphycsQueue = GetQueue(device, queueFamilyIndices.GraphicsFamilyIndex);
 	VkQueue presentQueue = GetQueue(device, queueFamilyIndices.PresentFamilyIndex);
@@ -198,6 +201,7 @@ int main()
 	SyncObjects syncObjects;
 
 	CreateSyncObjects(device, maxFramesInFlight, &syncObjects);
+
 	uint32_t currentFrameIndex = 0;
 
 	MSG msg = { 0 };
@@ -213,7 +217,8 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
-			RenderLoop(device, swapChain, command, presentImages, graphycsQueue, presentQueue, syncObjects, currentFrameIndex);
+			RecordCommands(device, syncObjects, command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight, currentFrameIndex);
+			RenderLoop(device, properties, swapChain, command, queryPool, presentImages, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 		}
 	}
@@ -221,6 +226,7 @@ int main()
 	vkDeviceWaitIdle(device);
 
 	// Cleanup
+	DestroyQueryPool(device, queryPool);
 	DestroySyncObjects(device, &syncObjects);
 	DestroyPipeline(device, &pipeline);
 	DestroyDescriptor(device, &descriptor);
