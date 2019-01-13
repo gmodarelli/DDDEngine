@@ -54,7 +54,7 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, Command commandBuf
 	//}
 }
 
-void RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex, WindowParameters window)
+double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex, WindowParameters window)
 {
 	uint32_t nextImageIndex;
 	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));
@@ -94,12 +94,8 @@ void RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapch
 
 	double frameGpuBegin = double(queryResults[0]) * properties.limits.timestampPeriod * 1e-6;
 	double frameGpuEnd = double(queryResults[1]) * properties.limits.timestampPeriod * 1e-6;
-	char title[256];
-	sprintf(title, "gpu: %.2f ms", (frameGpuEnd - frameGpuBegin));
 
-#if _WIN32
-	SetWindowTextA(window.HWnd, title);
-#endif
+	return frameGpuEnd - frameGpuBegin;
 }
 
 #endif // VULKAN_RENDER_LOOP_H_ 

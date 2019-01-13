@@ -8,6 +8,7 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <chrono>
 
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
@@ -190,6 +191,9 @@ int main()
 
 	MSG msg = { 0 };
 
+	double frameCpuAvg = 0;
+	double frameGpuAvg = 0;
+
 	while (msg.message != WM_QUIT)
 	{
 		// If there are Window messages then process them.
@@ -201,9 +205,24 @@ int main()
 		// Otherwise, do animation/game stuff.
 		else
 		{
+			auto frameCPUStart = std::chrono::high_resolution_clock::now();
+
 			RecordCommands(vulkanDevice.Device, syncObjects, command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, currentFrameIndex);
-			RenderLoop(vulkanDevice.Device, vulkanDevice.PhysicalDeviceProperties, vulkanSwapchain.Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
+			double frameGPU = RenderLoop(vulkanDevice.Device, vulkanDevice.PhysicalDeviceProperties, vulkanSwapchain.Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
+
+			auto frameCPUEnd = std::chrono::high_resolution_clock::now();
+			auto frameCPU = (frameCPUEnd - frameCPUStart).count() * 1e-6;
+
+			frameCpuAvg = frameCpuAvg * 0.95 + frameCPU * 0.05;
+			frameGpuAvg = frameGpuAvg * 0.95 + frameGPU * 0.05;
+
+			char title[256];
+			sprintf(title, "VRK - cpu: %.2f ms - gpu: %.2f ms", frameCpuAvg, frameGpuAvg);
+
+#if _WIN32
+			SetWindowTextA(windowParams.HWnd, title);
+#endif
 		}
 	}
 
