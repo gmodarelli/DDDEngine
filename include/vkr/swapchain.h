@@ -56,9 +56,13 @@ namespace vkr
 
 			swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
 
-			// Image Count (Trying to aqcuire 2 or 3 images)
+			// Image Count (Trying to aqcuire minImageCount + 1 images)
 			VKR_ASSERT(surfaceCapabilities.minImageCount >= 2 && "The physical device does not support double buffering");
-			ImageCount = surfaceCapabilities.maxImageCount >= surfaceCapabilities.minImageCount + 1 ? surfaceCapabilities.minImageCount + 1 : surfaceCapabilities.maxImageCount;
+			ImageCount = surfaceCapabilities.minImageCount + 1;
+			if (surfaceCapabilities.maxImageCount > 0 && ImageCount > surfaceCapabilities.maxImageCount)
+			{
+				ImageCount = surfaceCapabilities.maxImageCount;
+			}
 			swapchainCreateInfo.minImageCount = ImageCount;
 
 			// Image Format and Color Space
