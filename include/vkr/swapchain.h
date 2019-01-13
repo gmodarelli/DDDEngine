@@ -131,6 +131,11 @@ namespace vkr
 
 		~VulkanSwapchain()
 		{
+
+		}
+
+		void Destroy()
+		{
 			if (ImageCount > 0)
 			{
 				for (uint32_t i = 0; i < ImageCount; ++i)
@@ -148,6 +153,8 @@ namespace vkr
 				Swapchain = VK_NULL_HANDLE;
 			}
 		}
+
+	private:
 
 		VkSurfaceFormatKHR findBestFormat(VkSurfaceFormatKHR desiredFormat)
 		{

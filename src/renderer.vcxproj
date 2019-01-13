@@ -177,7 +177,6 @@
     <ClInclude Include="VulkanCommandBuffer.h" />
     <ClInclude Include="VulkanDevice.h" />
     <ClInclude Include="VulkanRenderPass.h" />
-    <ClInclude Include="VulkanSwapchain.h" />
     <ClInclude Include="VulkanTools.h" />
     <ClInclude Include="VulkanInstance.h" />
   </ItemGroup>

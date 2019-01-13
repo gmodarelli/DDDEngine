@@ -224,8 +224,9 @@ int main()
 	DestroyCommandBuffer(vulkanDevice.Device, &command);
 	DestroyBufferImage(vulkanDevice.Device, &depthBufferImage);
 	DestroyRenderPass(vulkanDevice.Device, &renderPass, &framebuffers);
-	// DestroySwapChain(vulkanDevice.Device, &swapChain, &presentImages, &presentImageViews);
-	// DestroyDevice(&vulkanDevicDevice);
+
+	vulkanSwapchain.Destroy();
+	vulkanDevice.Destroy();
 
 	return (int)msg.wParam;
 }
