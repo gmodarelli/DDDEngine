@@ -41,16 +41,18 @@ VkBool32 CheckExtensionsSupport(const std::vector<const char*>* extensionNames, 
 }
 #include "VulkanTypes.h"
 #include "VulkanDebug.h"
-// #include "VulkanInstance.h"
-#include "VulkanDevice.h"
-#include "VulkanBuffer.h"
+
+#include "vkr/device.h" 
+#include "vkr/swapchain.h"
+
 #include "VulkanRenderPass.h"
 #include "VulkanCommandBuffer.h"
-#include "VulkanVertexBuffer.h"
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"
 #include "VulkanPipeline.h"
 
+#include "vkr/buffer.h"
+#include "vkr/model.h"
 #include "vkr/scene.h"
 
 #include "VulkanRenderLoop.h"

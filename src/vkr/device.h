@@ -55,6 +55,10 @@ namespace vkr
 		uint32_t TransferFamilyIndex = UINT32_MAX;
 		uint32_t ComputeFamilyIndex  = UINT32_MAX;
 
+		// Default command pools
+		VkCommandPool TransferCommandPool = VK_NULL_HANDLE;
+		VkCommandPool GraphicsCommandPool = VK_NULL_HANDLE;
+
 #if _DEBUG
 		// Errors and Warnings Callbacks
 		VkDebugReportCallbackEXT ErrorCallback = VK_NULL_HANDLE;
@@ -79,14 +83,29 @@ namespace vkr
 
 			createSurface(windowParameters);
 			pickPhysicalDevice(requiredQueues);
+
+			TransferCommandPool = createCommandPool(TransferFamilyIndex);
+			GraphicsCommandPool = createCommandPool(GraphicsFamilyIndex);
 		}
 
 		~VulkanDevice()
 		{
 		}
 
-		void Destroy()
+		void destroy()
 		{
+			if (GraphicsCommandPool != VK_NULL_HANDLE)
+			{
+				vkDestroyCommandPool(Device, GraphicsCommandPool, nullptr);
+				GraphicsCommandPool = VK_NULL_HANDLE;
+			}
+
+			if (TransferCommandPool != VK_NULL_HANDLE)
+			{
+				vkDestroyCommandPool(Device, TransferCommandPool, nullptr);
+				TransferCommandPool = VK_NULL_HANDLE;
+			}
+
 			if (Device != VK_NULL_HANDLE)
 			{
 				vkDestroyDevice(Device, nullptr);
@@ -115,6 +134,111 @@ namespace vkr
 			{
 				vkDestroyInstance(Instance, nullptr);
 				Instance = VK_NULL_HANDLE;
+			}
+		}
+
+		VkQueue getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex = 0)
+		{
+			VkQueue queue;
+			vkGetDeviceQueue(Device, queueFamilyIndex, queueIndex, &queue);
+
+			return queue;
+		}
+
+		VkQueryPool createQueryPool(uint32_t queryCount)
+		{
+			VkQueryPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+			createInfo.queryCount = queryCount;
+			createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+			VkQueryPool queryPool;
+			VKR_CHECK(vkCreateQueryPool(Device, &createInfo, nullptr, &queryPool), "Failed to create query pool");
+
+			return queryPool;
+		}
+
+		void destroyQueryPool(VkQueryPool& queryPool)
+		{
+			vkDestroyQueryPool(Device, queryPool, nullptr);
+			queryPool = VK_NULL_HANDLE;
+		}
+
+		VkCommandPool createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+		{
+			VkCommandPoolCreateInfo cmdPoolInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+			cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
+			cmdPoolInfo.flags = createFlags;
+
+			VkCommandPool commandPool;
+			VKR_CHECK(vkCreateCommandPool(Device, &cmdPoolInfo, nullptr, &commandPool), "Failed to create command pool");
+			return commandPool;
+		}
+
+		VkCommandBuffer createTransferCommandBuffer(VkCommandBufferLevel level, bool begin = false)
+		{
+			VkCommandBufferAllocateInfo cmdBufferAllocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+			cmdBufferAllocateInfo.commandPool = TransferCommandPool;
+			cmdBufferAllocateInfo.level = level;
+			cmdBufferAllocateInfo.commandBufferCount = 1;
+
+			VkCommandBuffer cmdBuffer;
+			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the transfer pool");
+
+			// If requested, start recording for the new command buffer
+			if (begin)
+			{
+				VkCommandBufferBeginInfo cmdBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+				VKR_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
+			}
+
+			return cmdBuffer;
+		}
+
+		VkCommandBuffer createGraphicsCommandBuffer(VkCommandBufferLevel level, bool begin = false)
+		{
+			VkCommandBufferAllocateInfo cmdBufferAllocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+			cmdBufferAllocateInfo.commandPool = GraphicsCommandPool;
+			cmdBufferAllocateInfo.level = level;
+			cmdBufferAllocateInfo.commandBufferCount = 1;
+
+			VkCommandBuffer cmdBuffer;
+			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the graphics pool");
+
+			// If requested, start recording for the new command buffer
+			if (begin)
+			{
+				VkCommandBufferBeginInfo cmdBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+				VKR_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
+			}
+
+			return cmdBuffer;
+		}
+
+		void flushCommandBuffer(VkCommandBuffer cmdBuffer, VkQueue queue, bool transferQueue, bool free = true)
+		{
+			VKR_CHECK(vkEndCommandBuffer(cmdBuffer), "Failed to end command buffer recording");
+
+			VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmdBuffer;
+
+			// Create fence to ensure that the command buffer has finished executing
+			VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+			VkFence fence;
+			VKR_CHECK(vkCreateFence(Device, &fenceInfo, nullptr, &fence), "Failed to create fence");
+
+			// Submit to the queue
+			VKR_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence), "Failed to submit commands to the queue");
+			// Wait for the fence to signal that command buffer has finished executing
+			VKR_CHECK(vkWaitForFences(Device, 1, &fence, VK_TRUE, UINT64_MAX), "Failed waiting for the fence");
+
+			vkDestroyFence(Device, fence, nullptr);
+
+			if (free)
+			{
+				if (transferQueue)
+					vkFreeCommandBuffers(Device, TransferCommandPool, 1, &cmdBuffer);
+				else
+					vkFreeCommandBuffers(Device, GraphicsCommandPool, 1, &cmdBuffer);
 			}
 		}
 
@@ -267,6 +391,7 @@ namespace vkr
 			}
 
 			VKR_ASSERT(!"Failed to find a queue family index");
+			return -1;
 		}
 
 		void pickPhysicalDevice(VkQueueFlags requiredQueues)

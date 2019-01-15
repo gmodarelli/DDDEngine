@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,7 +150,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,28 +163,25 @@
   <ItemGroup>
     <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h" />
-    <ClInclude Include="MeshLoader.h" />
+    <ClInclude Include="vkr\buffer.h" />
     <ClInclude Include="vkr\camera.h" />
     <ClInclude Include="vkr\device.h" />
+    <ClInclude Include="vkr\model.h" />
     <ClInclude Include="vkr\renderpass.h" />
     <ClInclude Include="vkr\scene.h" />
     <ClInclude Include="vkr\swapchain.h" />
     <ClInclude Include="vkr\types.h" />
     <ClInclude Include="vkr\utils.h" />
     <ClInclude Include="VulkanTypes.h" />
-    <ClInclude Include="VulkanBuffer.h" />
     <ClInclude Include="VulkanDebug.h" />
     <ClInclude Include="VulkanDescriptors.h" />
     <ClInclude Include="VulkanPipeline.h" />
     <ClInclude Include="VulkanRenderLoop.h" />
     <ClInclude Include="VulkanShaderAndUniforms.h" />
     <ClInclude Include="VulkanSynchronization.h" />
-    <ClInclude Include="VulkanVertexBuffer.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
-    <ClInclude Include="VulkanDevice.h" />
     <ClInclude Include="VulkanRenderPass.h" />
     <ClInclude Include="VulkanTools.h" />
-    <ClInclude Include="VulkanInstance.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\meshoptimizer\src\clusterizer.cpp" />

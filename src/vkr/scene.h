@@ -14,6 +14,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "camera.h"
+#include "buffer.h"
 
 namespace vkr
 {
@@ -39,7 +40,7 @@ namespace vkr
 		std::vector<uint32_t> indices;
 		vkr::Camera camera;
 
-		void load(const char* path, const vkr::VulkanDevice& vulkanDevice, Buffer* outVertexBuffer, Buffer* outIndexBuffer)
+		void load(const char* path, vkr::VulkanDevice& vulkanDevice, Buffer* outVertexBuffer, Buffer* outIndexBuffer)
 		{
 			Assimp::Importer Importer;
 			int importFlags = aiProcess_PreTransformVertices | aiProcess_Triangulate | aiProcess_GenNormals;
@@ -52,20 +53,24 @@ namespace vkr
 				loadMeshes();
 
 				VkDeviceSize vertexBufferSize = sizeof(vkr::Vertex) * vertices.size();
+				outVertexBuffer->size = vertexBufferSize;
+				outVertexBuffer->usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 				// TODO: We could also create a staging buffer and use the transfer queue to upload to the GPU
 				// NOTE: This is the optimal path for mobile GPUs, where the memory unified.
-				CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, outVertexBuffer);
+				vkr::createBuffer(&vulkanDevice, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBufferSize, &outVertexBuffer->Buffer, &outVertexBuffer->DeviceMemory, vertices.data());
 
-				vkMapMemory(vulkanDevice.Device, outVertexBuffer->DeviceMemory, 0, vertexBufferSize, 0, &outVertexBuffer->data);
-				memcpy(outVertexBuffer->data, vertices.data(), (size_t)vertexBufferSize);
+				// vkMapMemory(vulkanDevice.Device, outVertexBuffer->DeviceMemory, 0, vertexBufferSize, 0, &outVertexBuffer->data);
+				// memcpy(outVertexBuffer->data, vertices.data(), (size_t)vertexBufferSize);
 
 				VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
+				outIndexBuffer->size = indexBufferSize;
+				outIndexBuffer->usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 				// TODO: We could also create a staging buffer and use the transfer queue to upload to the GPU.
 				// NOTE: This is the optimal path for mobile GPUs, where the memory unified.
-				CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, outIndexBuffer);
+				vkr::createBuffer(&vulkanDevice, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indexBufferSize, &outIndexBuffer->Buffer, &outIndexBuffer->DeviceMemory, indices.data());
 
-				vkMapMemory(vulkanDevice.Device, outIndexBuffer->DeviceMemory, 0, indexBufferSize, 0, &outIndexBuffer->data);
-				memcpy(outIndexBuffer->data, indices.data(), (size_t)indexBufferSize);
+				// vkMapMemory(vulkanDevice.Device, outIndexBuffer->DeviceMemory, 0, indexBufferSize, 0, &outIndexBuffer->data);
+				// memcpy(outIndexBuffer->data, indices.data(), (size_t)indexBufferSize);
 			}
 			else
 			{

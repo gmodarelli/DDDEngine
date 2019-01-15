@@ -27,22 +27,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VulkanInstance.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanTools.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanRenderPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanCommandBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanVertexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanShaderAndUniforms.h">
@@ -61,12 +52,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanSynchronization.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MeshLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanTypes.h">
@@ -97,6 +82,12 @@
       <Filter>vkr</Filter>
     </ClInclude>
     <ClInclude Include="vkr\camera.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\model.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\buffer.h">
       <Filter>vkr</Filter>
     </ClInclude>
   </ItemGroup>

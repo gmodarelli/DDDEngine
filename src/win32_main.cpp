@@ -1,12 +1,8 @@
 #define NOMINMAX
 #include <Windows.h>
 
-#include "vkr/device.h" 
-#include "vkr/swapchain.h"
-
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "VulkanTools.h"
-#include "MeshLoader.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -198,9 +194,14 @@ int main()
 	Command command;
 	SetupCommandBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanDevice.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
 
+	vkr::glTF::Model gltfScene;
+	gltfScene.loadFromFile("../data/models/sponza/glTF/Sponza.gltf", &vulkanDevice);
+	gltfScene.destroy();
+
 	vkr::Scene scene;
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
+	// scene.load("../data/models/giulia/spheres.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
 	scene.load("../data/models/sibenik/sibenik.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
 	// scene.load("../data/models/cube.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
 
@@ -234,7 +235,8 @@ int main()
 
 	// TODO: Use push constants
 	VkDeviceSize bufferSize = sizeof(ubo);
-	CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffer);
+	// CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffer);
+	vkr::createBuffer(&vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, bufferSize, &uniformBuffer.Buffer, &uniformBuffer.DeviceMemory);
 
 	// Set buffer content
 	VK_CHECK(vkMapMemory(vulkanDevice.Device, uniformBuffer.DeviceMemory, 0, VK_WHOLE_SIZE, 0, &uniformBuffer.data));
@@ -248,11 +250,11 @@ int main()
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
 	SetupPipeline(vulkanDevice.Device, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
 
-	VkQueryPool queryPool = CreateQueryPool(vulkanDevice.Device, 128);
+	VkQueryPool queryPool = vulkanDevice.createQueryPool(128);
 	// RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight);
 
-	VkQueue graphycsQueue = GetQueue(vulkanDevice.Device, vulkanDevice.GraphicsFamilyIndex);
-	VkQueue presentQueue = GetQueue(vulkanDevice.Device, vulkanDevice.PresentFamilyIndex);
+	VkQueue graphycsQueue = vulkanDevice.getQueue(vulkanDevice.GraphicsFamilyIndex);
+	VkQueue presentQueue = vulkanDevice.getQueue(vulkanDevice.PresentFamilyIndex);
 
 	size_t maxFramesInFlight = framebuffers.size();
 	SyncObjects syncObjects;
@@ -319,23 +321,23 @@ int main()
 	vkDeviceWaitIdle(vulkanDevice.Device);
 
 	// Cleanup
-	DestroyQueryPool(vulkanDevice.Device, queryPool);
+	vulkanDevice.destroyQueryPool(queryPool);
 	DestroySyncObjects(vulkanDevice.Device, &syncObjects);
 	DestroyPipeline(vulkanDevice.Device, &pipeline);
 	DestroyDescriptor(vulkanDevice.Device, &descriptor);
 	DestroyShaderModule(vulkanDevice.Device, &vertShaderModule);
 	DestroyShaderModule(vulkanDevice.Device, &fragShaderModule);
 
-	DestroyBuffer(vulkanDevice.Device, &vertexBuffer);
-	DestroyBuffer(vulkanDevice.Device, &indexBuffer);
-	DestroyBuffer(vulkanDevice.Device, &uniformBuffer);
+	vkr::destroyBuffer(vulkanDevice.Device, &vertexBuffer);
+	vkr::destroyBuffer(vulkanDevice.Device, &indexBuffer);
+	vkr::destroyBuffer(vulkanDevice.Device, &uniformBuffer);
 
 	DestroyCommandBuffer(vulkanDevice.Device, &command);
 	DestroyBufferImage(vulkanDevice.Device, &depthBufferImage);
 	DestroyRenderPass(vulkanDevice.Device, &renderPass, &framebuffers);
 
 	vulkanSwapchain.Destroy();
-	vulkanDevice.Destroy();
+	vulkanDevice.destroy();
 
 	return (int)msg.wParam;
 }

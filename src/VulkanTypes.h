@@ -63,17 +63,4 @@ struct SyncObjects
 	std::vector<VkFence> InFlightFences;
 };
 
-struct Vertex
-{
-	float vx, vy, vz;
-	float nx, ny, nz;
-	float tu, tv;
-};
-
-struct Mesh
-{
-	std::vector<Vertex> Vertices;
-	std::vector<uint32_t> Indices;
-};
-
 #endif // VULKAN_TYPES_H_
