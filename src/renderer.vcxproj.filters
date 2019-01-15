@@ -30,9 +30,6 @@
     <ClInclude Include="VulkanTools.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanRenderPass.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanCommandBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,9 +63,6 @@
     <ClInclude Include="vkr\device.h">
       <Filter>vkr</Filter>
     </ClInclude>
-    <ClInclude Include="vkr\renderpass.h">
-      <Filter>vkr</Filter>
-    </ClInclude>
     <ClInclude Include="vkr\scene.h">
       <Filter>vkr</Filter>
     </ClInclude>
@@ -88,6 +82,9 @@
       <Filter>vkr</Filter>
     </ClInclude>
     <ClInclude Include="vkr\buffer.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\app.h">
       <Filter>vkr</Filter>
     </ClInclude>
   </ItemGroup>

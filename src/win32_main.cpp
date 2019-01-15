@@ -3,6 +3,7 @@
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "VulkanTools.h"
+#include "vkr/app.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -174,40 +175,32 @@ bool SetupWindow(uint32_t width, uint32_t height, HINSTANCE instance, HWND* wind
 
 int main()
 {
+	// Create window
 	WindowParameters windowParams = { GetModuleHandle(nullptr) };
-	uint32_t windowWidth = 1600;
-	uint32_t windowHeight = 1200;
+	windowParams.width = 1600;
+	windowParams.height = 1200;
+	SetupWindow(windowParams.width, windowParams.height, windowParams.Hinstance, &windowParams.HWnd);
 
-	SetupWindow(windowWidth, windowHeight, windowParams.Hinstance, &windowParams.HWnd);
+	vkr::App* app = new vkr::App(windowParams);
+	app->prepare();
 
-	VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_COMPUTE_BIT;
-	vkr::VulkanDevice vulkanDevice(windowParams, requiredQueues);
-	VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
-	VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-	vkr::VulkanSwapchain vulkanSwapchain(vulkanDevice, desiredFormat, desiredPresentMode, windowWidth, windowHeight);
-
-	VkRenderPass renderPass;
-	std::vector<VkFramebuffer> framebuffers;
-	BufferImage depthBufferImage;
-	SetupRenderPass(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, vulkanSwapchain.ImageViews, vulkanSwapchain.ImageCount, &renderPass, &framebuffers, &depthBufferImage);
+	// All the following settings are app-specific
 
 	Command command;
-	SetupCommandBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanDevice.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
+	SetupCommandBuffer(app->device->Device, app->device->PhysicalDevice, app->device->GraphicsFamilyIndex, static_cast<uint32_t>(app->framebuffers.size()), &command);
 
-	vkr::glTF::Model gltfScene;
-	gltfScene.loadFromFile("../data/models/sponza/glTF/Sponza.gltf", &vulkanDevice);
-	gltfScene.destroy();
+	vkr::glTF::Model model;
+	model.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
+	model.destroy();
 
 	vkr::Scene scene;
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
-	// scene.load("../data/models/giulia/spheres.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
-	scene.load("../data/models/sibenik/sibenik.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
-	// scene.load("../data/models/cube.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
+	scene.load("../data/models/sibenik/sibenik.dae", *(app->device), &vertexBuffer, &indexBuffer);
 
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
-	SetupShader(vulkanDevice.Device, vulkanDevice.PhysicalDevice, &vertShaderModule, &fragShaderModule);
+	SetupShader(app->device->Device, app->device->PhysicalDevice, &vertShaderModule, &fragShaderModule);
 
 	// TODO: Move this into its own file
 	Buffer uniformBuffer;
@@ -223,7 +216,7 @@ int main()
 	scene.camera.movementSpeed = 7.5f;
 	scene.camera.position = { 55.0f, -13.5f, 0.0f };
 	scene.camera.setRotation(glm::vec3(5.0f, 90.0f, 0.0f));
-	scene.camera.setPerspective(60.0f, (float)vulkanSwapchain.ImageExtent.width / (float)vulkanSwapchain.ImageExtent.height, 0.1f, 256.0f);
+	scene.camera.setPerspective(60.0f, (float)app->swapchain->ImageExtent.width / (float)app->swapchain->ImageExtent.height, 0.1f, 256.0f);
 
 	UniformData ubo = {};
 	ubo.model = glm::mat4(1.0f);
@@ -236,30 +229,30 @@ int main()
 	// TODO: Use push constants
 	VkDeviceSize bufferSize = sizeof(ubo);
 	// CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffer);
-	vkr::createBuffer(&vulkanDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, bufferSize, &uniformBuffer.Buffer, &uniformBuffer.DeviceMemory);
+	vkr::createBuffer(app->device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, bufferSize, &uniformBuffer.Buffer, &uniformBuffer.DeviceMemory);
 
 	// Set buffer content
-	VK_CHECK(vkMapMemory(vulkanDevice.Device, uniformBuffer.DeviceMemory, 0, VK_WHOLE_SIZE, 0, &uniformBuffer.data));
+	VK_CHECK(vkMapMemory(app->device->Device, uniformBuffer.DeviceMemory, 0, VK_WHOLE_SIZE, 0, &uniformBuffer.data));
 	// memcpy(uniformBuffer.data, &ubo, sizeof(ubo));
 	// vkUnmapMemory(vulkanDevice.Device, uniformBuffer.DeviceMemory);
 
 	Descriptor descriptor;
-	SetupDescriptors(vulkanDevice.Device, uniformBuffer.Buffer, 1, &descriptor);
+	SetupDescriptors(app->device->Device, uniformBuffer.Buffer, 1, &descriptor);
 
 	Pipeline pipeline;
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { descriptor.DescriptorSetLayout };
-	SetupPipeline(vulkanDevice.Device, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, descriptorSetLayouts, vertShaderModule, fragShaderModule, renderPass, &pipeline);
+	SetupPipeline(app->device->Device, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, descriptorSetLayouts, vertShaderModule, fragShaderModule, app->renderPass, &pipeline);
 
-	VkQueryPool queryPool = vulkanDevice.createQueryPool(128);
+	VkQueryPool queryPool = app->device->createQueryPool(128);
 	// RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight);
 
-	VkQueue graphycsQueue = vulkanDevice.getQueue(vulkanDevice.GraphicsFamilyIndex);
-	VkQueue presentQueue = vulkanDevice.getQueue(vulkanDevice.PresentFamilyIndex);
+	VkQueue graphycsQueue = app->device->getQueue(app->device->GraphicsFamilyIndex);
+	VkQueue presentQueue = app->device->getQueue(app->device->PresentFamilyIndex);
 
-	size_t maxFramesInFlight = framebuffers.size();
+	size_t maxFramesInFlight = app->framebuffers.size();
 	SyncObjects syncObjects;
 
-	CreateSyncObjects(vulkanDevice.Device, maxFramesInFlight, &syncObjects);
+	CreateSyncObjects(app->device->Device, maxFramesInFlight, &syncObjects);
 
 	uint32_t currentFrameIndex = 0;
 
@@ -287,8 +280,8 @@ int main()
 				viewUpdated = false;
 			}
 
-			RecordCommands(vulkanDevice.Device, syncObjects, command, vertexBuffer, indexBuffer, scene, framebuffers, renderPass, descriptor, pipeline, queryPool, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, currentFrameIndex);
-			double frameGPU = RenderLoop(vulkanDevice.Device, vulkanDevice.PhysicalDeviceProperties, vulkanSwapchain.Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
+			RecordCommands(app->device->Device, syncObjects, command, vertexBuffer, indexBuffer, scene, app->framebuffers, app->renderPass, descriptor, pipeline, queryPool, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, currentFrameIndex);
+			double frameGPU = RenderLoop(app->device->Device, app->device->PhysicalDeviceProperties, app->swapchain->Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 
 			auto frameCPUEnd = std::chrono::high_resolution_clock::now();
@@ -318,26 +311,23 @@ int main()
 		}
 	}
 
-	vkDeviceWaitIdle(vulkanDevice.Device);
+	vkDeviceWaitIdle(app->device->Device);
 
 	// Cleanup
-	vulkanDevice.destroyQueryPool(queryPool);
-	DestroySyncObjects(vulkanDevice.Device, &syncObjects);
-	DestroyPipeline(vulkanDevice.Device, &pipeline);
-	DestroyDescriptor(vulkanDevice.Device, &descriptor);
-	DestroyShaderModule(vulkanDevice.Device, &vertShaderModule);
-	DestroyShaderModule(vulkanDevice.Device, &fragShaderModule);
+	app->device->destroyQueryPool(queryPool);
+	DestroySyncObjects(app->device->Device, &syncObjects);
+	DestroyPipeline(app->device->Device, &pipeline);
+	DestroyDescriptor(app->device->Device, &descriptor);
+	DestroyShaderModule(app->device->Device, &vertShaderModule);
+	DestroyShaderModule(app->device->Device, &fragShaderModule);
 
-	vkr::destroyBuffer(vulkanDevice.Device, &vertexBuffer);
-	vkr::destroyBuffer(vulkanDevice.Device, &indexBuffer);
-	vkr::destroyBuffer(vulkanDevice.Device, &uniformBuffer);
+	vkr::destroyBuffer(app->device->Device, &vertexBuffer);
+	vkr::destroyBuffer(app->device->Device, &indexBuffer);
+	vkr::destroyBuffer(app->device->Device, &uniformBuffer);
 
-	DestroyCommandBuffer(vulkanDevice.Device, &command);
-	DestroyBufferImage(vulkanDevice.Device, &depthBufferImage);
-	DestroyRenderPass(vulkanDevice.Device, &renderPass, &framebuffers);
+	DestroyCommandBuffer(app->device->Device, &command);
 
-	vulkanSwapchain.Destroy();
-	vulkanDevice.destroy();
+	delete app;
 
 	return (int)msg.wParam;
 }

@@ -16,36 +16,12 @@
 #include "volk.h"
 #include <vector>
 
-VkBool32 IsExtensionSupported(const char* extensionName, const std::vector<VkExtensionProperties>* availableExtensions)
-{
-	for (const auto extension : *availableExtensions)
-	{
-		if (strstr(extension.extensionName, extensionName)) return VK_TRUE;
-	}
-
-	return VK_FALSE;
-}
-
-VkBool32 CheckExtensionsSupport(const std::vector<const char*>* extensionNames, const std::vector<VkExtensionProperties>* availableExtensions)
-{
-	for (const auto extensionName : *extensionNames)
-	{
-		if (IsExtensionSupported(extensionName, availableExtensions) != VK_TRUE)
-		{
-			printf("The required %s extension is not supported.\n", extensionName);
-			return VK_FALSE;
-		}
-	}
-
-	return VK_TRUE;
-}
 #include "VulkanTypes.h"
 #include "VulkanDebug.h"
 
 #include "vkr/device.h" 
 #include "vkr/swapchain.h"
 
-#include "VulkanRenderPass.h"
 #include "VulkanCommandBuffer.h"
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"

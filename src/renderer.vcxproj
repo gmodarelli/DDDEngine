@@ -163,11 +163,11 @@
   <ItemGroup>
     <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h" />
+    <ClInclude Include="vkr\app.h" />
     <ClInclude Include="vkr\buffer.h" />
     <ClInclude Include="vkr\camera.h" />
     <ClInclude Include="vkr\device.h" />
     <ClInclude Include="vkr\model.h" />
-    <ClInclude Include="vkr\renderpass.h" />
     <ClInclude Include="vkr\scene.h" />
     <ClInclude Include="vkr\swapchain.h" />
     <ClInclude Include="vkr\types.h" />
@@ -180,7 +180,6 @@
     <ClInclude Include="VulkanShaderAndUniforms.h" />
     <ClInclude Include="VulkanSynchronization.h" />
     <ClInclude Include="VulkanCommandBuffer.h" />
-    <ClInclude Include="VulkanRenderPass.h" />
     <ClInclude Include="VulkanTools.h" />
   </ItemGroup>
   <ItemGroup>
