@@ -1,4 +1,6 @@
+#define NOMINMAX
 #include <Windows.h>
+
 #include "vkr/device.h" 
 #include "vkr/swapchain.h"
 
@@ -27,6 +29,14 @@ void OnMouseMove(WPARAM btnState, int x, int y)
 {
 	
 }
+
+struct Input
+{
+	bool up = false;
+	bool right = false;
+	bool down = false;
+	bool left = false;
+} keyboardInput;
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -84,10 +94,41 @@ MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 
+	case WM_SYSKEYDOWN:
+	case WM_SYSKEYUP:
+	case WM_KEYDOWN:
 	case WM_KEYUP:
-		if (wParam == VK_ESCAPE)
+		bool wasDown = ((lParam & (1 << 30)) != 0);
+		bool isDown = ((lParam & (1UL << 31)) == 0);
+		if (wasDown != isDown)
 		{
-			PostQuitMessage(0);
+			if (wParam == 0x57 || wParam == VK_UP)
+			{
+				keyboardInput.up = isDown;
+			}
+
+			if (wParam == 0x53 || wParam == VK_DOWN)
+			{
+				keyboardInput.down = isDown;
+			}
+
+			if (wParam == 0x44 || wParam == VK_RIGHT)
+			{
+				keyboardInput.right = isDown;
+			}
+
+			if (wParam == 0x41 || wParam == VK_LEFT)
+			{
+				keyboardInput.left = isDown;
+			}
+
+			if (isDown)
+			{
+				if (wParam == VK_ESCAPE)
+				{
+					PostQuitMessage(0);
+				}
+			}
 		}
 
 		return 0;
@@ -157,17 +198,48 @@ int main()
 	Command command;
 	SetupCommandBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanDevice.GraphicsFamilyIndex, static_cast<uint32_t>(framebuffers.size()), &command);
 
-	Mesh mesh;
-	bool meshLoaded = LoadMesh(mesh, "../data/models/kitten.obj");
-	R_ASSERT(meshLoaded && "Could not load the mesh");
+	vkr::Scene scene;
 	Buffer vertexBuffer;
 	Buffer indexBuffer;
-	CreateBuffersForMesh(vulkanDevice.Device, vulkanDevice.PhysicalDevice, mesh, &vertexBuffer, &indexBuffer);
+	scene.load("../data/models/sibenik/sibenik.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
+	// scene.load("../data/models/cube.dae", vulkanDevice, &vertexBuffer, &indexBuffer);
 
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
+	SetupShader(vulkanDevice.Device, vulkanDevice.PhysicalDevice, &vertShaderModule, &fragShaderModule);
+
+	// TODO: Move this into its own file
 	Buffer uniformBuffer;
-	SetupShaderandUniforms(vulkanDevice.Device, vulkanDevice.PhysicalDevice, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, &vertShaderModule, &fragShaderModule, &uniformBuffer);
+
+	struct UniformData {
+		glm::mat4 projection;
+		glm::mat4 view;
+		glm::mat4 model;
+		glm::vec4 lightPos;
+	};
+
+	scene.camera.type = vkr::Camera::CameraType::firstperson;
+	scene.camera.movementSpeed = 7.5f;
+	scene.camera.position = { 55.0f, -13.5f, 0.0f };
+	scene.camera.setRotation(glm::vec3(5.0f, 90.0f, 0.0f));
+	scene.camera.setPerspective(60.0f, (float)vulkanSwapchain.ImageExtent.width / (float)vulkanSwapchain.ImageExtent.height, 0.1f, 256.0f);
+
+	UniformData ubo = {};
+	ubo.model = glm::mat4(1.0f);
+	ubo.view = scene.camera.matrices.view;
+	ubo.projection = scene.camera.matrices.perspective;
+	ubo.lightPos = glm::vec4(-scene.camera.position, 1.0f);
+	// ubo.projection[1][1] *= -1;
+	bool viewUpdated = true;
+
+	// TODO: Use push constants
+	VkDeviceSize bufferSize = sizeof(ubo);
+	CreateBuffer(vulkanDevice.Device, vulkanDevice.PhysicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffer);
+
+	// Set buffer content
+	VK_CHECK(vkMapMemory(vulkanDevice.Device, uniformBuffer.DeviceMemory, 0, VK_WHOLE_SIZE, 0, &uniformBuffer.data));
+	// memcpy(uniformBuffer.data, &ubo, sizeof(ubo));
+	// vkUnmapMemory(vulkanDevice.Device, uniformBuffer.DeviceMemory);
 
 	Descriptor descriptor;
 	SetupDescriptors(vulkanDevice.Device, uniformBuffer.Buffer, 1, &descriptor);
@@ -207,7 +279,13 @@ int main()
 		{
 			auto frameCPUStart = std::chrono::high_resolution_clock::now();
 
-			RecordCommands(vulkanDevice.Device, syncObjects, command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, currentFrameIndex);
+			if (viewUpdated)
+			{
+				memcpy(uniformBuffer.data, &ubo, sizeof(ubo));
+				viewUpdated = false;
+			}
+
+			RecordCommands(vulkanDevice.Device, syncObjects, command, vertexBuffer, indexBuffer, scene, framebuffers, renderPass, descriptor, pipeline, queryPool, vulkanSwapchain.ImageExtent.width, vulkanSwapchain.ImageExtent.height, currentFrameIndex);
 			double frameGPU = RenderLoop(vulkanDevice.Device, vulkanDevice.PhysicalDeviceProperties, vulkanSwapchain.Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex, windowParams);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 
@@ -219,6 +297,18 @@ int main()
 
 			char title[256];
 			sprintf(title, "VRK - cpu: %.2f ms - gpu: %.2f ms", frameCpuAvg, frameGpuAvg);
+
+			scene.camera.keys.up = keyboardInput.up;
+			scene.camera.keys.down = keyboardInput.down;
+			scene.camera.keys.left = keyboardInput.left;
+			scene.camera.keys.right = keyboardInput.right;
+
+			scene.camera.update(frameCPU / 1000.0f);
+			if (scene.camera.moving())
+			{
+				ubo.view = scene.camera.matrices.view;
+				viewUpdated = true;
+			}
 
 #if _WIN32
 			SetWindowTextA(windowParams.HWnd, title);

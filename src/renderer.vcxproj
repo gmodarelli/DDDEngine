@@ -109,13 +109,14 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/volk;../extern/glm;../extern/Vulkan-Headers/include;../extern/meshoptimizer/src;../include/;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>
       </EntryPointSymbol>
+      <AdditionalDependencies>../extern/assimp/lib/assimp.lib;kernel32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -139,32 +140,37 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;VK_NO_PROTOTYPES;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;_CRT_SECURE_NO_WARNINGS;VK_USE_PLATFORM_WIN32_KHR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/glfw/include;../extern/vulkan/include;../extern/volk</AdditionalIncludeDirectories>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>../extern/assimp/lib/assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h" />
-    <ClInclude Include="..\include\vkr\device.h" />
-    <ClInclude Include="..\include\vkr\swapchain.h" />
-    <ClInclude Include="..\include\vkr\types.h" />
-    <ClInclude Include="..\include\vkr\utils.h" />
     <ClInclude Include="MeshLoader.h" />
+    <ClInclude Include="vkr\camera.h" />
+    <ClInclude Include="vkr\device.h" />
+    <ClInclude Include="vkr\renderpass.h" />
+    <ClInclude Include="vkr\scene.h" />
+    <ClInclude Include="vkr\swapchain.h" />
+    <ClInclude Include="vkr\types.h" />
+    <ClInclude Include="vkr\utils.h" />
     <ClInclude Include="VulkanTypes.h" />
     <ClInclude Include="VulkanBuffer.h" />
     <ClInclude Include="VulkanDebug.h" />
@@ -196,6 +202,10 @@
     <ClCompile Include="..\extern\meshoptimizer\tools\objparser.cpp" />
     <ClCompile Include="..\extern\volk\volk.c" />
     <ClCompile Include="win32_main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\data\shaders\simple.frag" />
+    <None Include="..\data\shaders\simple.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

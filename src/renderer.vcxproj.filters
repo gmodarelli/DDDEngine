@@ -19,11 +19,11 @@
     <Filter Include="meshoptimizer">
       <UniqueIdentifier>{5e15d33c-9b91-4e3e-a014-dfdb0b32d382}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{e548dd70-5074-410f-8727-5ae68197b507}</UniqueIdentifier>
+    <Filter Include="vkr">
+      <UniqueIdentifier>{16161690-f736-4fee-93df-403493fa8282}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\vkr">
-      <UniqueIdentifier>{723fac2e-9926-42fb-b501-590a98832a64}</UniqueIdentifier>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{57ff3419-90b9-491e-ac92-e39cef314a66}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -78,17 +78,26 @@
     <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h">
       <Filter>meshoptimizer</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\vkr\types.h">
-      <Filter>include\vkr</Filter>
+    <ClInclude Include="vkr\device.h">
+      <Filter>vkr</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\vkr\utils.h">
-      <Filter>include\vkr</Filter>
+    <ClInclude Include="vkr\renderpass.h">
+      <Filter>vkr</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\vkr\device.h">
-      <Filter>include\vkr</Filter>
+    <ClInclude Include="vkr\scene.h">
+      <Filter>vkr</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\vkr\swapchain.h">
-      <Filter>include\vkr</Filter>
+    <ClInclude Include="vkr\swapchain.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\types.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\utils.h">
+      <Filter>vkr</Filter>
+    </ClInclude>
+    <ClInclude Include="vkr\camera.h">
+      <Filter>vkr</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -137,5 +146,13 @@
     <ClCompile Include="..\extern\meshoptimizer\tools\objparser.cpp">
       <Filter>meshoptimizer</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\data\shaders\simple.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\simple.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

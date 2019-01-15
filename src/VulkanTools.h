@@ -50,6 +50,9 @@ VkBool32 CheckExtensionsSupport(const std::vector<const char*>* extensionNames, 
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"
 #include "VulkanPipeline.h"
+
+#include "vkr/scene.h"
+
 #include "VulkanRenderLoop.h"
 #include "VulkanSynchronization.h"
 

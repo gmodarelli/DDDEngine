@@ -1,6 +1,8 @@
 #ifndef VULKAN_PIPELINE_H_
 #define VULKAN_PIPELINE_H_
 
+#include "vkr/scene.h"
+
 void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector<VkDescriptorSetLayout> descriptorSetLayouts, VkShaderModule vertShaderModule, VkShaderModule fragShaderModule, VkRenderPass renderPass, Pipeline* outPipeline)
 {
 	// Graphics Pipeline
@@ -31,10 +33,10 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	// Vertex input configuration
 	VkVertexInputBindingDescription vertexBindingDescription = {};
 	vertexBindingDescription.binding = 0;
-	vertexBindingDescription.stride = sizeof(Vertex);
+	vertexBindingDescription.stride = sizeof(vkr::Vertex);
 	vertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	VkVertexInputAttributeDescription vertexAttributeDescription[3];
+	VkVertexInputAttributeDescription vertexAttributeDescription[4];
 	// Position
 	vertexAttributeDescription[0].location = 0;
 	vertexAttributeDescription[0].binding = 0;
@@ -45,13 +47,19 @@ void SetupPipeline(VkDevice device, uint32_t width, uint32_t height, std::vector
 	vertexAttributeDescription[1].location = 1;
 	vertexAttributeDescription[1].binding = 0;
 	vertexAttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexAttributeDescription[1].offset = sizeof(float) * 3;
+	vertexAttributeDescription[1].offset = sizeof(glm::vec3);
 
 	// UV
 	vertexAttributeDescription[2].location = 2;
 	vertexAttributeDescription[2].binding = 0;
-	vertexAttributeDescription[2].format = VK_FORMAT_R32G32_SFLOAT;
-	vertexAttributeDescription[2].offset = sizeof(float) * 6;
+	vertexAttributeDescription[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexAttributeDescription[2].offset = sizeof(glm::vec3) * 2;
+
+	// Color
+	vertexAttributeDescription[3].location = 3;
+	vertexAttributeDescription[3].binding = 0;
+	vertexAttributeDescription[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexAttributeDescription[3].offset = sizeof(glm::vec3) * 3;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
