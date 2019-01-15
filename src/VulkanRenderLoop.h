@@ -55,7 +55,7 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, Command commandBuf
 	vkEndCommandBuffer(commandBuffer.CommandBuffers[currentFrameIndex]);
 }
 
-double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex, WindowParameters window)
+double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
 {
 	uint32_t nextImageIndex;
 	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));

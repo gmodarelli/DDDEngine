@@ -7,6 +7,16 @@ namespace vkr
 {
 	struct App
 	{
+		bool ready = false;
+		bool resizing = false;
+
+		uint32_t width;
+		uint32_t height;
+#if _WIN32
+		HINSTANCE hInstance;
+		HWND window;
+#endif
+
 		vkr::VulkanDevice* device;
 		vkr::VulkanSwapchain* swapchain;
 
@@ -18,22 +28,14 @@ namespace vkr
 		std::vector<VkFramebuffer> framebuffers;
 		struct DepthBuffer
 		{
-			VkImage Image;
-			VkImageView ImageView;
-			VkDeviceMemory ImageMemory;
+			VkImage Image = VK_NULL_HANDLE;
+			VkImageView ImageView = VK_NULL_HANDLE;
+			VkDeviceMemory ImageMemory = { 0 };
 		} depthBuffer;
 
-		uint32_t width;
-		uint32_t height;
+		vkr::Camera mainCamera;
 
-		App(WindowParameters windowParams)
-		{
-			this->width = width;
-			this->height = height;
-
-			VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
-			device = new vkr::VulkanDevice(windowParams, requiredQueues);
-		}
+		App() {}
 
 		~App()
 		{
@@ -63,8 +65,175 @@ namespace vkr
 			device->destroy();
 		}
 
+		void initVulkan()
+		{
+
+		}
+
+#if _WIN32
+		bool setupWindow(uint32_t width, uint32_t height, HINSTANCE hInstance, WNDPROC wndProc)
+		{
+			this->width = width;
+			this->height = height;
+			this->hInstance = hInstance;
+
+			WNDCLASS windowClass;
+			windowClass.style = CS_HREDRAW | CS_VREDRAW;
+			windowClass.lpfnWndProc = wndProc;
+			windowClass.cbClsExtra = 0;
+			windowClass.cbWndExtra = 0;
+			windowClass.hInstance = hInstance;
+			windowClass.hIcon = LoadIcon(0, IDI_APPLICATION);
+			windowClass.hCursor = LoadCursor(0, IDC_ARROW);
+			windowClass.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
+			windowClass.lpszMenuName = 0;
+			windowClass.lpszClassName = L"MainWnd";
+
+			if (!RegisterClass(&windowClass))
+			{
+				MessageBox(0, L"RegisterClass failed!", 0, 0);
+				return false;
+			}
+
+			RECT R = { 0, 0, (LONG)width, (LONG)height };
+			AdjustWindowRect(&R, WS_OVERLAPPEDWINDOW, false);
+			int adjustedWidth = R.right - R.left;
+			int adjustedHeight = R.bottom - R.top;
+
+			window = CreateWindow(L"MainWnd", L"Renderer", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjustedWidth, adjustedHeight, 0, 0, hInstance, 0);
+			if (!window)
+			{
+				MessageBox(0, L"CreateWindow failed", 0, 0);
+				return false;
+			}
+
+			ShowWindow(window, SW_SHOW);
+			SetForegroundWindow(window);
+			SetFocus(window);
+			// UpdateWindow(window);
+
+			return true;
+		}
+
+#define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
+#define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
+
+		LRESULT CALLBACK
+		handleMessages(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+		{
+			switch (msg)
+			{
+			case WM_ACTIVATE:
+				// WM_ACTIVATE is sent when the window is activated or deactivated.
+				// TODO: Once we add a timer this will be the place to start/stop
+				// the time
+				if (LOWORD(wParam) == WA_INACTIVE)
+				{
+					printf("The window is inactive, should pause the app\n");
+				}
+				else
+				{
+					printf("The window is active, should start the app\n");
+				}
+				return 0;
+
+			case WM_DESTROY:
+				// WM_DESTROY is sent when the window is being destroyed.
+				PostQuitMessage(0);
+				return 0;
+
+			case WM_MENUCHAR:
+				// THE WM_MENUCHAR is sent when a menu is active and the user
+				// presses a key that does not correspond to any mnemonic
+				// or accelerator key.
+				// Don't beep when we alt-enter
+				return MAKELRESULT(0, MNC_CLOSE);
+
+			case WM_GETMINMAXINFO:
+				// Catch this message so to prevent the window from becoming too small.
+				((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
+				((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
+				return 0;
+
+			case WM_LBUTTONDOWN:
+			case WM_RBUTTONDOWN:
+			case WM_MBUTTONDOWN:
+				onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				return 0;
+
+			case WM_LBUTTONUP:
+			case WM_RBUTTONUP:
+			case WM_MBUTTONUP:
+				onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				return 0;
+
+			case WM_MOUSEMOVE:
+				onMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+				return 0;
+
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP:
+				bool wasDown = ((lParam & (1 << 30)) != 0);
+				bool isDown = ((lParam & (1UL << 31)) == 0);
+				if (wasDown != isDown)
+				{
+					if (wParam == 0x57 || wParam == VK_UP)
+					{
+						mainCamera.keys.up = isDown;
+					}
+
+					if (wParam == 0x53 || wParam == VK_DOWN)
+					{
+						mainCamera.keys.down = isDown;
+					}
+
+					if (wParam == 0x44 || wParam == VK_RIGHT)
+					{
+						mainCamera.keys.right = isDown;
+					}
+
+					if (wParam == 0x41 || wParam == VK_LEFT)
+					{
+						mainCamera.keys.left = isDown;
+					}
+
+					if (isDown)
+					{
+						if (wParam == VK_ESCAPE)
+						{
+							PostQuitMessage(0);
+						}
+					}
+				}
+
+				return 0;
+
+			}
+		}
+
+		void onMouseDown(WPARAM btnState, int x, int y)
+		{
+			
+		}
+
+		void onMouseUp(WPARAM btnState, int x, int y)
+		{
+			
+		}
+
+		void onMouseMove(WPARAM btnState, int x, int y)
+		{
+			
+		}
+#endif
+
 		void prepare()
 		{
+			VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
+			device = new vkr::VulkanDevice(hInstance, window, requiredQueues);
+
 			VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
 			VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
@@ -73,6 +242,8 @@ namespace vkr
 			prepareRenderPass();
 			prepareDepthBuffer();
 			prepareFrameBuffers();
+
+			initMainCamera();
 		}
 
 	private:
@@ -193,6 +364,15 @@ namespace vkr
 
 				VK_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]));
 			}
+		}
+
+		void initMainCamera()
+		{
+			mainCamera.type = vkr::Camera::CameraType::firstperson;
+			mainCamera.movementSpeed = 7.5f;
+			mainCamera.position = { 55.0f, -13.5f, 0.0f };
+			mainCamera.setRotation(glm::vec3(5.0f, 90.0f, 0.0f));
+			mainCamera.setPerspective(60.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
 		}
 	};
 

@@ -70,7 +70,8 @@ namespace vkr
 
 		}
 
-		VulkanDevice(WindowParameters windowParameters, VkQueueFlags requiredQueues)
+		// TODO: this is only valid for _WIN32. Move the createSurface outside of this constructor
+		VulkanDevice(HINSTANCE hInstance, HWND hwnd, VkQueueFlags requiredQueues)
 		{
 			// Load the Vulkan Library
 			VKR_CHECK(volkInitialize(), "Failed to load the Vulkan Library");
@@ -81,7 +82,7 @@ namespace vkr
 
 			createDebugCallbacks();
 
-			createSurface(windowParameters);
+			createSurface(hInstance, hwnd);
 			pickPhysicalDevice(requiredQueues);
 
 			TransferCommandPool = createCommandPool(TransferFamilyIndex);
@@ -336,19 +337,19 @@ namespace vkr
 #endif
 		}
 
-		void createSurface(WindowParameters windowParameters)
-		{
 #ifdef VK_USE_PLATFORM_WIN32_KHR
+		void createSurface(HINSTANCE hInstance, HWND hwnd)
+		{
 			PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(Instance, "vkCreateWin32SurfaceKHR");
 			VKR_ASSERT(vkCreateWin32SurfaceKHR != nullptr);
 
 			VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-			surfaceCreateInfo.hinstance = windowParameters.Hinstance;
-			surfaceCreateInfo.hwnd = windowParameters.HWnd;
+			surfaceCreateInfo.hinstance = hInstance;
+			surfaceCreateInfo.hwnd = hwnd;
 
 			VKR_CHECK(vkCreateWin32SurfaceKHR(Instance, &surfaceCreateInfo, nullptr, &Surface), "Failed to create the Surface");
-#endif
 		}
+#endif
 
 		uint32_t getQueueFamilyIndex(VkQueueFamilyProperties* queueFamilies, uint32_t queueFamilyCount, VkQueueFlagBits queueFlags)
 		{
