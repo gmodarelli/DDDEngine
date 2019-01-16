@@ -31,6 +31,5 @@
 #include "vkr/scene.h"
 
 #include "VulkanRenderLoop.h"
-#include "VulkanSynchronization.h"
 
 #endif // VULKAN_TOOLS_H_

@@ -84,11 +84,6 @@ int main()
 	VkQueue graphycsQueue = app->device->getQueue(app->device->GraphicsFamilyIndex);
 	VkQueue presentQueue = app->device->getQueue(app->device->PresentFamilyIndex);
 
-	size_t maxFramesInFlight = app->framebuffers.size();
-	SyncObjects syncObjects;
-
-	CreateSyncObjects(app->device->Device, maxFramesInFlight, &syncObjects);
-
 	uint32_t currentFrameIndex = 0;
 
 	MSG msg = { 0 };
@@ -115,9 +110,9 @@ int main()
 				viewUpdated = false;
 			}
 
-			RecordCommands(app->device->Device, syncObjects, app->commandBuffers[currentFrameIndex], vertexBuffer, indexBuffer, scene, app->framebuffers, app->renderPass, descriptor, pipeline, queryPool, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, currentFrameIndex);
-			double frameGPU = RenderLoop(app->device->Device, app->device->PhysicalDeviceProperties, app->swapchain->Swapchain, app->commandBuffers, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex);
-			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
+			RecordCommands(app, vertexBuffer, indexBuffer, scene, descriptor, pipeline, queryPool, currentFrameIndex);
+			double frameGPU = RenderLoop(app, queryPool, graphycsQueue, presentQueue, currentFrameIndex);
+			currentFrameIndex = (currentFrameIndex + 1) % app->maxFramesInFlight;
 
 			auto frameCPUEnd = std::chrono::high_resolution_clock::now();
 			auto frameCPU = (frameCPUEnd - frameCPUStart).count() * 1e-6;
@@ -145,7 +140,6 @@ int main()
 
 	// Cleanup
 	app->device->destroyQueryPool(queryPool);
-	DestroySyncObjects(app->device->Device, &syncObjects);
 	DestroyPipeline(app->device->Device, &pipeline);
 	DestroyDescriptor(app->device->Device, &descriptor);
 	DestroyShaderModule(app->device->Device, &vertShaderModule);

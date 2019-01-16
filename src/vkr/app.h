@@ -32,7 +32,15 @@ namespace vkr
 			VkDeviceMemory ImageMemory = { 0 };
 		} depthBuffer;
 
+		uint32_t maxFramesInFlight = 0;
 		std::vector<VkFramebuffer> framebuffers;
+
+		struct SyncObjects
+		{
+			std::vector<VkSemaphore> ImageAvailableSemaphores;
+			std::vector<VkSemaphore> RenderFinishedSemaphores;
+			std::vector<VkFence> InFlightFences;
+		} syncObjects;
 
 		uint32_t commandBufferCount = 0;
 		std::vector<VkCommandBuffer> commandBuffers;
@@ -43,6 +51,25 @@ namespace vkr
 
 		~App()
 		{
+			for (size_t i = 0; i < syncObjects.ImageAvailableSemaphores.size(); ++i)
+			{
+				vkDestroySemaphore(device->Device, syncObjects.ImageAvailableSemaphores[i], nullptr);
+			}
+
+			for (size_t i = 0; i < syncObjects.RenderFinishedSemaphores.size(); ++i)
+			{
+				vkDestroySemaphore(device->Device, syncObjects.RenderFinishedSemaphores[i], nullptr);
+			}
+
+			for (size_t i = 0; i < syncObjects.InFlightFences.size(); ++i)
+			{
+				vkDestroyFence(device->Device, syncObjects.InFlightFences[i], nullptr);
+			}
+
+			syncObjects.ImageAvailableSemaphores.clear();
+			syncObjects.RenderFinishedSemaphores.clear();
+			syncObjects.InFlightFences.clear();
+
 			vkFreeCommandBuffers(device->Device, device->PresentCommandPool, commandBufferCount, commandBuffers.data());
 			commandBufferCount = 0;
 
@@ -248,11 +275,14 @@ namespace vkr
 
 			prepareRenderPass();
 			prepareDepthBuffer();
+
+			// Frame resources
 			prepareFrameBuffers();
+			prepareCommandBuffers();
+			prepareSyncObjects();
 
 			initMainCamera();
 
-			prepareCommandBuffers();
 		}
 
 	private:
@@ -357,7 +387,9 @@ namespace vkr
 		void prepareFrameBuffers()
 		{
 			framebuffers.resize(swapchain->ImageCount);
-			for (uint32_t i = 0; i < swapchain->ImageCount; ++i)
+			maxFramesInFlight = swapchain->ImageCount;
+
+			for (uint32_t i = 0; i < maxFramesInFlight; ++i)
 			{
 				VkImageView frameBufferAttachments[2] = { 0 };
 				frameBufferAttachments[0] = swapchain->ImageViews[i];
@@ -397,6 +429,25 @@ namespace vkr
 			commandBuffers.resize(commandBufferCount);
 
 			VKR_CHECK(vkAllocateCommandBuffers(device->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
+		}
+
+		void prepareSyncObjects()
+		{
+			syncObjects.ImageAvailableSemaphores.resize(maxFramesInFlight);
+			syncObjects.RenderFinishedSemaphores.resize(maxFramesInFlight);
+			syncObjects.InFlightFences.resize(maxFramesInFlight);
+
+			VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+
+			VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+			fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+			for (size_t i = 0; i < maxFramesInFlight; ++i)
+			{
+				VK_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]));
+				VK_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]));
+				VK_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]));
+			}
 		}
 	};
 

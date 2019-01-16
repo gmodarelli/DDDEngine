@@ -27,11 +27,4 @@ struct Pipeline
 	VkPipelineLayout PipelineLayout;
 };
 
-struct SyncObjects
-{
-	std::vector<VkSemaphore> ImageAvailableSemaphores;
-	std::vector<VkSemaphore> RenderFinishedSemaphores;
-	std::vector<VkFence> InFlightFences;
-};
-
 #endif // VULKAN_TYPES_H_

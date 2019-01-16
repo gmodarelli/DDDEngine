@@ -177,8 +177,6 @@
     <ClInclude Include="VulkanPipeline.h" />
     <ClInclude Include="VulkanRenderLoop.h" />
     <ClInclude Include="VulkanShaderAndUniforms.h" />
-    <ClInclude Include="VulkanSynchronization.h" />
-    <ClInclude Include="VulkanCommandBuffer.h" />
     <ClInclude Include="VulkanTools.h" />
   </ItemGroup>
   <ItemGroup>

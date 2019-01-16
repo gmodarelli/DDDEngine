@@ -1,9 +1,12 @@
 #ifndef VULKAN_RENDER_LOOP_H_
 #define VULKAN_RENDER_LOOP_H_
 
-void RecordCommands(VkDevice device, SyncObjects syncObjects, VkCommandBuffer commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, vkr::Scene scene, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, VkQueryPool queryPool, uint32_t width, uint32_t height, uint32_t currentFrameIndex)
+#include "vkr/app.h"
+
+void RecordCommands(vkr::App* app, Buffer vertexBuffer, Buffer indexBuffer, vkr::Scene scene, Descriptor descriptor, Pipeline pipeline, VkQueryPool queryPool, uint32_t currentFrameIndex)
 {
-	vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
+	vkWaitForFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
+	VkCommandBuffer commandBuffer = app->commandBuffers[currentFrameIndex];
 
 	VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -17,9 +20,9 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, VkCommandBuffer co
 	// Activate the render pass
 	VkClearValue clearValue[] = { { 135 / 255.0f, 206 / 255.0f, 250 / 255.0f, 1.0f }, { 1.0f, 0.0f } };
 	VkRenderPassBeginInfo renderPassBeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-	renderPassBeginInfo.renderPass = renderPass;
-	renderPassBeginInfo.framebuffer = framebuffers[currentFrameIndex];
-	renderPassBeginInfo.renderArea = { { 0, 0 }, { width, height } };
+	renderPassBeginInfo.renderPass = app->renderPass;
+	renderPassBeginInfo.framebuffer = app->framebuffers[currentFrameIndex];
+	renderPassBeginInfo.renderArea = { { 0, 0 }, { app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height } };
 	renderPassBeginInfo.clearValueCount = ARRAYSIZE(clearValue);
 	renderPassBeginInfo.pClearValues = clearValue;
 	
@@ -30,9 +33,9 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, VkCommandBuffer co
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
 
 	// Take care of the dynamic state (what does it mean?)
-	VkViewport viewport = { 0, 0, (float)width, (float)height, 0, 1 };
+	VkViewport viewport = { 0, 0, (float)app->swapchain->ImageExtent.width, (float)app->swapchain->ImageExtent.height, 0, 1 };
 	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-	VkRect2D scissors = { 0, 0, width, height };
+	VkRect2D scissors = { 0, 0, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height };
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissors);
 
 	// Render the triangles
@@ -55,15 +58,15 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, VkCommandBuffer co
 	vkEndCommandBuffer(commandBuffer);
 }
 
-double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, std::vector<VkCommandBuffer> commandBuffers, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
+double RenderLoop(vkr::App* app, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, uint32_t currentFrameIndex)
 {
 	uint32_t nextImageIndex;
-	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));
+	VKR_CHECK(vkAcquireNextImageKHR(app->device->Device, app->swapchain->Swapchain, UINT64_MAX, app->syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex), "Failed to acquire next image");
 
-	VkCommandBuffer currentCB = commandBuffers[nextImageIndex];
+	VkCommandBuffer currentCB = app->commandBuffers[nextImageIndex];
 
 	// Present
-	VkSemaphore waitSemaphores[] = { syncObjects.ImageAvailableSemaphores[currentFrameIndex] };
+	VkSemaphore waitSemaphores[] = { app->syncObjects.ImageAvailableSemaphores[currentFrameIndex] };
 	VkPipelineStageFlags waitStageMask[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -73,30 +76,30 @@ double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwap
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &currentCB;
 
-	VkSemaphore signalSemaphores[] = { syncObjects.RenderFinishedSemaphores[currentFrameIndex] };
+	VkSemaphore signalSemaphores[] = { app->syncObjects.RenderFinishedSemaphores[currentFrameIndex] };
 	submitInfo.signalSemaphoreCount = ARRAYSIZE(signalSemaphores);
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	vkResetFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex]);
+	vkResetFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Submit command buffer
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, syncObjects.InFlightFences[currentFrameIndex]);
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, app->syncObjects.InFlightFences[currentFrameIndex]);
 
 	// Present the backbuffer
 	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
 	presentInfo.waitSemaphoreCount = ARRAYSIZE(signalSemaphores);
 	presentInfo.pWaitSemaphores = signalSemaphores;
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &swapchain;
+	presentInfo.pSwapchains = &app->swapchain->Swapchain;
 	presentInfo.pImageIndices = &nextImageIndex;
 
 	VK_CHECK(vkQueuePresentKHR(presentQueue, &presentInfo));
 
 	uint64_t queryResults[2] = {};
-	VK_CHECK(vkGetQueryPoolResults(device, queryPool, currentFrameIndex * 2, ARRAYSIZE(queryResults), sizeof(queryResults), queryResults, sizeof(queryResults[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
+	VK_CHECK(vkGetQueryPoolResults(app->device->Device, queryPool, currentFrameIndex * 2, ARRAYSIZE(queryResults), sizeof(queryResults), queryResults, sizeof(queryResults[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
 
-	double frameGpuBegin = double(queryResults[0]) * properties.limits.timestampPeriod * 1e-6;
-	double frameGpuEnd = double(queryResults[1]) * properties.limits.timestampPeriod * 1e-6;
+	double frameGpuBegin = double(queryResults[0]) * app->device->PhysicalDeviceProperties.limits.timestampPeriod * 1e-6;
+	double frameGpuEnd = double(queryResults[1]) * app->device->PhysicalDeviceProperties.limits.timestampPeriod * 1e-6;
 
 	return frameGpuEnd - frameGpuBegin;
 }

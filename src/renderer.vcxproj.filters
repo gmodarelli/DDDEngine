@@ -30,9 +30,6 @@
     <ClInclude Include="VulkanTools.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanCommandBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanShaderAndUniforms.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -46,9 +43,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanDebug.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanSynchronization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VulkanTypes.h">
