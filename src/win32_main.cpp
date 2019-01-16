@@ -34,9 +34,6 @@ int main()
 
 	// All the following settings are app-specific
 
-	Command command;
-	SetupCommandBuffer(app->device->Device, app->device->PhysicalDevice, app->device->GraphicsFamilyIndex, static_cast<uint32_t>(app->framebuffers.size()), &command);
-
 	vkr::glTF::Model model;
 	model.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
 	model.destroy();
@@ -83,7 +80,6 @@ int main()
 	SetupPipeline(app->device->Device, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, descriptorSetLayouts, vertShaderModule, fragShaderModule, app->renderPass, &pipeline);
 
 	VkQueryPool queryPool = app->device->createQueryPool(128);
-	// RecordCommands(command, vertexBuffer, indexBuffer, static_cast<uint32_t>(mesh.Indices.size()), framebuffers, renderPass, descriptor, pipeline, queryPool, sWidth, sHeight);
 
 	VkQueue graphycsQueue = app->device->getQueue(app->device->GraphicsFamilyIndex);
 	VkQueue presentQueue = app->device->getQueue(app->device->PresentFamilyIndex);
@@ -119,8 +115,8 @@ int main()
 				viewUpdated = false;
 			}
 
-			RecordCommands(app->device->Device, syncObjects, command, vertexBuffer, indexBuffer, scene, app->framebuffers, app->renderPass, descriptor, pipeline, queryPool, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, currentFrameIndex);
-			double frameGPU = RenderLoop(app->device->Device, app->device->PhysicalDeviceProperties, app->swapchain->Swapchain, command, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex);
+			RecordCommands(app->device->Device, syncObjects, app->commandBuffers[currentFrameIndex], vertexBuffer, indexBuffer, scene, app->framebuffers, app->renderPass, descriptor, pipeline, queryPool, app->swapchain->ImageExtent.width, app->swapchain->ImageExtent.height, currentFrameIndex);
+			double frameGPU = RenderLoop(app->device->Device, app->device->PhysicalDeviceProperties, app->swapchain->Swapchain, app->commandBuffers, queryPool, graphycsQueue, presentQueue, syncObjects, currentFrameIndex);
 			currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 
 			auto frameCPUEnd = std::chrono::high_resolution_clock::now();
@@ -158,8 +154,6 @@ int main()
 	vkr::destroyBuffer(app->device->Device, &vertexBuffer);
 	vkr::destroyBuffer(app->device->Device, &indexBuffer);
 	vkr::destroyBuffer(app->device->Device, &uniformBuffer);
-
-	DestroyCommandBuffer(app->device->Device, &command);
 
 	delete app;
 

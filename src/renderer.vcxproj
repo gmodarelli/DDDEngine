@@ -170,7 +170,6 @@
     <ClInclude Include="vkr\model.h" />
     <ClInclude Include="vkr\scene.h" />
     <ClInclude Include="vkr\swapchain.h" />
-    <ClInclude Include="vkr\types.h" />
     <ClInclude Include="vkr\utils.h" />
     <ClInclude Include="VulkanTypes.h" />
     <ClInclude Include="VulkanDebug.h" />

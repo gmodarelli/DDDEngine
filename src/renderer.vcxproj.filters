@@ -69,9 +69,6 @@
     <ClInclude Include="vkr\swapchain.h">
       <Filter>vkr</Filter>
     </ClInclude>
-    <ClInclude Include="vkr\types.h">
-      <Filter>vkr</Filter>
-    </ClInclude>
     <ClInclude Include="vkr\utils.h">
       <Filter>vkr</Filter>
     </ClInclude>

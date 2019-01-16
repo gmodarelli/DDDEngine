@@ -25,7 +25,6 @@ namespace vkr
 		VkFormat depthFormat = VK_FORMAT_D16_UNORM;
 		VkRenderPass renderPass;
 
-		std::vector<VkFramebuffer> framebuffers;
 		struct DepthBuffer
 		{
 			VkImage Image = VK_NULL_HANDLE;
@@ -33,12 +32,20 @@ namespace vkr
 			VkDeviceMemory ImageMemory = { 0 };
 		} depthBuffer;
 
+		std::vector<VkFramebuffer> framebuffers;
+
+		uint32_t commandBufferCount = 0;
+		std::vector<VkCommandBuffer> commandBuffers;
+
 		vkr::Camera mainCamera;
 
 		App() {}
 
 		~App()
 		{
+			vkFreeCommandBuffers(device->Device, device->PresentCommandPool, commandBufferCount, commandBuffers.data());
+			commandBufferCount = 0;
+
 			if (depthBuffer.Image != VK_NULL_HANDLE)
 			{
 				vkDestroyImageView(device->Device, depthBuffer.ImageView, nullptr);
@@ -244,6 +251,8 @@ namespace vkr
 			prepareFrameBuffers();
 
 			initMainCamera();
+
+			prepareCommandBuffers();
 		}
 
 	private:
@@ -373,6 +382,21 @@ namespace vkr
 			mainCamera.position = { 55.0f, -13.5f, 0.0f };
 			mainCamera.setRotation(glm::vec3(5.0f, 90.0f, 0.0f));
 			mainCamera.setPerspective(60.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
+		}
+
+		void prepareCommandBuffers()
+		{
+			commandBufferCount = static_cast<uint32_t>(framebuffers.size());
+			VKR_ASSERT(commandBufferCount > 0);
+
+			VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+			allocateInfo.commandPool = device->PresentCommandPool;
+			allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocateInfo.commandBufferCount = commandBufferCount;
+
+			commandBuffers.resize(commandBufferCount);
+
+			VKR_CHECK(vkAllocateCommandBuffers(device->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
 		}
 	};
 

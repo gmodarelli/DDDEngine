@@ -1,6 +1,5 @@
 #pragma once
 
-#include "vkr/types.h"
 #include "vkr/utils.h"
 #include "vkr/device.h"
 

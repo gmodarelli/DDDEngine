@@ -8,7 +8,6 @@
 
 #include "volk.h"
 
-#include "vkr/types.h"
 #include "vkr/utils.h"
 #include <vector>
 
@@ -58,6 +57,7 @@ namespace vkr
 		// Default command pools
 		VkCommandPool TransferCommandPool = VK_NULL_HANDLE;
 		VkCommandPool GraphicsCommandPool = VK_NULL_HANDLE;
+		VkCommandPool PresentCommandPool = VK_NULL_HANDLE;
 
 #if _DEBUG
 		// Errors and Warnings Callbacks
@@ -87,6 +87,7 @@ namespace vkr
 
 			TransferCommandPool = createCommandPool(TransferFamilyIndex);
 			GraphicsCommandPool = createCommandPool(GraphicsFamilyIndex);
+			PresentCommandPool = createCommandPool(PresentFamilyIndex);
 		}
 
 		~VulkanDevice()
@@ -95,6 +96,12 @@ namespace vkr
 
 		void destroy()
 		{
+			if (PresentCommandPool != VK_NULL_HANDLE)
+			{
+				vkDestroyCommandPool(Device, PresentCommandPool, nullptr);
+				PresentCommandPool = VK_NULL_HANDLE;
+			}
+
 			if (GraphicsCommandPool != VK_NULL_HANDLE)
 			{
 				vkDestroyCommandPool(Device, GraphicsCommandPool, nullptr);

@@ -22,7 +22,6 @@
 #include "vkr/device.h" 
 #include "vkr/swapchain.h"
 
-#include "VulkanCommandBuffer.h"
 #include "VulkanShaderAndUniforms.h"
 #include "VulkanDescriptors.h"
 #include "VulkanPipeline.h"

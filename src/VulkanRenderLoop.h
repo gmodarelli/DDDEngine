@@ -1,18 +1,18 @@
 #ifndef VULKAN_RENDER_LOOP_H_
 #define VULKAN_RENDER_LOOP_H_
 
-void RecordCommands(VkDevice device, SyncObjects syncObjects, Command commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, vkr::Scene scene, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, VkQueryPool queryPool, uint32_t width, uint32_t height, uint32_t currentFrameIndex)
+void RecordCommands(VkDevice device, SyncObjects syncObjects, VkCommandBuffer commandBuffer, Buffer vertexBuffer, Buffer indexBuffer, vkr::Scene scene, std::vector<VkFramebuffer> framebuffers, VkRenderPass renderPass, Descriptor descriptor, Pipeline pipeline, VkQueryPool queryPool, uint32_t width, uint32_t height, uint32_t currentFrameIndex)
 {
 	vkWaitForFences(device, 1, &syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX);
 
 	VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-	VK_CHECK(vkBeginCommandBuffer(commandBuffer.CommandBuffers[currentFrameIndex], &beginInfo));
+	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
 	// Use the ith and i+1th queries from the query pool
-	vkCmdResetQueryPool(commandBuffer.CommandBuffers[currentFrameIndex], queryPool, 2 * currentFrameIndex, 2);
-	vkCmdWriteTimestamp(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex);
+	vkCmdResetQueryPool(commandBuffer, queryPool, 2 * currentFrameIndex, 2);
+	vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex);
 
 	// Activate the render pass
 	VkClearValue clearValue[] = { { 135 / 255.0f, 206 / 255.0f, 250 / 255.0f, 1.0f }, { 1.0f, 0.0f } };
@@ -23,42 +23,44 @@ void RecordCommands(VkDevice device, SyncObjects syncObjects, Command commandBuf
 	renderPassBeginInfo.clearValueCount = ARRAYSIZE(clearValue);
 	renderPassBeginInfo.pClearValues = clearValue;
 	
-	vkCmdBeginRenderPass(commandBuffer.CommandBuffers[currentFrameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	// Bind the graphics pipeline to the command buffer. 
 	// Any vkDraw command afterward is affected by this pipeline.
-	vkCmdBindPipeline(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.Pipeline);
 
 	// Take care of the dynamic state (what does it mean?)
 	VkViewport viewport = { 0, 0, (float)width, (float)height, 0, 1 };
-	vkCmdSetViewport(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &viewport);
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 	VkRect2D scissors = { 0, 0, width, height };
-	vkCmdSetScissor(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &scissors);
+	vkCmdSetScissor(commandBuffer, 0, 1, &scissors);
 
 	// Render the triangles
 	VkDeviceSize offsets = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer.CommandBuffers[currentFrameIndex], 0, 1, &vertexBuffer.Buffer, &offsets);
-	vkCmdBindIndexBuffer(commandBuffer.CommandBuffers[currentFrameIndex], indexBuffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.Buffer, &offsets);
+	vkCmdBindIndexBuffer(commandBuffer, indexBuffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 
 	// Bind the shaders parameters
-	vkCmdBindDescriptorSets(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.PipelineLayout, 0, descriptor.DescriptorSetCount, descriptor.DescriptorSets.data(), 0, nullptr);
 
 	// Render all meshes in the scene
 	for (size_t i = 0; i < scene.meshes.size(); ++i)
 	{
-		vkCmdDrawIndexed(commandBuffer.CommandBuffers[currentFrameIndex], scene.meshes[i].IndexCount, 1, 0, scene.meshes[i].IndexBase, 0);
+		vkCmdDrawIndexed(commandBuffer, scene.meshes[i].IndexCount, 1, 0, scene.meshes[i].IndexBase, 0);
 	}
 
-	vkCmdEndRenderPass(commandBuffer.CommandBuffers[currentFrameIndex]);
+	vkCmdEndRenderPass(commandBuffer);
 
-	vkCmdWriteTimestamp(commandBuffer.CommandBuffers[currentFrameIndex], VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex + 1);
-	vkEndCommandBuffer(commandBuffer.CommandBuffers[currentFrameIndex]);
+	vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 2 * currentFrameIndex + 1);
+	vkEndCommandBuffer(commandBuffer);
 }
 
-double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, Command commandBuffer, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
+double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwapchainKHR swapchain, std::vector<VkCommandBuffer> commandBuffers, VkQueryPool queryPool, VkQueue graphicsQueue, VkQueue presentQueue, SyncObjects syncObjects, uint32_t currentFrameIndex)
 {
 	uint32_t nextImageIndex;
 	VK_CHECK(vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex));
+
+	VkCommandBuffer currentCB = commandBuffers[nextImageIndex];
 
 	// Present
 	VkSemaphore waitSemaphores[] = { syncObjects.ImageAvailableSemaphores[currentFrameIndex] };
@@ -69,7 +71,7 @@ double RenderLoop(VkDevice device, VkPhysicalDeviceProperties properties, VkSwap
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStageMask;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer.CommandBuffers[nextImageIndex];
+	submitInfo.pCommandBuffers = &currentCB;
 
 	VkSemaphore signalSemaphores[] = { syncObjects.RenderFinishedSemaphores[currentFrameIndex] };
 	submitInfo.signalSemaphoreCount = ARRAYSIZE(signalSemaphores);
