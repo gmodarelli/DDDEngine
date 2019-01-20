@@ -1,7 +1,5 @@
 #pragma once
 
-#define ENABLE_VULKAN_DEBUG_CALLBACK
-#include "../VulkanTools.h"
 #include "camera.h"
 
 namespace vkr
@@ -404,7 +402,7 @@ namespace vkr
 				createInfo.height = swapchain->ImageExtent.height;
 				createInfo.layers = 1;
 
-				VK_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]));
+				VKR_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]), "");
 			}
 		}
 
@@ -446,9 +444,9 @@ namespace vkr
 
 			for (size_t i = 0; i < maxFramesInFlight; ++i)
 			{
-				VK_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]));
-				VK_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]));
-				VK_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]));
+				VKR_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]), "");
+				VKR_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]), "");
+				VKR_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]), "");
 			}
 		}
 	};

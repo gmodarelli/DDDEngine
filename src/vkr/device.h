@@ -188,6 +188,7 @@ namespace vkr
 			cmdBufferAllocateInfo.level = level;
 			cmdBufferAllocateInfo.commandBufferCount = 1;
 
+#include <Windows.h>
 			VkCommandBuffer cmdBuffer;
 			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the transfer pool");
 

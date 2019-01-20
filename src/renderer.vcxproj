@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf</AdditionalIncludeDirectories>
       <SupportJustMyCode>true</SupportJustMyCode>
     </ClCompile>
     <Link>
@@ -117,7 +117,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EntryPointSymbol>
       </EntryPointSymbol>
-      <AdditionalDependencies>../extern/assimp/lib/assimp.lib;kernel32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -151,49 +151,30 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>../extern/assimp/lib/assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\extern\meshoptimizer\src\meshoptimizer.h" />
-    <ClInclude Include="..\extern\meshoptimizer\tools\objparser.h" />
     <ClInclude Include="vkr\app.h" />
     <ClInclude Include="vkr\buffer.h" />
     <ClInclude Include="vkr\camera.h" />
     <ClInclude Include="vkr\device.h" />
     <ClInclude Include="vkr\model.h" />
-    <ClInclude Include="vkr\scene.h" />
+    <ClInclude Include="vkr\shaders.h" />
     <ClInclude Include="vkr\swapchain.h" />
     <ClInclude Include="vkr\utils.h" />
-    <ClInclude Include="VulkanTypes.h" />
-    <ClInclude Include="VulkanDebug.h" />
-    <ClInclude Include="VulkanShaderAndUniforms.h" />
-    <ClInclude Include="VulkanTools.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
     </None>
-    <ClCompile Include="..\extern\meshoptimizer\src\clusterizer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\indexcodec.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\indexgenerator.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\overdrawanalyzer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\overdrawoptimizer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\simplifier.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\stripifier.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\vcacheanalyzer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\vcacheoptimizer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\vertexcodec.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\vfetchanalyzer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\src\vfetchoptimizer.cpp" />
-    <ClCompile Include="..\extern\meshoptimizer\tools\objparser.cpp" />
     <ClCompile Include="..\extern\volk\volk.c" />
     <ClCompile Include="win32_main.cpp" />
   </ItemGroup>

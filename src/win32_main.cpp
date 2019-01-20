@@ -2,7 +2,12 @@
 #include <Windows.h>
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
-#include "VulkanTools.h"
+#include "vkr/utils.h"
+#include "vkr/device.h" 
+#include "vkr/swapchain.h"
+#include "vkr/buffer.h"
+#include "vkr/model.h"
+#include "vkr/shaders.h"
 #include "vkr/app.h"
 
 #include <assert.h>
@@ -10,8 +15,6 @@
 #include <chrono>
 
 vkr::App* app;
-
-#define GLTF 0
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -340,7 +343,7 @@ void preparePipelines()
 	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
-	SetupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
+	vkr::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
 
 	shaderStages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
