@@ -27,7 +27,7 @@ namespace vkr
 			}
 		}
 
-		assert(!"No compatible memory found");
+		VKR_ASSERT(!"No compatible memory found");
 		return ~0u;
 	}
 

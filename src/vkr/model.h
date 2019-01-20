@@ -403,7 +403,7 @@ namespace glTF
 			else
 			{
 				char* message = new char[256];
-				sprintf(message, "Could not load file: %s\n", error);
+				sprintf(message, "Could not load file: %s\n", error.c_str());
 				printf(message);
 				VKR_ASSERT(false);
 			}
@@ -416,8 +416,8 @@ namespace glTF
 
 			struct StagingBuffer
 			{
-				VkBuffer buffer;
-				VkDeviceMemory memory;
+				VkBuffer buffer = VK_NULL_HANDLE;
+				VkDeviceMemory memory = { 0 };
 			} vertexStaging, indexStaging;
 
 			// Create staging buffers
@@ -489,7 +489,7 @@ namespace glTF
 
 			dimensions.size = dimensions.max - dimensions.min;
 			dimensions.center = (dimensions.min + dimensions.max) * 0.5f;
-			dimensions.radius = glm::distance(dimensions.min, dimensions.max) * 0.5;
+			dimensions.radius = glm::distance(dimensions.min, dimensions.max) * 0.5f;
 		}
 
 		void getNodeDimensions(Node* node, glm::vec3& min, glm::vec3& max)

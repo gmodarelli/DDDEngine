@@ -41,7 +41,7 @@
     <ClCompile Include="..\extern\volk\volk.c">
       <Filter>volk</Filter>
     </ClCompile>
-    <ClCompile Include="win32_main.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\simple.frag">

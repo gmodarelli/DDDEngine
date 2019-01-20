@@ -459,7 +459,7 @@ void recordCommands()
 		// 3. Transparent (after binding a transparent pipeline)
 		for (auto node : model.nodes)
 		{
-			renderNode(node, i);
+			renderNode(node, (uint32_t)i);
 		}
 
 		vkCmdEndRenderPass(currentCB);
@@ -534,8 +534,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	auto frameCPUEnd = std::chrono::high_resolution_clock::now();
 	auto frameCPU = (frameCPUEnd - frameCPUStart).count() * 1e-6;
 
-	// app->mainCamera.update(frameCPU / 1000.0f);
-	app->mainCamera.update(frameCPU / 100.0f);
+	app->mainCamera.update((float)(frameCPU / 1000.0f));
 	if (app->mainCamera.moving())
 	{
 		updateUniformBuffers();
@@ -544,7 +543,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	frameCPUAvg = frameCPUAvg * 0.95 + frameCPU * 0.05;
 
 	char title[256];
-	sprintf(title, "VRK - CAMERA: %.2f, %.2f, %.2f - cpu: %.2f ms - gpu: %.2f ms", app->mainCamera.position.x, app->mainCamera.position.y, app->mainCamera.position.z, frameCPUAvg, 0);
+	sprintf(title, "VRK - CAMERA: %.2f, %.2f, %.2f - cpu: %.2f ms - gpu: %.2f ms", app->mainCamera.position.x, app->mainCamera.position.y, app->mainCamera.position.z, frameCPUAvg, 0.0f);
 
 #if _WIN32
 	SetWindowTextA(app->window, title);

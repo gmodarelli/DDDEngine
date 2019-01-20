@@ -176,7 +176,7 @@
       <FileType>Document</FileType>
     </None>
     <ClCompile Include="..\extern\volk\volk.c" />
-    <ClCompile Include="win32_main.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag" />

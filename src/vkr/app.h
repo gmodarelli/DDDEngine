@@ -242,7 +242,6 @@ namespace vkr
 				}
 
 				return 0;
-
 			}
 		}
 

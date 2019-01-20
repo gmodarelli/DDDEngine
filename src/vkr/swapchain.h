@@ -50,7 +50,7 @@ namespace vkr
 			swapchainCreateInfo.surface = VulkanDevice.Surface;
 
 			// Query for the physical device surface capabilities
-			VkSurfaceCapabilitiesKHR surfaceCapabilities;
+			VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
 			VKR_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &surfaceCapabilities), "Failed to fetch surface capabilities");
 
 			swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
@@ -104,7 +104,7 @@ namespace vkr
 			// Create the images for double/triple buffering
 			// NOTE: Although we specified a minImageCount when we've created the swapchain, the driver implementation is allowed to create
 			// more than `minImageCount`. For this reason we have to query the image count
-			uint32_t imageCount; 
+			uint32_t imageCount = 0;
 			VKR_CHECK(vkGetSwapchainImagesKHR(VulkanDevice.Device, Swapchain, &imageCount, nullptr), "Failed to get the image count");
 			VKR_ASSERT(imageCount >= ImageCount);
 			ImageCount = imageCount;
@@ -164,7 +164,7 @@ namespace vkr
 			VkSurfaceFormatKHR bestFormat = { VK_FORMAT_UNDEFINED };
 
 			// Image Format and Color Space support
-			uint32_t formatCount;
+			uint32_t formatCount = 0;
 			VKR_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &formatCount, nullptr), "Failed to fetch physical device surface formats");
 			VKR_ASSERT(formatCount > 0 && "No formats supported");
 			VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[formatCount];

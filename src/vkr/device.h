@@ -158,7 +158,7 @@ namespace vkr
 			VkQueryPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
 			createInfo.queryCount = queryCount;
 			createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
-			VkQueryPool queryPool;
+			VkQueryPool queryPool = VK_NULL_HANDLE;
 			VKR_CHECK(vkCreateQueryPool(Device, &createInfo, nullptr, &queryPool), "Failed to create query pool");
 
 			return queryPool;
@@ -176,7 +176,7 @@ namespace vkr
 			cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
 			cmdPoolInfo.flags = createFlags;
 
-			VkCommandPool commandPool;
+			VkCommandPool commandPool = VK_NULL_HANDLE;
 			VKR_CHECK(vkCreateCommandPool(Device, &cmdPoolInfo, nullptr, &commandPool), "Failed to create command pool");
 			return commandPool;
 		}
@@ -189,7 +189,7 @@ namespace vkr
 			cmdBufferAllocateInfo.commandBufferCount = 1;
 
 #include <Windows.h>
-			VkCommandBuffer cmdBuffer;
+			VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
 			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the transfer pool");
 
 			// If requested, start recording for the new command buffer
@@ -232,7 +232,7 @@ namespace vkr
 
 			// Create fence to ensure that the command buffer has finished executing
 			VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-			VkFence fence;
+			VkFence fence = VK_NULL_HANDLE;
 			VKR_CHECK(vkCreateFence(Device, &fenceInfo, nullptr, &fence), "Failed to create fence");
 
 			// Submit to the queue
@@ -405,7 +405,7 @@ namespace vkr
 
 		void pickPhysicalDevice(VkQueueFlags requiredQueues)
 		{
-			uint32_t deviceCount;
+			uint32_t deviceCount = 0;
 			VKR_CHECK(vkEnumeratePhysicalDevices(Instance, &deviceCount, nullptr), "Failed to enumerate physical devices");
 			VKR_ASSERT(deviceCount > 0 && "Failed to find physical devices");
 			VkPhysicalDevice* devices = new VkPhysicalDevice[deviceCount];
