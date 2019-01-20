@@ -2,6 +2,15 @@
 
 namespace vkr
 {
+	struct Buffer
+	{
+		VkBuffer Buffer;
+		VkDeviceMemory DeviceMemory;
+		VkDeviceSize size;
+		VkBufferUsageFlags usage;
+		void* data;
+	};
+
 	// TODO: Instead of failing pass 2 VkMemoryPropertyFlags params, required and optional
 	// and don't fail in case the optional flags are not supported
 	uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t memoryTypeBits, VkMemoryPropertyFlags properties)

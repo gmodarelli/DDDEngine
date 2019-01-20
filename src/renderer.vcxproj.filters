@@ -33,15 +33,6 @@
     <ClInclude Include="VulkanShaderAndUniforms.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanDescriptors.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanPipeline.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanRenderLoop.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanDebug.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -131,6 +122,12 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="..\data\shaders\simple.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\glft.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\glft.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

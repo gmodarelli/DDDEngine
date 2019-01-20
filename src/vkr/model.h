@@ -160,6 +160,7 @@ namespace glTF
 		} indices;
 
 		std::vector<Node*> nodes;
+		std::vector<Node*> linearNodes;
 
 		struct Dimensions {
 			glm::vec3 min = glm::vec3(FLT_MAX);
@@ -372,6 +373,7 @@ namespace glTF
 			{
 				nodes.push_back(newNode);
 			}
+			linearNodes.push_back(newNode);
 		}
 
 		void loadFromFile(const char* path, vkr::VulkanDevice* device, float scale = 1.0f)

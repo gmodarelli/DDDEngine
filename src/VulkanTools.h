@@ -16,20 +16,14 @@
 #include "volk.h"
 #include <vector>
 
-#include "VulkanTypes.h"
 #include "VulkanDebug.h"
 
 #include "vkr/device.h" 
 #include "vkr/swapchain.h"
 
 #include "VulkanShaderAndUniforms.h"
-#include "VulkanDescriptors.h"
-#include "VulkanPipeline.h"
 
 #include "vkr/buffer.h"
 #include "vkr/model.h"
-#include "vkr/scene.h"
-
-#include "VulkanRenderLoop.h"
 
 #endif // VULKAN_TOOLS_H_

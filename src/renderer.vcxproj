@@ -110,6 +110,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/assimp/include;../extern/meshoptimizer/src;../extern/meshoptimizer/tools</AdditionalIncludeDirectories>
+      <SupportJustMyCode>true</SupportJustMyCode>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -173,13 +174,13 @@
     <ClInclude Include="vkr\utils.h" />
     <ClInclude Include="VulkanTypes.h" />
     <ClInclude Include="VulkanDebug.h" />
-    <ClInclude Include="VulkanDescriptors.h" />
-    <ClInclude Include="VulkanPipeline.h" />
-    <ClInclude Include="VulkanRenderLoop.h" />
     <ClInclude Include="VulkanShaderAndUniforms.h" />
     <ClInclude Include="VulkanTools.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\data\shaders\glft.vert">
+      <FileType>Document</FileType>
+    </None>
     <ClCompile Include="..\extern\meshoptimizer\src\clusterizer.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\indexcodec.cpp" />
     <ClCompile Include="..\extern\meshoptimizer\src\indexgenerator.cpp" />
@@ -197,6 +198,7 @@
     <ClCompile Include="win32_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\data\shaders\glft.frag" />
     <None Include="..\data\shaders\simple.frag" />
     <None Include="..\data\shaders\simple.vert" />
   </ItemGroup>

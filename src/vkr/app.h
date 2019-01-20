@@ -2,6 +2,7 @@
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "../VulkanTools.h"
+#include "camera.h"
 
 namespace vkr
 {
@@ -410,10 +411,11 @@ namespace vkr
 		void initMainCamera()
 		{
 			mainCamera.type = vkr::Camera::CameraType::firstperson;
-			mainCamera.movementSpeed = 7.5f;
-			mainCamera.position = { 55.0f, -13.5f, 0.0f };
-			mainCamera.setRotation(glm::vec3(5.0f, 90.0f, 0.0f));
-			mainCamera.setPerspective(60.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
+			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 2560.0f);
+			mainCamera.rotationSpeed = 0.25f;
+			mainCamera.movementSpeed = 0.1f;
+			mainCamera.setPosition({ 0.0f, 0.0f, 2.5f });
+			mainCamera.setRotation({ 0.0f, 0.0f, 0.0f });
 		}
 
 		void prepareCommandBuffers()
