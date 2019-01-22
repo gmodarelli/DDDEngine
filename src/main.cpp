@@ -556,6 +556,7 @@ int main()
 	// Load the scene models
 	// models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
 	models.scene.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
+
 	float scale = 1.0f / models.scene.dimensions.radius;
 	app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
 

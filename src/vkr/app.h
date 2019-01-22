@@ -45,6 +45,13 @@ namespace vkr
 		std::vector<VkCommandBuffer> commandBuffers;
 
 		vkr::Camera mainCamera;
+		glm::vec2 mousePos;
+
+		struct MouseButtons {
+			bool left = false;
+			bool right = false;
+			bool middle = false;
+		} mouseButtons;
 
 		App() {}
 
@@ -168,12 +175,12 @@ namespace vkr
 				{
 					printf("The window is active, should start the app\n");
 				}
-				return 0;
+				break;
 
 			case WM_DESTROY:
 				// WM_DESTROY is sent when the window is being destroyed.
 				PostQuitMessage(0);
-				return 0;
+				break;
 
 			case WM_MENUCHAR:
 				// THE WM_MENUCHAR is sent when a menu is active and the user
@@ -186,23 +193,40 @@ namespace vkr
 				// Catch this message so to prevent the window from becoming too small.
 				((MINMAXINFO*)lParam)->ptMinTrackSize.x = 200;
 				((MINMAXINFO*)lParam)->ptMinTrackSize.y = 200;
-				return 0;
+				break;
 
 			case WM_LBUTTONDOWN:
+				mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
+				mouseButtons.left = true;
+				break;
 			case WM_RBUTTONDOWN:
+				mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
+				mouseButtons.right = true;
+				break;
 			case WM_MBUTTONDOWN:
-				onMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-				return 0;
-
+				mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
+				mouseButtons.middle = true;
+				break;
 			case WM_LBUTTONUP:
+				mouseButtons.left = false;
+				break;
 			case WM_RBUTTONUP:
+				mouseButtons.right = false;
+				break;
 			case WM_MBUTTONUP:
-				onMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-				return 0;
+				mouseButtons.middle = false;
+				break;
 
 			case WM_MOUSEMOVE:
 				onMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-				return 0;
+				break;
+
+			case WM_MOUSEWHEEL:
+			{
+				short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+				mainCamera.translate(glm::vec3(0.0f, 0.0f, -(float)wheelDelta * 0.005f * mainCamera.movementSpeed));
+				break;
+			}
 
 			case WM_SYSKEYDOWN:
 			case WM_SYSKEYUP:
@@ -241,23 +265,25 @@ namespace vkr
 					}
 				}
 
-				return 0;
+				break;
 			}
-		}
-
-		void onMouseDown(WPARAM btnState, int x, int y)
-		{
-			
-		}
-
-		void onMouseUp(WPARAM btnState, int x, int y)
-		{
-			
 		}
 
 		void onMouseMove(WPARAM btnState, int x, int y)
 		{
-			
+			int32_t dx = (int32_t)mousePos.x - x;
+			int32_t dy = (int32_t)mousePos.y - y;
+
+			if (mouseButtons.left) {
+				mainCamera.rotate(glm::vec3(dy * mainCamera.rotationSpeed, -dx * mainCamera.rotationSpeed, 0.0f));
+			}
+			if (mouseButtons.right) {
+				mainCamera.translate(glm::vec3(-0.0f, 0.0f, dy * .005f * mainCamera.movementSpeed));
+			}
+			if (mouseButtons.middle) {
+				mainCamera.translate(glm::vec3(-dx * 0.01f, -dy * 0.01f, 0.0f));
+			}
+			mousePos = glm::vec2((float)x, (float)y);
 		}
 #endif
 
@@ -409,7 +435,6 @@ namespace vkr
 		{
 			mainCamera.type = vkr::Camera::CameraType::firstperson;
 			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
-			mainCamera.movementSpeed = 7.5f;
 			mainCamera.setPosition({ 0.0f, 0.0f, 2.5f });
 			mainCamera.setRotation({ 0.0f, 0.0f, 0.0f });
 		}
