@@ -1,7 +1,7 @@
 #pragma once
 
-#include "vkr/utils.h"
-#include "vkr/device.h"
+#include "vulkan/utils.h"
+#include "vulkan/device.h"
 
 namespace gm
 {

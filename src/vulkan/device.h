@@ -8,7 +8,7 @@
 
 #include "volk.h"
 
-#include "vkr/utils.h"
+#include "vulkan/utils.h"
 #include <vector>
 
 namespace gm

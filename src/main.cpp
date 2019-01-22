@@ -2,13 +2,13 @@
 #include <Windows.h>
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
-#include "vkr/utils.h"
-#include "vkr/device.h" 
-#include "vkr/swapchain.h"
-#include "vkr/buffer.h"
-#include "vkr/model.h"
-#include "vkr/shaders.h"
-#include "vkr/app.h"
+#include "vulkan/utils.h"
+#include "vulkan/device.h" 
+#include "vulkan/swapchain.h"
+#include "vulkan/buffer.h"
+#include "vulkan/model.h"
+#include "vulkan/shaders.h"
+#include "vulkan/app.h"
 
 #include <assert.h>
 #include <stdio.h>

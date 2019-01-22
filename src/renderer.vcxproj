@@ -162,16 +162,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="vkr\app.h" />
-    <ClInclude Include="vkr\buffer.h" />
-    <ClInclude Include="vkr\camera.h" />
-    <ClInclude Include="vkr\device.h" />
-    <ClInclude Include="vkr\model.h" />
-    <ClInclude Include="vkr\shaders.h" />
-    <ClInclude Include="vkr\swapchain.h" />
-    <ClInclude Include="vkr\utils.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
     </None>
@@ -182,6 +172,16 @@
     <None Include="..\data\shaders\glft.frag" />
     <None Include="..\data\shaders\simple.frag" />
     <None Include="..\data\shaders\simple.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="vulkan\app.h" />
+    <ClInclude Include="vulkan\buffer.h" />
+    <ClInclude Include="vulkan\camera.h" />
+    <ClInclude Include="vulkan\device.h" />
+    <ClInclude Include="vulkan\model.h" />
+    <ClInclude Include="vulkan\shaders.h" />
+    <ClInclude Include="vulkan\swapchain.h" />
+    <ClInclude Include="vulkan\utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
