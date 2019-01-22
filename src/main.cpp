@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <chrono>
 
-vkr::App* app;
+gm::App* app;
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -34,7 +34,7 @@ float scale = 1.0f;
 
 struct Models
 {
-	vkr::glTF::Model scene;
+	gm::Model scene;
 } models;
 
 // We need to create the buffers that will hold the data for our two uniform buffers
@@ -116,7 +116,7 @@ void prepareUniformBuffers()
 	for (auto &uniformBuffer : uniformBuffers)
 	{
 		// TODO: this creating and mapping could be moved into its own buffer struct
-		VKR_CHECK(vkr::createBuffer(
+		GM_CHECK(gm::createBuffer(
 			app->device,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -124,7 +124,7 @@ void prepareUniformBuffers()
 			&uniformBuffer.scene.buffer,
 			&uniformBuffer.scene.memory), "Failed to create uniform buffer");
 
-		VKR_CHECK(vkMapMemory(
+		GM_CHECK(vkMapMemory(
 			app->device->Device,
 			uniformBuffer.scene.memory,
 			0,
@@ -138,7 +138,7 @@ void prepareUniformBuffers()
 }
 
 
-void setupNodeDescriptorSet(vkr::glTF::Node* node)
+void setupNodeDescriptorSet(gm::Node* node)
 {
 	if (node->mesh)
 	{
@@ -147,7 +147,7 @@ void setupNodeDescriptorSet(vkr::glTF::Node* node)
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &descriptorSetLayouts.node;
 		VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet);
-		VKR_ASSERT(result == VK_SUCCESS);
+		GM_ASSERT(result == VK_SUCCESS);
 
 		// VKR_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet), "Failed to allocate descriptor set per node");
 
@@ -168,12 +168,12 @@ void setupNodeDescriptorSet(vkr::glTF::Node* node)
 void setupDescriptors()
 {
 	// Assert that the model is loaded
-	VKR_ASSERT(models.scene.linearNodes.size() > 0);
+	GM_ASSERT(models.scene.linearNodes.size() > 0);
 	// Assert that the descriptor sets has been resized
-	VKR_ASSERT(descriptorSets.size() > 0);
+	GM_ASSERT(descriptorSets.size() > 0);
 
 	uint32_t meshCount = 0;
-	std::vector<vkr::glTF::Model*> modelList = { &models.scene };
+	std::vector<gm::Model*> modelList = { &models.scene };
 	for (auto& model : modelList)
 	{
 		for (auto node : model->linearNodes)
@@ -193,7 +193,7 @@ void setupDescriptors()
 		createInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		createInfo.pPoolSizes = poolSizes.data();
 		createInfo.maxSets = (2 + meshCount) * app->maxFramesInFlight;
-		VKR_CHECK(vkCreateDescriptorPool(app->device->Device, &createInfo, nullptr, &descriptorPool), "Failed to create the descriptor pool");
+		GM_CHECK(vkCreateDescriptorPool(app->device->Device, &createInfo, nullptr, &descriptorPool), "Failed to create the descriptor pool");
 	}
 
 	// Descriptor sets
@@ -206,7 +206,7 @@ void setupDescriptors()
 		VkDescriptorSetLayoutCreateInfo createInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 		createInfo.pBindings = setLayoutBindings.data();
-		VKR_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.scene), "Failed to create descriptor set layout for the scene");
+		GM_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.scene), "Failed to create descriptor set layout for the scene");
 
 		for (auto i = 0; i < descriptorSets.size(); ++i)
 		{
@@ -214,7 +214,7 @@ void setupDescriptors()
 			allocInfo.descriptorPool = descriptorPool;
 			allocInfo.pSetLayouts = &descriptorSetLayouts.scene;
 			allocInfo.descriptorSetCount = 1;
-			VKR_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
+			GM_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
 
 			// TODO: Add more write descriptor sets once we have textures
 			std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
@@ -239,7 +239,7 @@ void setupDescriptors()
 		VkDescriptorSetLayoutCreateInfo createInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 		createInfo.pBindings = setLayoutBindings.data();
-		VKR_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.node), "Failed to create descriptor set layout for the node");
+		GM_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.node), "Failed to create descriptor set layout for the node");
 
 		// Per-node descriptor set
 		for (auto& node : models.scene.nodes)
@@ -314,10 +314,10 @@ void preparePipelines()
 	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
 	// TODO: When we have materials we need to add push constant ranges
-	VKR_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
+	GM_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
 
 	// Vertex bindings and attributes
-	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(vkr::glTF::Model::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
+	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::Model::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
 		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 }, // Position
 		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3 }, // Normal
@@ -336,7 +336,7 @@ void preparePipelines()
 	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
-	vkr::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
+	gm::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
 
 	shaderStages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -366,9 +366,9 @@ void preparePipelines()
 
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	VKR_CHECK(vkCreatePipelineCache(app->device->Device, &pipelineCacheCreateInfo, nullptr, &pipelineCache), "Failed to create the pipeline cache");
+	GM_CHECK(vkCreatePipelineCache(app->device->Device, &pipelineCacheCreateInfo, nullptr, &pipelineCache), "Failed to create the pipeline cache");
 
-	VKR_CHECK(vkCreateGraphicsPipelines(app->device->Device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipelines.scene), "Failed to create graphics pipeline for the scene");
+	GM_CHECK(vkCreateGraphicsPipelines(app->device->Device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipelines.scene), "Failed to create graphics pipeline for the scene");
 
 	for (auto shaderStage : shaderStages)
 	{
@@ -376,12 +376,12 @@ void preparePipelines()
 	}
 }
 
-void renderNode(vkr::glTF::Node* node, uint32_t cbIndex)
+void renderNode(gm::Node* node, uint32_t cbIndex)
 {
 	if (node->mesh)
 	{
 		// Render all the primitives
-		for (vkr::glTF::Primitive* primitive : node->mesh->primitives)
+		for (gm::Primitive* primitive : node->mesh->primitives)
 		{
 			// TODO: When we have materials we need to load the descriptor sets for the material as well
 			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[cbIndex].scene, node->mesh->uniformBuffer.descriptorSet };
@@ -421,7 +421,7 @@ void recordCommands()
 		renderPassBeginInfo.framebuffer = app->framebuffers[i];
 		VkCommandBuffer currentCB = app->commandBuffers[i];
 
-		VKR_CHECK(vkBeginCommandBuffer(currentCB, &cmdBufferBeginInfo), "Failed to begin command buffer");
+		GM_CHECK(vkBeginCommandBuffer(currentCB, &cmdBufferBeginInfo), "Failed to begin command buffer");
 		// TODO: What it VK_SUBPASS_CONTENTS_INLINE?
 		vkCmdBeginRenderPass(currentCB, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		
@@ -440,7 +440,7 @@ void recordCommands()
 		// TODO: When we introduce a skybox, this is where we would bind its pipeline
 
 		vkCmdBindPipeline(currentCB, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.scene);
-		vkr::glTF::Model& model = models.scene;
+		gm::Model& model = models.scene;
 
 		vkCmdBindVertexBuffers(currentCB, 0, 1, &model.vertices.buffer, offsets);
 		vkCmdBindIndexBuffer(currentCB, model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -456,7 +456,7 @@ void recordCommands()
 		}
 
 		vkCmdEndRenderPass(currentCB);
-		VKR_CHECK(vkEndCommandBuffer(currentCB), "Failed to end the command buffer");
+		GM_CHECK(vkEndCommandBuffer(currentCB), "Failed to end the command buffer");
 	}
 }
 
@@ -473,8 +473,8 @@ void render(VkQueue queue, VkQueue presentQueue)
 		return;
 	}
 
-	VKR_CHECK(vkWaitForFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence");
-	VKR_CHECK(vkResetFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to reset fences");
+	GM_CHECK(vkWaitForFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence");
+	GM_CHECK(vkResetFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to reset fences");
 
 	uint32_t nextImageIndex;
 	VkResult acquire = vkAcquireNextImageKHR(app->device->Device, app->swapchain->Swapchain, UINT64_MAX, app->syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex);
@@ -484,7 +484,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	}
 	else
 	{
-		VKR_ASSERT(acquire == VK_SUCCESS);
+		GM_ASSERT(acquire == VK_SUCCESS);
 	}
 
 	updateUniformBuffers();
@@ -500,7 +500,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	submitInfo.pCommandBuffers = &app->commandBuffers[currentFrameIndex];
 	submitInfo.commandBufferCount = 1;
 
-	VKR_CHECK(vkQueueSubmit(queue, 1, &submitInfo, app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to submit to queue");
+	GM_CHECK(vkQueueSubmit(queue, 1, &submitInfo, app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to submit to queue");
 
 	// Present the backbuffer
 	VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -517,7 +517,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 			return;
 		}
 		else {
-			VKR_ASSERT(present == VK_SUCCESS);
+			GM_ASSERT(present == VK_SUCCESS);
 		}
 	}
 
@@ -548,7 +548,7 @@ int main()
 {
 	uint32_t currentFrameIndex = 0;
 
-	app = new vkr::App();
+	app = new gm::App();
 	app->initVulkan();
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();

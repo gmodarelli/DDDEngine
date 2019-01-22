@@ -2,7 +2,7 @@
 
 #include "camera.h"
 
-namespace vkr
+namespace gm
 {
 	struct App
 	{
@@ -16,8 +16,8 @@ namespace vkr
 		HWND window;
 #endif
 
-		vkr::VulkanDevice* device;
-		vkr::VulkanSwapchain* swapchain;
+		gm::VulkanDevice* device;
+		gm::VulkanSwapchain* swapchain;
 
 		VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
 		// This format include stencil as well VK_FORMAT_D16_UNORM_S8_UINT
@@ -44,7 +44,7 @@ namespace vkr
 		uint32_t commandBufferCount = 0;
 		std::vector<VkCommandBuffer> commandBuffers;
 
-		vkr::Camera mainCamera;
+		gm::Camera mainCamera;
 		glm::vec2 mousePos;
 
 		struct MouseButtons {
@@ -290,12 +290,12 @@ namespace vkr
 		void prepare()
 		{
 			VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
-			device = new vkr::VulkanDevice(hInstance, window, requiredQueues);
+			device = new gm::VulkanDevice(hInstance, window, requiredQueues);
 
 			VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
 			VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
-			swapchain = new vkr::VulkanSwapchain(*device, desiredFormat, desiredPresentMode, width, height);
+			swapchain = new gm::VulkanSwapchain(*device, desiredFormat, desiredPresentMode, width, height);
 
 			prepareRenderPass();
 			prepareDepthBuffer();
@@ -357,7 +357,7 @@ namespace vkr
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
 
-			VKR_CHECK(vkCreateRenderPass(device->Device, &renderPassInfo, nullptr, &renderPass), "Failed to create the render pass");
+			GM_CHECK(vkCreateRenderPass(device->Device, &renderPassInfo, nullptr, &renderPass), "Failed to create the render pass");
 		}
 
 		void prepareDepthBuffer()
@@ -377,7 +377,7 @@ namespace vkr
 			imageInfo.pQueueFamilyIndices = nullptr;
 			imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-			VKR_CHECK(vkCreateImage(device->Device, &imageInfo, nullptr, &depthBuffer.Image), "Failed to create depth buffer image");
+			GM_CHECK(vkCreateImage(device->Device, &imageInfo, nullptr, &depthBuffer.Image), "Failed to create depth buffer image");
 
 			// Query for the memory requirements of the depth buffer
 			VkMemoryRequirements memoryRequirements;
@@ -386,11 +386,11 @@ namespace vkr
 			// Allocate memory for the depth buffer
 			VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 			allocateInfo.allocationSize = memoryRequirements.size;
-			allocateInfo.memoryTypeIndex = vkr::findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocateInfo.memoryTypeIndex = gm::findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 			depthBuffer.ImageMemory = { 0 };
-			VKR_CHECK(vkAllocateMemory(device->Device, &allocateInfo, nullptr, &depthBuffer.ImageMemory), "Failed to allocate memory for the depth buffer");
-			VKR_CHECK(vkBindImageMemory(device->Device, depthBuffer.Image, depthBuffer.ImageMemory, 0), "Faild to bind memory to the depth buffer");
+			GM_CHECK(vkAllocateMemory(device->Device, &allocateInfo, nullptr, &depthBuffer.ImageMemory), "Failed to allocate memory for the depth buffer");
+			GM_CHECK(vkBindImageMemory(device->Device, depthBuffer.Image, depthBuffer.ImageMemory, 0), "Faild to bind memory to the depth buffer");
 
 			// Create the depth image view
 			VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -405,7 +405,7 @@ namespace vkr
 			imageViewInfo.subresourceRange.baseArrayLayer = 0;
 			imageViewInfo.subresourceRange.layerCount = 1;
 
-			VKR_CHECK(vkCreateImageView(device->Device, &imageViewInfo, nullptr, &depthBuffer.ImageView), "Failed to create depth image view");
+			GM_CHECK(vkCreateImageView(device->Device, &imageViewInfo, nullptr, &depthBuffer.ImageView), "Failed to create depth image view");
 		}
 
 		void prepareFrameBuffers()
@@ -427,13 +427,13 @@ namespace vkr
 				createInfo.height = swapchain->ImageExtent.height;
 				createInfo.layers = 1;
 
-				VKR_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]), "");
+				GM_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]), "");
 			}
 		}
 
 		void initMainCamera()
 		{
-			mainCamera.type = vkr::Camera::CameraType::firstperson;
+			mainCamera.type = gm::Camera::CameraType::firstperson;
 			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
 			mainCamera.setPosition({ 0.0f, 0.0f, 2.5f });
 			mainCamera.setRotation({ 0.0f, 0.0f, 0.0f });
@@ -442,7 +442,7 @@ namespace vkr
 		void prepareCommandBuffers()
 		{
 			commandBufferCount = static_cast<uint32_t>(framebuffers.size());
-			VKR_ASSERT(commandBufferCount > 0);
+			GM_ASSERT(commandBufferCount > 0);
 
 			VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 			allocateInfo.commandPool = device->PresentCommandPool;
@@ -451,7 +451,7 @@ namespace vkr
 
 			commandBuffers.resize(commandBufferCount);
 
-			VKR_CHECK(vkAllocateCommandBuffers(device->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
+			GM_CHECK(vkAllocateCommandBuffers(device->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
 		}
 
 		void prepareSyncObjects()
@@ -467,9 +467,9 @@ namespace vkr
 
 			for (size_t i = 0; i < maxFramesInFlight; ++i)
 			{
-				VKR_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]), "");
-				VKR_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]), "");
-				VKR_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]), "");
+				GM_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]), "");
+				GM_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]), "");
+				GM_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]), "");
 			}
 		}
 	};

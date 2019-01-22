@@ -14,9 +14,7 @@
 
 #include <vector>
 
-namespace vkr
-{
-namespace glTF
+namespace gm
 {
 	struct Primitive
 	{
@@ -47,7 +45,7 @@ namespace glTF
 
 	struct Mesh
 	{
-		vkr::VulkanDevice* device;
+		gm::VulkanDevice* device;
 
 		std::vector<Primitive*> primitives;
 
@@ -65,12 +63,12 @@ namespace glTF
 			glm::mat4 matrix;
 		} uniformBlock;
 
-		Mesh(vkr::VulkanDevice* device, glm::mat4 matrix)
+		Mesh(gm::VulkanDevice* device, glm::mat4 matrix)
 		{
 			this->device = device;
 			this->uniformBlock.matrix = matrix;
 
-			VKR_CHECK(vkr::createBuffer(
+			GM_CHECK(gm::createBuffer(
 				device,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -79,7 +77,7 @@ namespace glTF
 				&uniformBuffer.memory,
 				&uniformBlock), "Failed to create uniform buffer");
 
-			VKR_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(uniformBlock), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
+			GM_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(uniformBlock), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
 			uniformBuffer.descriptor = { uniformBuffer.buffer, 0, sizeof(uniformBlock) };
 		};
 
@@ -124,7 +122,7 @@ namespace glTF
 		glm::mat4 getMatrix()
 		{
 			glm::mat4 m = localMatrix();
-			glTF::Node* p = parent;
+			gm::Node* p = parent;
 			while (p)
 			{
 				m = p->localMatrix() * m;
@@ -137,7 +135,7 @@ namespace glTF
 
 	struct Model
 	{
-		vkr::VulkanDevice* device;
+		gm::VulkanDevice* device;
 
 		struct Vertex
 		{
@@ -216,9 +214,9 @@ namespace glTF
 			}
 		}
 
-		void loadNode(glTF::Node* parent, const tinygltf::Node& node, uint32_t nodeIndex, const tinygltf::Model& model, std::vector<uint32_t>& indexBuffer, std::vector<glTF::Model::Vertex>& vertexBuffer, float globalScale)
+		void loadNode(gm::Node* parent, const tinygltf::Node& node, uint32_t nodeIndex, const tinygltf::Model& model, std::vector<uint32_t>& indexBuffer, std::vector<gm::Model::Vertex>& vertexBuffer, float globalScale)
 		{
-			glTF::Node* newNode = new glTF::Node{};
+			gm::Node* newNode = new gm::Node{};
 			newNode->index = nodeIndex;
 			newNode->parent = parent;
 			newNode->name = node.name;
@@ -264,7 +262,7 @@ namespace glTF
 			if (node.mesh > -1)
 			{
 				const tinygltf::Mesh mesh = model.meshes[node.mesh];
-				glTF::Mesh *newMesh = new glTF::Mesh(device, newNode->matrix);
+				gm::Mesh *newMesh = new gm::Mesh(device, newNode->matrix);
 				for (size_t j = 0; j < mesh.primitives.size(); ++j)
 				{
 					const tinygltf::Primitive& primitive = mesh.primitives[j];
@@ -283,7 +281,7 @@ namespace glTF
 						const float* bufferTexCoords = nullptr;
 
 						// Position attribute is required
-						VKR_ASSERT(primitive.attributes.find("POSITION") != primitive.attributes.end());
+						GM_ASSERT(primitive.attributes.find("POSITION") != primitive.attributes.end());
 
 						const tinygltf::Accessor& posAccessor = model.accessors[primitive.attributes.find("POSITION")->second];
 						const tinygltf::BufferView& posView = model.bufferViews[posAccessor.bufferView];
@@ -307,7 +305,7 @@ namespace glTF
 
 						for (size_t v = 0; v < posAccessor.count; ++v)
 						{
-							glTF::Model::Vertex vert{};
+							gm::Model::Vertex vert{};
 							vert.position = glm::vec4(glm::make_vec3(&bufferPos[v * 3]), 1.0f);
 							vert.normal = glm::normalize(glm::vec3(bufferNormals ? glm::make_vec3(&bufferNormals[v * 3]) : glm::vec3(0.0f)));
 							vert.uv = bufferTexCoords ? glm::make_vec2(&bufferTexCoords[v * 2]) : glm::vec3(0.0f);
@@ -352,13 +350,13 @@ namespace glTF
 							break;
 						}
 						default:
-							VKR_ASSERT(!"Index component type not supported!");
+							GM_ASSERT(!"Index component type not supported!");
 							return;
 						}
 					}
 
 					// TODO: Add material
-					glTF::Primitive* newPrimitive = new glTF::Primitive(indexStart, indexCount);
+					gm::Primitive* newPrimitive = new gm::Primitive(indexStart, indexCount);
 					newPrimitive->setDimensions(posMin, posMax);
 					newMesh->primitives.push_back(newPrimitive);
 				}
@@ -376,7 +374,7 @@ namespace glTF
 			linearNodes.push_back(newNode);
 		}
 
-		void loadFromFile(const char* path, vkr::VulkanDevice* device, float scale = 1.0f)
+		void loadFromFile(const char* path, gm::VulkanDevice* device, float scale = 1.0f)
 		{
 			tinygltf::Model gltfModel;
 			tinygltf::TinyGLTF gltfContext;
@@ -388,7 +386,7 @@ namespace glTF
 			bool fileLoaded = gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, path);
 
 			std::vector<uint32_t> indexBuffer;
-			std::vector<vkr::glTF::Model::Vertex> vertexBuffer;
+			std::vector<gm::Model::Vertex> vertexBuffer;
 
 			if (fileLoaded)
 			{
@@ -405,14 +403,14 @@ namespace glTF
 				char* message = new char[256];
 				sprintf(message, "Could not load file: %s\n", error.c_str());
 				printf(message);
-				VKR_ASSERT(false);
+				GM_ASSERT(false);
 			}
 
 			size_t vertexBufferSize = vertexBuffer.size() * sizeof(Model::Vertex);
 			size_t indexBufferSize = indexBuffer.size() * sizeof(uint32_t);
 			indices.count = static_cast<uint32_t>(indexBuffer.size());
 
-			VKR_ASSERT((vertexBufferSize > 0) && (indexBufferSize > 0));
+			GM_ASSERT((vertexBufferSize > 0) && (indexBufferSize > 0));
 
 			struct StagingBuffer
 			{
@@ -422,7 +420,7 @@ namespace glTF
 
 			// Create staging buffers
 			// Vertex data
-			VKR_CHECK(vkr::createBuffer(this->device,
+			GM_CHECK(gm::createBuffer(this->device,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				vertexBufferSize,
@@ -431,7 +429,7 @@ namespace glTF
 				vertexBuffer.data()), "Failed to upload vertices to staging buffer");
 
 			// Index data
-			VKR_CHECK(vkr::createBuffer(this->device,
+			GM_CHECK(gm::createBuffer(this->device,
 				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				indexBufferSize,
@@ -441,7 +439,7 @@ namespace glTF
 
 			// Create device local buffers
 			// Vertex buffer
-			VKR_CHECK(vkr::createBuffer(this->device,
+			GM_CHECK(gm::createBuffer(this->device,
 				VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				vertexBufferSize,
@@ -449,7 +447,7 @@ namespace glTF
 				&vertices.memory), "Failed to create vertex buffer");
 
 			// Index buffer
-			VKR_CHECK(vkr::createBuffer(this->device,
+			GM_CHECK(gm::createBuffer(this->device,
 				VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				indexBufferSize,
@@ -514,5 +512,4 @@ namespace glTF
 			}
 		}
 	};
-}
 }

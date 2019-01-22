@@ -3,7 +3,7 @@
 #include "vkr/utils.h"
 #include "vkr/device.h"
 
-namespace vkr
+namespace gm
 {
 	struct VulkanSwapchain
 	{
@@ -18,9 +18,9 @@ namespace vkr
 
 		VkExtent2D ImageExtent;
 
-		vkr::VulkanDevice VulkanDevice;
+		gm::VulkanDevice VulkanDevice;
 		
-		VulkanSwapchain(const vkr::VulkanDevice& vulkanDevice, VkSurfaceFormatKHR desiredFormat, VkPresentModeKHR desiredPresentMode, uint32_t windowWidth, uint32_t windowHeight)
+		VulkanSwapchain(const gm::VulkanDevice& vulkanDevice, VkSurfaceFormatKHR desiredFormat, VkPresentModeKHR desiredPresentMode, uint32_t windowWidth, uint32_t windowHeight)
 		{
 			VulkanDevice = vulkanDevice;
 
@@ -45,18 +45,18 @@ namespace vkr
 
 			// Surface support
 			VkBool32 surfaceSupported = VK_FALSE;
-			VKR_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(VulkanDevice.PhysicalDevice, VulkanDevice.GraphicsFamilyIndex, VulkanDevice.Surface, &surfaceSupported), "Surface not supported");
-			VKR_ASSERT(surfaceSupported == VK_TRUE && "The physical device does not support this surface");
+			GM_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(VulkanDevice.PhysicalDevice, VulkanDevice.GraphicsFamilyIndex, VulkanDevice.Surface, &surfaceSupported), "Surface not supported");
+			GM_ASSERT(surfaceSupported == VK_TRUE && "The physical device does not support this surface");
 			swapchainCreateInfo.surface = VulkanDevice.Surface;
 
 			// Query for the physical device surface capabilities
 			VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
-			VKR_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &surfaceCapabilities), "Failed to fetch surface capabilities");
+			GM_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &surfaceCapabilities), "Failed to fetch surface capabilities");
 
 			swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
 
 			// Image Count (Trying to aqcuire minImageCount + 1 images)
-			VKR_ASSERT(surfaceCapabilities.minImageCount >= 2 && "The physical device does not support double buffering");
+			GM_ASSERT(surfaceCapabilities.minImageCount >= 2 && "The physical device does not support double buffering");
 			ImageCount = surfaceCapabilities.minImageCount + 1;
 			if (surfaceCapabilities.maxImageCount > 0 && ImageCount > surfaceCapabilities.maxImageCount)
 			{
@@ -84,10 +84,10 @@ namespace vkr
 
 			// Present Mode
 			uint32_t presentModeCount = 0;
-			VKR_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &presentModeCount, nullptr), "Failed to enumerate present modes");
-			VKR_ASSERT(presentModeCount > 0 && "This physical device doesn't support any present mode");
+			GM_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &presentModeCount, nullptr), "Failed to enumerate present modes");
+			GM_ASSERT(presentModeCount > 0 && "This physical device doesn't support any present mode");
 			VkPresentModeKHR* presentModes = new VkPresentModeKHR[presentModeCount];
-			VKR_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &presentModeCount, &presentModes[0]), "Failed to enumerate present modes");
+			GM_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &presentModeCount, &presentModes[0]), "Failed to enumerate present modes");
 
 			for (uint32_t i = 0; i < presentModeCount; ++i)
 			{
@@ -99,17 +99,17 @@ namespace vkr
 			}
 			swapchainCreateInfo.presentMode = PresentMode;
 
-			VKR_CHECK(vkCreateSwapchainKHR(VulkanDevice.Device, &swapchainCreateInfo, nullptr, &Swapchain), "Failed to create the swapchain");
+			GM_CHECK(vkCreateSwapchainKHR(VulkanDevice.Device, &swapchainCreateInfo, nullptr, &Swapchain), "Failed to create the swapchain");
 
 			// Create the images for double/triple buffering
 			// NOTE: Although we specified a minImageCount when we've created the swapchain, the driver implementation is allowed to create
 			// more than `minImageCount`. For this reason we have to query the image count
 			uint32_t imageCount = 0;
-			VKR_CHECK(vkGetSwapchainImagesKHR(VulkanDevice.Device, Swapchain, &imageCount, nullptr), "Failed to get the image count");
-			VKR_ASSERT(imageCount >= ImageCount);
+			GM_CHECK(vkGetSwapchainImagesKHR(VulkanDevice.Device, Swapchain, &imageCount, nullptr), "Failed to get the image count");
+			GM_ASSERT(imageCount >= ImageCount);
 			ImageCount = imageCount;
 			Images = new VkImage[ImageCount];
-			VKR_CHECK(vkGetSwapchainImagesKHR(VulkanDevice.Device, Swapchain, &imageCount, &Images[0]), "Failed to get the images");
+			GM_CHECK(vkGetSwapchainImagesKHR(VulkanDevice.Device, Swapchain, &imageCount, &Images[0]), "Failed to get the images");
 
 			ImageViews = new VkImageView[ImageCount];
 			for (uint32_t i = 0; i < ImageCount; ++i)
@@ -128,7 +128,7 @@ namespace vkr
 				imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
 				imageViewCreateInfo.subresourceRange.layerCount = 1;
 
-				VKR_CHECK(vkCreateImageView(VulkanDevice.Device, &imageViewCreateInfo, nullptr, &ImageViews[i]), "Failed to create image view");
+				GM_CHECK(vkCreateImageView(VulkanDevice.Device, &imageViewCreateInfo, nullptr, &ImageViews[i]), "Failed to create image view");
 			}
 		}
 
@@ -165,10 +165,10 @@ namespace vkr
 
 			// Image Format and Color Space support
 			uint32_t formatCount = 0;
-			VKR_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &formatCount, nullptr), "Failed to fetch physical device surface formats");
-			VKR_ASSERT(formatCount > 0 && "No formats supported");
+			GM_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &formatCount, nullptr), "Failed to fetch physical device surface formats");
+			GM_ASSERT(formatCount > 0 && "No formats supported");
 			VkSurfaceFormatKHR* surfaceFormats = new VkSurfaceFormatKHR[formatCount];
-			VKR_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &formatCount, &surfaceFormats[0]), "Failed to fetch physical device surface formats");
+			GM_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(VulkanDevice.PhysicalDevice, VulkanDevice.Surface, &formatCount, &surfaceFormats[0]), "Failed to fetch physical device surface formats");
 
 			if (formatCount == 1 && surfaceFormats[0].format == VK_FORMAT_UNDEFINED)
 			{

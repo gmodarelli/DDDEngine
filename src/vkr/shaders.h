@@ -5,14 +5,14 @@
 
 #include "utils.h"
 
-namespace vkr
+namespace gm
 {
 	void readCode(const char* path, char* outCode, uint32_t* outCodeSize)
 	{
 		FILE* fileHandle = NULL;
 		fileHandle = fopen(path, "rb");
 		printf("Trying to open: %s\n", path);
-		VKR_ASSERT(fileHandle != NULL && "Could not find the file");
+		GM_ASSERT(fileHandle != NULL && "Could not find the file");
 		*outCodeSize = static_cast<uint32_t>(fread(outCode, 1, 10000, fileHandle));
 		fclose(fileHandle);
 		fileHandle = NULL;
@@ -31,7 +31,7 @@ namespace vkr
 		vertexShaderCreateInfo.codeSize = codeSize;
 		vertexShaderCreateInfo.pCode = (uint32_t*)code;
 
-		VKR_CHECK(vkCreateShaderModule(device, &vertexShaderCreateInfo, nullptr, outVertShaderModule), "");
+		GM_CHECK(vkCreateShaderModule(device, &vertexShaderCreateInfo, nullptr, outVertShaderModule), "");
 
 		readCode(fragShaderPath, code, &codeSize);
 
@@ -39,7 +39,7 @@ namespace vkr
 		fragmentShaderCreateInfo.codeSize = codeSize;
 		fragmentShaderCreateInfo.pCode = (uint32_t*)code;
 
-		VKR_CHECK(vkCreateShaderModule(device, &fragmentShaderCreateInfo, nullptr, outFragShaderModule), "");
+		GM_CHECK(vkCreateShaderModule(device, &fragmentShaderCreateInfo, nullptr, outFragShaderModule), "");
 
 		delete[] code;
 		code = NULL;

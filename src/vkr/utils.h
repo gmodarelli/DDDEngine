@@ -17,13 +17,13 @@
 #include <assert.h>
 #include <stdio.h>
 
-#define VKR_CHECK(call, message) \
+#define GM_CHECK(call, message) \
 	do { \
 		VkResult result = call; \
 		assert(result == VK_SUCCESS && message); \
 	} while (0);
 
-#define VKR_ASSERT(x) assert(x)
+#define GM_ASSERT(x) assert(x)
 
 #else
 
@@ -36,7 +36,7 @@
 #define ARRAYSIZE(array) sizeof(array) / sizeof(array[0])
 #endif
 
-namespace vkr
+namespace gm
 {
 	static VkBool32 checkExtensionSupport(const char* extensionName, VkExtensionProperties* availableExtensions, uint32_t extensionsCount)
 	{
@@ -76,7 +76,7 @@ namespace vkr
 
 		printf(message);
 
-		VKR_ASSERT(!"Validation error encountered!");
+		GM_ASSERT(!"Validation error encountered!");
 		return VK_FALSE;
 #endif
 	}

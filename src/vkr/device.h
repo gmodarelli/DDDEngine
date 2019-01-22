@@ -11,7 +11,7 @@
 #include "vkr/utils.h"
 #include <vector>
 
-namespace vkr
+namespace gm
 {
 	struct VulkanDevice
 	{
@@ -75,7 +75,7 @@ namespace vkr
 		VulkanDevice(HINSTANCE hInstance, HWND hwnd, VkQueueFlags requiredQueues)
 		{
 			// Load the Vulkan Library
-			VKR_CHECK(volkInitialize(), "Failed to load the Vulkan Library");
+			GM_CHECK(volkInitialize(), "Failed to load the Vulkan Library");
 
 			enableInstanceLayers();
 			enableInstanceExtensions();
@@ -166,7 +166,7 @@ namespace vkr
 			createInfo.queryCount = queryCount;
 			createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
 			VkQueryPool queryPool = VK_NULL_HANDLE;
-			VKR_CHECK(vkCreateQueryPool(Device, &createInfo, nullptr, &queryPool), "Failed to create query pool");
+			GM_CHECK(vkCreateQueryPool(Device, &createInfo, nullptr, &queryPool), "Failed to create query pool");
 
 			return queryPool;
 		}
@@ -184,7 +184,7 @@ namespace vkr
 			cmdPoolInfo.flags = createFlags;
 
 			VkCommandPool commandPool = VK_NULL_HANDLE;
-			VKR_CHECK(vkCreateCommandPool(Device, &cmdPoolInfo, nullptr, &commandPool), "Failed to create command pool");
+			GM_CHECK(vkCreateCommandPool(Device, &cmdPoolInfo, nullptr, &commandPool), "Failed to create command pool");
 			return commandPool;
 		}
 
@@ -197,13 +197,13 @@ namespace vkr
 
 #include <Windows.h>
 			VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the transfer pool");
+			GM_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the transfer pool");
 
 			// If requested, start recording for the new command buffer
 			if (begin)
 			{
 				VkCommandBufferBeginInfo cmdBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-				VKR_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
+				GM_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
 			}
 
 			return cmdBuffer;
@@ -217,13 +217,13 @@ namespace vkr
 			cmdBufferAllocateInfo.commandBufferCount = 1;
 
 			VkCommandBuffer cmdBuffer;
-			VKR_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the graphics pool");
+			GM_CHECK(vkAllocateCommandBuffers(Device, &cmdBufferAllocateInfo, &cmdBuffer), "Failed to allocate command buffer from the graphics pool");
 
 			// If requested, start recording for the new command buffer
 			if (begin)
 			{
 				VkCommandBufferBeginInfo cmdBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-				VKR_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
+				GM_CHECK(vkBeginCommandBuffer(cmdBuffer, &cmdBeginInfo), "Failed to begin recording commands");
 			}
 
 			return cmdBuffer;
@@ -231,7 +231,7 @@ namespace vkr
 
 		void flushCommandBuffer(VkCommandBuffer cmdBuffer, VkQueue queue, bool transferQueue, bool free = true)
 		{
-			VKR_CHECK(vkEndCommandBuffer(cmdBuffer), "Failed to end command buffer recording");
+			GM_CHECK(vkEndCommandBuffer(cmdBuffer), "Failed to end command buffer recording");
 
 			VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 			submitInfo.commandBufferCount = 1;
@@ -240,12 +240,12 @@ namespace vkr
 			// Create fence to ensure that the command buffer has finished executing
 			VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 			VkFence fence = VK_NULL_HANDLE;
-			VKR_CHECK(vkCreateFence(Device, &fenceInfo, nullptr, &fence), "Failed to create fence");
+			GM_CHECK(vkCreateFence(Device, &fenceInfo, nullptr, &fence), "Failed to create fence");
 
 			// Submit to the queue
-			VKR_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence), "Failed to submit commands to the queue");
+			GM_CHECK(vkQueueSubmit(queue, 1, &submitInfo, fence), "Failed to submit commands to the queue");
 			// Wait for the fence to signal that command buffer has finished executing
-			VKR_CHECK(vkWaitForFences(Device, 1, &fence, VK_TRUE, UINT64_MAX), "Failed waiting for the fence");
+			GM_CHECK(vkWaitForFences(Device, 1, &fence, VK_TRUE, UINT64_MAX), "Failed waiting for the fence");
 
 			vkDestroyFence(Device, fence, nullptr);
 
@@ -263,9 +263,9 @@ namespace vkr
 		void enableInstanceExtensions()
 		{
 			// Enumerate Instance Extensions
-			VKR_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionsCount, nullptr), "Failed to enumerate the instance extensions");
-			VKR_ASSERT(AvailableExtensionsCount > 0 && "No instance exntesions found");
-			VKR_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionsCount, &AvailableExtensions[0]), "Failed to fetch instance extensions");
+			GM_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionsCount, nullptr), "Failed to enumerate the instance extensions");
+			GM_ASSERT(AvailableExtensionsCount > 0 && "No instance exntesions found");
+			GM_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &AvailableExtensionsCount, &AvailableExtensions[0]), "Failed to fetch instance extensions");
 
 			const char* requiredExtensions[] =
 			{
@@ -278,7 +278,7 @@ namespace vkr
 
 			for (uint32_t i = 0; i < ARRAYSIZE(requiredExtensions); ++i)
 			{
-				VKR_ASSERT(vkr::checkExtensionSupport(requiredExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE);
+				GM_ASSERT(gm::checkExtensionSupport(requiredExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE);
 				EnabledExtensionNames[EnabledExtensionsCount++] = requiredExtensions[i];
 			}
 
@@ -290,7 +290,7 @@ namespace vkr
 
 			for (uint32_t i = 0; i < ARRAYSIZE(optionalExtensions); ++i)
 			{
-				if(vkr::checkExtensionSupport(optionalExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE)
+				if(gm::checkExtensionSupport(optionalExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE)
 					EnabledExtensionNames[EnabledExtensionsCount++] = optionalExtensions[i];
 			}
 #endif
@@ -299,9 +299,9 @@ namespace vkr
 		void enableInstanceLayers()
 		{
 			// Enumerate Instance Layers
-			VKR_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayersCount, nullptr), "Failed to enumerate the instance layers");
-			VKR_ASSERT(AvailableLayersCount > 0 && "No instance layers found");
-			VKR_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayersCount, &AvailableLayers[0]), "Failed to fetch instance layers");
+			GM_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayersCount, nullptr), "Failed to enumerate the instance layers");
+			GM_ASSERT(AvailableLayersCount > 0 && "No instance layers found");
+			GM_CHECK(vkEnumerateInstanceLayerProperties(&AvailableLayersCount, &AvailableLayers[0]), "Failed to fetch instance layers");
 
 #if _DEBUG
 			const char* layers[] = {
@@ -311,7 +311,7 @@ namespace vkr
 
 			for (uint32_t i = 0; i < ARRAYSIZE(layers); ++i)
 			{
-				if(vkr::checkLayerSupport(layers[i], AvailableLayers, AvailableLayersCount) == VK_TRUE)
+				if(gm::checkLayerSupport(layers[i], AvailableLayers, AvailableLayersCount) == VK_TRUE)
 					EnabledLayerNames[EnabledLayersCount++] = layers[i];
 			}
 #endif
@@ -320,7 +320,7 @@ namespace vkr
 		void createInstance()
 		{
 			// Application Info
-			VKR_CHECK(vkEnumerateInstanceVersion(&ApiVersion), "");
+			GM_CHECK(vkEnumerateInstanceVersion(&ApiVersion), "");
 			VkApplicationInfo applicationInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 			applicationInfo.pApplicationName = "VKR Vulkan Renderer";
 			applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1);
@@ -334,7 +334,7 @@ namespace vkr
 			instanceCreateInfo.enabledLayerCount = EnabledLayersCount;
 			instanceCreateInfo.ppEnabledLayerNames = EnabledLayersCount > 0 ? EnabledLayerNames : nullptr;
 
-			VKR_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &Instance), "Failed to create instance");
+			GM_CHECK(vkCreateInstance(&instanceCreateInfo, nullptr, &Instance), "Failed to create instance");
 			volkLoadInstance(Instance);
 		}
 
@@ -344,14 +344,14 @@ namespace vkr
 			// Create Debug Callbacks
 			VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
 			debugCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT;
-			debugCreateInfo.pfnCallback = vkr::debugReportErrorCallback;
-			VKR_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &ErrorCallback), "Failed to create the debug error callback");
+			debugCreateInfo.pfnCallback = gm::debugReportErrorCallback;
+			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &ErrorCallback), "Failed to create the debug error callback");
 			debugCreateInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-			debugCreateInfo.pfnCallback = vkr::debugReportWarningCallback;
-			VKR_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &WarningCallback), "Failed to create the debug warning callback");
+			debugCreateInfo.pfnCallback = gm::debugReportWarningCallback;
+			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &WarningCallback), "Failed to create the debug warning callback");
 			debugCreateInfo.flags = VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-			debugCreateInfo.pfnCallback = vkr::debugReportDebugCallback;
-			VKR_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &DebugCallback), "Failed to create the debug warning callback");
+			debugCreateInfo.pfnCallback = gm::debugReportDebugCallback;
+			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &DebugCallback), "Failed to create the debug warning callback");
 #endif
 		}
 
@@ -359,13 +359,13 @@ namespace vkr
 		void createSurface(HINSTANCE hInstance, HWND hwnd)
 		{
 			PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(Instance, "vkCreateWin32SurfaceKHR");
-			VKR_ASSERT(vkCreateWin32SurfaceKHR != nullptr);
+			GM_ASSERT(vkCreateWin32SurfaceKHR != nullptr);
 
 			VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
 			surfaceCreateInfo.hinstance = hInstance;
 			surfaceCreateInfo.hwnd = hwnd;
 
-			VKR_CHECK(vkCreateWin32SurfaceKHR(Instance, &surfaceCreateInfo, nullptr, &Surface), "Failed to create the Surface");
+			GM_CHECK(vkCreateWin32SurfaceKHR(Instance, &surfaceCreateInfo, nullptr, &Surface), "Failed to create the Surface");
 		}
 #endif
 
@@ -409,20 +409,20 @@ namespace vkr
 				}
 			}
 
-			VKR_ASSERT(!"Failed to find a queue family index");
+			GM_ASSERT(!"Failed to find a queue family index");
 			return -1;
 		}
 
 		void pickPhysicalDevice(VkQueueFlags requiredQueues)
 		{
 			uint32_t deviceCount = 0;
-			VKR_CHECK(vkEnumeratePhysicalDevices(Instance, &deviceCount, nullptr), "Failed to enumerate physical devices");
-			VKR_ASSERT(deviceCount > 0 && "Failed to find physical devices");
+			GM_CHECK(vkEnumeratePhysicalDevices(Instance, &deviceCount, nullptr), "Failed to enumerate physical devices");
+			GM_ASSERT(deviceCount > 0 && "Failed to find physical devices");
 			VkPhysicalDevice* devices = new VkPhysicalDevice[deviceCount];
 			uint32_t maxScore = 0;
 			uint32_t deviceIndex = 0;
 
-			VKR_CHECK(vkEnumeratePhysicalDevices(Instance, &deviceCount, devices), "Failed to enumerate physical devices");
+			GM_CHECK(vkEnumeratePhysicalDevices(Instance, &deviceCount, devices), "Failed to enumerate physical devices");
 
 			for (uint32_t i = 0; i < deviceCount; ++i)
 			{
@@ -466,11 +466,11 @@ namespace vkr
 
 			delete[] devices;
 
-			VKR_ASSERT(PhysicalDevice != VK_NULL_HANDLE && "Failed to find a suitable physical device");
+			GM_ASSERT(PhysicalDevice != VK_NULL_HANDLE && "Failed to find a suitable physical device");
 
 			uint32_t queueCount;
 			vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &queueCount, nullptr);
-			VKR_ASSERT(queueCount > 0 && "No queue families found");
+			GM_ASSERT(queueCount > 0 && "No queue families found");
 			VkQueueFamilyProperties* queueFamilies = new VkQueueFamilyProperties[queueCount];
 			vkGetPhysicalDeviceQueueFamilyProperties(PhysicalDevice, &queueCount, &queueFamilies[0]);
 
@@ -525,13 +525,13 @@ namespace vkr
 			const char* requiredExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 			// Enumerate Device Extensions
-			VKR_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &AvailablePhysicalDeviceExtensionCount, nullptr), "Failed to enumerate physical device extensions");
-			VKR_ASSERT(AvailablePhysicalDeviceExtensionCount > 0 && "No physical device extensions found");
-			VKR_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &AvailablePhysicalDeviceExtensionCount, &AvailablePhysicalDeviceExtensions[0]), "Failed to enumerate physical device extensions");
+			GM_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &AvailablePhysicalDeviceExtensionCount, nullptr), "Failed to enumerate physical device extensions");
+			GM_ASSERT(AvailablePhysicalDeviceExtensionCount > 0 && "No physical device extensions found");
+			GM_CHECK(vkEnumerateDeviceExtensionProperties(PhysicalDevice, nullptr, &AvailablePhysicalDeviceExtensionCount, &AvailablePhysicalDeviceExtensions[0]), "Failed to enumerate physical device extensions");
 
 			for (uint32_t i = 0; i < ARRAYSIZE(requiredExtensions); ++i)
 			{
-				VKR_ASSERT(vkr::checkExtensionSupport(requiredExtensions[i], AvailablePhysicalDeviceExtensions, AvailablePhysicalDeviceExtensionCount) == VK_TRUE);
+				GM_ASSERT(gm::checkExtensionSupport(requiredExtensions[i], AvailablePhysicalDeviceExtensions, AvailablePhysicalDeviceExtensionCount) == VK_TRUE);
 				EnabledPhysicalDeviceExtensions[EnabledPhysicalDeviceExtensionsCount++] = requiredExtensions[i];
 			}
 
@@ -542,7 +542,7 @@ namespace vkr
 			deviceCreateInfo.ppEnabledExtensionNames = EnabledPhysicalDeviceExtensionsCount > 0 ? EnabledPhysicalDeviceExtensions : nullptr;
 			deviceCreateInfo.pEnabledFeatures = &PhysicalDeviceEnabledFeatures;
 
-			VKR_CHECK(vkCreateDevice(PhysicalDevice, &deviceCreateInfo, nullptr, &Device), "Failed to create logical device");
+			GM_CHECK(vkCreateDevice(PhysicalDevice, &deviceCreateInfo, nullptr, &Device), "Failed to create logical device");
 			volkLoadDevice(Device);
 
 			delete[] queueFamilies;
