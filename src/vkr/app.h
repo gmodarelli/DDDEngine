@@ -408,9 +408,8 @@ namespace vkr
 		void initMainCamera()
 		{
 			mainCamera.type = vkr::Camera::CameraType::firstperson;
-			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 2560.0f);
-			mainCamera.rotationSpeed = 0.25f;
-			mainCamera.movementSpeed = 0.1f;
+			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
+			mainCamera.movementSpeed = 7.5f;
 			mainCamera.setPosition({ 0.0f, 0.0f, 2.5f });
 			mainCamera.setRotation({ 0.0f, 0.0f, 0.0f });
 		}

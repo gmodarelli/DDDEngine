@@ -25,7 +25,6 @@ namespace vkr
 		uint32_t codeSize = 0;
 		// FACEPALM: Assume your file is less than 10000 bytes
 		char* code = new char[10000];
-		// ReadCode("../data/shaders/vert.spv", code, &codeSize);
 		readCode(vertShaderPath, code, &codeSize);
 
 		VkShaderModuleCreateInfo vertexShaderCreateInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
@@ -34,7 +33,6 @@ namespace vkr
 
 		VKR_CHECK(vkCreateShaderModule(device, &vertexShaderCreateInfo, nullptr, outVertShaderModule), "");
 
-		// ReadCode("../data/shaders/frag.spv", code, &codeSize);
 		readCode(fragShaderPath, code, &codeSize);
 
 		VkShaderModuleCreateInfo fragmentShaderCreateInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };

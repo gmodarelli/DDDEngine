@@ -89,19 +89,13 @@ VkDescriptorPool descriptorPool;
 
 void updateUniformBuffers()
 {
-	shaderValuesScene.view = glm::lookAt(glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	shaderValuesScene.projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 1000.0f);
-	shaderValuesScene.model = glm::scale(glm::mat4(1.0f), glm::vec3(0.2f));
-	shaderValuesScene.cameraPosition = glm::vec3(0.0f, 0.0f, -50.0f);
-
-	/*
 	shaderValuesScene.view = app->mainCamera.matrices.view;
 	shaderValuesScene.projection = app->mainCamera.matrices.perspective;
 
 	// Hard coding the model position to the center of the world
 	// the model rotation to 0 and the scale to 1
 	glm::vec3 modelPosition = glm::vec3(0.0f);
-	glm::vec3 modelRotation = glm::vec3(0.0f);
+	glm::vec3 modelRotation = glm::vec3(-45.0f, 0.0f, 0.0f);
 	float scale = 1.0f;
 
 	shaderValuesScene.model = glm::translate(glm::mat4(1.0f), modelPosition);
@@ -115,7 +109,6 @@ void updateUniformBuffers()
 		-app->mainCamera.position.z * sin(glm::radians(app->mainCamera.rotation.x)),
 		 app->mainCamera.position.z * cos(glm::radians(app->mainCamera.rotation.y)) * cos(glm::radians(app->mainCamera.rotation.x))
 	);
-	*/
 }
 
 void prepareUniformBuffers()
@@ -279,7 +272,7 @@ void preparePipelines()
 	VkPipelineRasterizationStateCreateInfo rasterizationCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizationCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizationCreateInfo.lineWidth = 1.0f;
 
 	VkPipelineColorBlendAttachmentState blendAttachmentState = {};
@@ -561,9 +554,10 @@ int main()
 	app->prepare();
 
 	// Load the scene models
-	models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
-	//float scale = 1.0f / models.scene.dimensions.radius;
-	//app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, app->mainCamera.position.z));
+	// models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
+	models.scene.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
+	float scale = 1.0f / models.scene.dimensions.radius;
+	app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
 
 	uniformBuffers.resize(app->maxFramesInFlight);
 	descriptorSets.resize(app->maxFramesInFlight);
@@ -600,31 +594,21 @@ int main()
 	vkDeviceWaitIdle(app->device->Device);
 
 	models.scene.destroy();
-	/*
-	// TODO: Move these
-	vkDestroyDescriptorPool(app->device->Device, descriptorPool, nullptr);
 
-	for (size_t i = 0; i < mvpUniformBuffers.size(); ++i)
+	for (auto &uniformBuffer : uniformBuffers)
 	{
-		vkDestroyBuffer(app->device->Device, mvpUniformBuffers[i].buffer, nullptr);
-		vkFreeMemory(app->device->Device, mvpUniformBuffers[i].memory, nullptr);
+		vkDestroyBuffer(app->device->Device, uniformBuffer.scene.buffer, nullptr);
+		vkFreeMemory(app->device->Device, uniformBuffer.scene.memory, nullptr);
 	}
 
-	// NOTE: Destroying it now to avoid validation errors
-	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts[0], nullptr);
-	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts[1], nullptr);
-
-	// Cleanup
 	app->device->destroyQueryPool(queryPool);
-	DestroyPipeline(app->device->Device, &pipeline);
-	// DestroyDescriptor(app->device->Device, &descriptor);
-	DestroyShaderModule(app->device->Device, &vertShaderModule);
-	DestroyShaderModule(app->device->Device, &fragShaderModule);
 
-	vkr::destroyBuffer(app->device->Device, &vertexBuffer);
-	vkr::destroyBuffer(app->device->Device, &indexBuffer);
-	// vkr::destroyBuffer(app->device->Device, &uniformBuffer);
-	*/ 
+	vkDestroyPipelineCache(app->device->Device, pipelineCache, nullptr);
+	vkDestroyPipelineLayout(app->device->Device, pipelineLayout, nullptr);
+	vkDestroyPipeline(app->device->Device, pipelines.scene, nullptr);
+	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts.scene, nullptr);
+	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts.node, nullptr);
+	vkDestroyDescriptorPool(app->device->Device, descriptorPool, nullptr);
 
 	delete app;
 

@@ -63,6 +63,7 @@ namespace vkr
 		// Errors and Warnings Callbacks
 		VkDebugReportCallbackEXT ErrorCallback = VK_NULL_HANDLE;
 		VkDebugReportCallbackEXT WarningCallback = VK_NULL_HANDLE;
+		VkDebugReportCallbackEXT DebugCallback = VK_NULL_HANDLE;
 #endif
 
 		VulkanDevice()
@@ -130,6 +131,12 @@ namespace vkr
 			{
 				vkDestroyDebugReportCallbackEXT(Instance, WarningCallback, nullptr);
 				WarningCallback = VK_NULL_HANDLE;
+			}
+
+			if (DebugCallback != VK_NULL_HANDLE)
+			{
+				vkDestroyDebugReportCallbackEXT(Instance, DebugCallback, nullptr);
+				DebugCallback = VK_NULL_HANDLE;
 			}
 #endif
 			if (Surface != VK_NULL_HANDLE)
@@ -342,6 +349,9 @@ namespace vkr
 			debugCreateInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 			debugCreateInfo.pfnCallback = vkr::debugReportWarningCallback;
 			VKR_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &WarningCallback), "Failed to create the debug warning callback");
+			debugCreateInfo.flags = VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+			debugCreateInfo.pfnCallback = vkr::debugReportDebugCallback;
+			VKR_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &DebugCallback), "Failed to create the debug warning callback");
 #endif
 		}
 

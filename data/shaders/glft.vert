@@ -3,8 +3,8 @@
 layout (set = 0, binding = 0) uniform UBO
 {
 	mat4 model;
-	mat4 projection;
 	mat4 view;
+	mat4 projection;
 	vec3 cameraPosition;
 } ubo;
 
@@ -24,7 +24,7 @@ void main()
 	vec4 localPosition = ubo.model * node.matrix * vec4(inPos, 1.0f);
 	vec3 worldPosition = localPosition.xyz / localPosition.w;
 
-	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos, 1.0f);
+	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(worldPosition.xyz, 1.0f);
 
-	outColor = vec4(inNormal, 1);
+	outColor = vec4(normalize(inNormal), 1);
 }

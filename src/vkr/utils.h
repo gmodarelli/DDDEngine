@@ -97,4 +97,16 @@ namespace vkr
 		return VK_FALSE;
 #endif
 	}
+
+	VkBool32 debugReportDebugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+	{
+#if _DEBUG
+		char message[4096];
+
+		snprintf(message, ARRAYSIZE(message), "\n [ Vulkan Validation Debug ]\n%s\n\n", pMessage);
+		printf(message);
+
+		return VK_FALSE;
+#endif
+	}
 }
