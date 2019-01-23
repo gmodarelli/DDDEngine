@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/rapidjson/include</AdditionalIncludeDirectories>
       <SupportJustMyCode>true</SupportJustMyCode>
     </ClCompile>
     <Link>
@@ -151,7 +151,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/rapidjson/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -178,6 +178,7 @@
     <ClInclude Include="vulkan\buffer.h" />
     <ClInclude Include="vulkan\camera.h" />
     <ClInclude Include="vulkan\device.h" />
+    <ClInclude Include="vulkan\gltf.h" />
     <ClInclude Include="vulkan\model.h" />
     <ClInclude Include="vulkan\shaders.h" />
     <ClInclude Include="vulkan\swapchain.h" />

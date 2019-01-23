@@ -56,5 +56,8 @@
     <ClInclude Include="vulkan\utils.h">
       <Filter>vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="vulkan\gltf.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

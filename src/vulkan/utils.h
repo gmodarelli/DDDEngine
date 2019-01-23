@@ -27,8 +27,8 @@
 
 #else
 
-#define VKR_CHECK(call, message)
-#define VKR_ASSERT(x)
+#define GM_CHECK(call, message)
+#define GM_ASSERT(x)
 
 #endif
 

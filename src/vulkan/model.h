@@ -13,6 +13,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <vector>
+#include <chrono>
 
 namespace gm
 {
@@ -383,10 +384,18 @@ namespace gm
 
 			this->device = device;
 
+			auto fileLoadStart = std::chrono::high_resolution_clock::now();
+
 			bool fileLoaded = gltfContext.LoadASCIIFromFile(&gltfModel, &error, &warning, path);
+
+			auto fileLoadEnd = std::chrono::high_resolution_clock::now();
+			auto fileLoad = (fileLoadEnd - fileLoadStart).count() * 1e-6;
+			printf("glTF model loaded in %.2f ms\n", fileLoad);
 
 			std::vector<uint32_t> indexBuffer;
 			std::vector<gm::Model::Vertex> vertexBuffer;
+
+			auto nodeLoadStart = std::chrono::high_resolution_clock::now();
 
 			if (fileLoaded)
 			{
@@ -405,6 +414,10 @@ namespace gm
 				printf(message);
 				GM_ASSERT(false);
 			}
+
+			auto nodeLoadEnd = std::chrono::high_resolution_clock::now();
+			auto nodeLoad = (nodeLoadEnd - nodeLoadStart).count() * 1e-6;
+			printf("glTF nodes loaded in %.2f ms\n", nodeLoad);
 
 			size_t vertexBufferSize = vertexBuffer.size() * sizeof(Model::Vertex);
 			size_t indexBufferSize = indexBuffer.size() * sizeof(uint32_t);

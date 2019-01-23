@@ -9,6 +9,7 @@
 #include "vulkan/model.h"
 #include "vulkan/shaders.h"
 #include "vulkan/app.h"
+#include "vulkan/gltf.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -552,6 +553,8 @@ int main()
 	app->initVulkan();
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
+
+	gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf");
 
 	// Load the scene models
 	// models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
