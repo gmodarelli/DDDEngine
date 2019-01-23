@@ -6,7 +6,6 @@
 #include "vulkan/device.h" 
 #include "vulkan/swapchain.h"
 #include "vulkan/buffer.h"
-#include "vulkan/model.h"
 #include "vulkan/shaders.h"
 #include "vulkan/app.h"
 #include "vulkan/gltf.h"
@@ -33,9 +32,23 @@ uint32_t width = 1600;
 uint32_t height = 1200;
 float scale = 1.0f;
 
+struct VertexBuffer
+{
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VkDeviceMemory memory = { 0 };
+} vertexBuffer;
+
+struct IndexBuffer
+{
+	uint32_t count = 0;
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VkDeviceMemory memory = { 0 };
+} indexBuffer;
+
 struct Models
 {
-	gm::Model scene;
+	// gm::Model scene;
+	gm::gModel scene;
 } models;
 
 // We need to create the buffers that will hold the data for our two uniform buffers
@@ -96,7 +109,7 @@ void updateUniformBuffers()
 	// Hard coding the model position to the center of the world
 	// the model rotation to 0 and the scale to 1
 	glm::vec3 modelPosition = glm::vec3(0.0f);
-	glm::vec3 modelRotation = glm::vec3(-45.0f, 0.0f, 0.0f);
+	glm::vec3 modelRotation = glm::vec3(45.0f, 0.0f, 15.0f);
 	float scale = 1.0f;
 
 	shaderValuesScene.model = glm::translate(glm::mat4(1.0f), modelPosition);
@@ -138,42 +151,16 @@ void prepareUniformBuffers()
 	updateUniformBuffers();
 }
 
-
-void setupNodeDescriptorSet(gm::Node* node)
-{
-	if (node->mesh)
-	{
-		VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-		allocInfo.descriptorPool = descriptorPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &descriptorSetLayouts.node;
-		VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet);
-		GM_ASSERT(result == VK_SUCCESS);
-
-		// VKR_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet), "Failed to allocate descriptor set per node");
-
-		VkWriteDescriptorSet writeDescriptorSet = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSet.descriptorCount = 1;
-		writeDescriptorSet.dstSet = node->mesh->uniformBuffer.descriptorSet;
-		writeDescriptorSet.dstBinding = 0;
-		writeDescriptorSet.pBufferInfo = &node->mesh->uniformBuffer.descriptor;
-
-		vkUpdateDescriptorSets(app->device->Device, 1, &writeDescriptorSet, 0, nullptr);
-	}
-
-	for (auto& child : node->children)
-		setupNodeDescriptorSet(child);
-}
-
 void setupDescriptors()
 {
 	// Assert that the model is loaded
-	GM_ASSERT(models.scene.linearNodes.size() > 0);
+	// GM_ASSERT(models.scene.linearNodes.size() > 0);
+	GM_ASSERT(models.scene.nodes.size() > 0);
 	// Assert that the descriptor sets has been resized
 	GM_ASSERT(descriptorSets.size() > 0);
 
-	uint32_t meshCount = 0;
+	uint32_t meshCount = models.scene.meshes.size();
+	/*
 	std::vector<gm::Model*> modelList = { &models.scene };
 	for (auto& model : modelList)
 	{
@@ -183,6 +170,7 @@ void setupDescriptors()
 				meshCount++;
 		}
 	}
+	*/
 
 	// TODO: Add a pool size for image samplers (textures)
 	{
@@ -218,7 +206,7 @@ void setupDescriptors()
 			GM_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
 
 			// TODO: Add more write descriptor sets once we have textures
-			std::array<VkWriteDescriptorSet, 1> writeDescriptorSets{};
+			std::vector<VkWriteDescriptorSet> writeDescriptorSets(1);
 
 			writeDescriptorSets[0].sType = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 			writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -242,11 +230,40 @@ void setupDescriptors()
 		createInfo.pBindings = setLayoutBindings.data();
 		GM_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.node), "Failed to create descriptor set layout for the node");
 
+		for (size_t n = 0; n < models.scene.nodes.size(); ++n)
+		{
+			if (models.scene.nodes[n].meshId > -1)
+			{
+				VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+				allocInfo.descriptorPool = descriptorPool;
+				allocInfo.descriptorSetCount = 1;
+				allocInfo.pSetLayouts = &descriptorSetLayouts.node;
+				uint32_t meshId = models.scene.nodes[n].meshId;
+				gm::gUniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
+
+				VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &uniformBuffer.descriptorSet);
+				GM_ASSERT(result == VK_SUCCESS);
+
+				// VKR_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet), "Failed to allocate descriptor set per node");
+
+				VkWriteDescriptorSet writeDescriptorSet = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+				writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				writeDescriptorSet.descriptorCount = 1;
+				writeDescriptorSet.dstSet = uniformBuffer.descriptorSet;
+				writeDescriptorSet.dstBinding = 0;
+				writeDescriptorSet.pBufferInfo = &uniformBuffer.descriptor;
+
+				vkUpdateDescriptorSets(app->device->Device, 1, &writeDescriptorSet, 0, nullptr);
+			}
+		}
+
+		/*
 		// Per-node descriptor set
 		for (auto& node : models.scene.nodes)
 		{
 			setupNodeDescriptorSet(node);
 		}
+		*/
 	}
 
 	// TODO: materials (samplers)
@@ -318,11 +335,11 @@ void preparePipelines()
 	GM_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
 
 	// Vertex bindings and attributes
-	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::Model::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
+	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::gVertex), VK_VERTEX_INPUT_RATE_VERTEX };
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
 		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 }, // Position
 		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3 }, // Normal
-		{ 2, 0, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 6 }, // UV
+		// { 2, 0, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 6 }, // UV
 	};
 
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -332,7 +349,7 @@ void preparePipelines()
 	vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
 	// Shaders
-	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
 
 	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
 	VkShaderModule vertShaderModule;
@@ -377,29 +394,6 @@ void preparePipelines()
 	}
 }
 
-void renderNode(gm::Node* node, uint32_t cbIndex)
-{
-	if (node->mesh)
-	{
-		// Render all the primitives
-		for (gm::Primitive* primitive : node->mesh->primitives)
-		{
-			// TODO: When we have materials we need to load the descriptor sets for the material as well
-			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[cbIndex].scene, node->mesh->uniformBuffer.descriptorSet };
-			vkCmdBindDescriptorSets(app->commandBuffers[cbIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets_.size()), descriptorSets_.data(), 0, nullptr);
-
-			// TODO: pass the materials as push constants
-
-			vkCmdDrawIndexed(app->commandBuffers[cbIndex], primitive->indexCount, 1, primitive->firstIndex, 0, 0);
-		}
-	}
-
-	for (auto child : node->children)
-	{
-		renderNode(child, cbIndex);
-	}
-}
-
 void recordCommands()
 {
 	VkCommandBufferBeginInfo cmdBufferBeginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -441,19 +435,30 @@ void recordCommands()
 		// TODO: When we introduce a skybox, this is where we would bind its pipeline
 
 		vkCmdBindPipeline(currentCB, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.scene);
-		gm::Model& model = models.scene;
+		// gm::Model& model = models.scene;
+		gm::gModel& model = models.scene;
 
-		vkCmdBindVertexBuffers(currentCB, 0, 1, &model.vertices.buffer, offsets);
-		vkCmdBindIndexBuffer(currentCB, model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+		// vkCmdBindVertexBuffers(currentCB, 0, 1, &model.vertices.buffer, offsets);
+		// vkCmdBindIndexBuffer(currentCB, model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(currentCB, 0, 1, &vertexBuffer.buffer, offsets);
+		vkCmdBindIndexBuffer(currentCB, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 		// Render all the nodes.
 		// TODO: When we load materials, we need to draw the primitives in this order:
 		// 1. Opaque
 		// 2. Mask
 		// 3. Transparent (after binding a transparent pipeline)
-		for (auto node : model.nodes)
+		for (size_t p = 0; p < models.scene.primitives.size(); ++p)
 		{
-			renderNode(node, (uint32_t)i);
+			gm::gPrimitive& primitive = models.scene.primitives[p];
+			gm::gUniformBuffer& uniformBuffer = models.scene.uniformBuffers[primitive.meshId];
+			// TODO: When we have materials we need to load the descriptor sets for the material as well
+			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[i].scene, uniformBuffer.descriptorSet };
+			vkCmdBindDescriptorSets(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets_.size()), descriptorSets_.data(), 0, nullptr);
+
+			// TODO: pass the materials as push constants
+
+			vkCmdDrawIndexed(app->commandBuffers[i], primitive.indexCount, 1, primitive.firstIndex, 0, 0);
 		}
 
 		vkCmdEndRenderPass(currentCB);
@@ -554,14 +559,90 @@ int main()
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
 
-	gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf");
+	models.scene = gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf", app->device);
+	// Upload this model indices and vertices to the index and vertex buffers on the GPU
+	{
+		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
+		// match our model sizes
+		size_t vertexBufferSize = models.scene.vertices.size() * sizeof(gm::gVertex);
+		size_t indexBufferSize = models.scene.indices.size() * sizeof(uint32_t);
+		// TODO: Why do we need this?
+		indexBuffer.count = static_cast<uint32_t>(models.scene.indices.size());
+
+		GM_ASSERT((vertexBufferSize > 0) && (indexBufferSize > 0));
+
+		struct StagingBuffer
+		{
+			VkBuffer buffer = VK_NULL_HANDLE;
+			VkDeviceMemory memory = { 0 };
+		} vertexStaging, indexStaging;
+
+		// Create staging buffers
+		// Vertex data
+		GM_CHECK(gm::createBuffer(app->device,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			vertexBufferSize,
+			&vertexStaging.buffer,
+			&vertexStaging.memory,
+			models.scene.vertices.data()), "Failed to upload vertices to staging buffer");
+
+		// Index data
+		GM_CHECK(gm::createBuffer(app->device,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			indexBufferSize,
+			&indexStaging.buffer,
+			&indexStaging.memory,
+			models.scene.indices.data()), "Failed to upload indices to staging buffer");
+
+		// Create device local buffers
+		// Vertex buffer
+		GM_CHECK(gm::createBuffer(app->device,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			vertexBufferSize,
+			&vertexBuffer.buffer,
+			&vertexBuffer.memory), "Failed to create vertex buffer");
+
+		// Index buffer
+		GM_CHECK(gm::createBuffer(app->device,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			indexBufferSize,
+			&indexBuffer.buffer,
+			&indexBuffer.memory), "Failed to create index buffer");
+
+		// Copy the staging buffers
+		VkCommandBuffer copyCmd = app->device->createTransferCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+		VkQueue queue = app->device->getQueue(app->device->TransferFamilyIndex);
+		
+		// NOTE: Once we have multiple objects we'll have to adjust the region we're copying
+		VkBufferCopy copyRegion = {};
+		copyRegion.size = vertexBufferSize;
+
+		vkCmdCopyBuffer(copyCmd, vertexStaging.buffer, vertexBuffer.buffer, 1, &copyRegion);
+
+		copyRegion.size = indexBufferSize;
+		vkCmdCopyBuffer(copyCmd, indexStaging.buffer, indexBuffer.buffer, 1, &copyRegion);
+
+		app->device->flushCommandBuffer(copyCmd, queue, true, true);
+
+		// Destroy the staging vertex and index buffers
+		vkDestroyBuffer(app->device->Device, vertexStaging.buffer, nullptr);
+		vkFreeMemory(app->device->Device, vertexStaging.memory, nullptr);
+		vkDestroyBuffer(app->device->Device, indexStaging.buffer, nullptr);
+		vkFreeMemory(app->device->Device, indexStaging.memory, nullptr);
+	}
+	// gm::destroyModel(model, app->device);
 
 	// Load the scene models
 	// models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
-	models.scene.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
+	// models.scene.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
 
-	float scale = 1.0f / models.scene.dimensions.radius;
-	app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
+	//float scale = 1.0f / models.scene.dimensions.radius;
+	//app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
+	app->mainCamera.setPosition(glm::vec3(0.0f, 0.0f, -3.0f));
 
 	uniformBuffers.resize(app->maxFramesInFlight);
 	descriptorSets.resize(app->maxFramesInFlight);
@@ -597,7 +678,14 @@ int main()
 
 	vkDeviceWaitIdle(app->device->Device);
 
-	models.scene.destroy();
+	// models.scene.destroy();
+	gm::destroyModel(models.scene, app->device);
+
+	// Destroy the vertex and index buffers
+	vkDestroyBuffer(app->device->Device, vertexBuffer.buffer, nullptr);
+	vkFreeMemory(app->device->Device, vertexBuffer.memory, nullptr);
+	vkDestroyBuffer(app->device->Device, indexBuffer.buffer, nullptr);
+	vkFreeMemory(app->device->Device, indexBuffer.memory, nullptr);
 
 	for (auto &uniformBuffer : uniformBuffers)
 	{

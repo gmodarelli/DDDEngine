@@ -179,7 +179,6 @@
     <ClInclude Include="vulkan\camera.h" />
     <ClInclude Include="vulkan\device.h" />
     <ClInclude Include="vulkan\gltf.h" />
-    <ClInclude Include="vulkan\model.h" />
     <ClInclude Include="vulkan\shaders.h" />
     <ClInclude Include="vulkan\swapchain.h" />
     <ClInclude Include="vulkan\utils.h" />

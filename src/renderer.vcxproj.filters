@@ -44,9 +44,6 @@
     <ClInclude Include="vulkan\device.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\model.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="vulkan\shaders.h">
       <Filter>vulkan</Filter>
     </ClInclude>

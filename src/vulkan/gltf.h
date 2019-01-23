@@ -4,12 +4,16 @@
 
 #include <cassert>
 #include <string>
+#include <chrono>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include "volk.h"
+#include "utils.h"
 
 namespace gm
 {
@@ -44,22 +48,38 @@ namespace gm
 		uint32_t indexCount;
 	};
 
+	struct gUniformBuffer
+	{
+		VkBuffer buffer = VK_NULL_HANDLE;
+		VkDeviceMemory memory = VK_NULL_HANDLE;
+		VkDescriptorBufferInfo descriptor = {};
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+		void* mapped = {0};
+	};
+
 	struct gModel
 	{
 		std::vector<gNode> nodes;
 		std::vector<gMesh> meshes;
+		std::vector<gUniformBuffer> uniformBuffers;
 		std::vector<gPrimitive> primitives;
 
-		std::vector<gVertex> vertexBuffer;
-		std::vector<uint32_t> indexBuffer;
+		std::vector<gVertex> vertices;
+		std::vector<uint32_t> indices;
+
+		// These are the offset into the two "big" vertex and index buffers that
+		// all the models share on the GPU. That is we don't have one vertex buffer
+		// and one index buffer per model
+		uint32_t indexOffset;
+		uint32_t vertexOffet;
 	};
 
 	static rapidjson::Document parseFile(std::string path);
 	static bool isValidFormat(rapidjson::Document& document);
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model);
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model, gm::VulkanDevice* device);
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize);
 
-	void loadModelFromFile(std::string path)
+	gModel loadModelFromFile(std::string path, gm::VulkanDevice* device)
 	{
 		auto jsonParseStart = std::chrono::high_resolution_clock::now();
 		rapidjson::Document document = parseFile(path);
@@ -97,9 +117,10 @@ namespace gm
 			uint32_t byteStride;
 			uint32_t target;
 		};
-		std::vector<BufferView> bufferViews;
-		{
 
+		std::vector<BufferView> bufferViews;
+
+		{
 			JsonArray bufferViews_ = document["bufferViews"].GetArray();
 			for (rapidjson::SizeType i = 0; i < bufferViews_.Size(); ++i)
 			{
@@ -133,6 +154,7 @@ namespace gm
 		};
 
 		std::vector<Accessor> accessors;
+
 		{
 			JsonArray accessors_ = document["accessors"].GetArray();
 			for (rapidjson::SizeType i = 0; i < accessors_.Size(); ++i)
@@ -187,6 +209,7 @@ namespace gm
 
 		model.nodes.resize((size_t)nodes.Size());
 		model.meshes.resize((size_t)meshes.Size());
+		model.uniformBuffers.resize((size_t)meshes.Size());
 
 		// Parse meshes
 		{
@@ -202,10 +225,10 @@ namespace gm
 				{
 					gPrimitive primitive;
 					primitive.meshId = meshId;
-					primitive.firstIndex = static_cast<uint32_t>(model.indexBuffer.size());
+					primitive.firstIndex = static_cast<uint32_t>(model.indices.size());
 
 					// NOTE: We need this for the indices
-					uint32_t vertexStart = static_cast<uint32_t>(model.vertexBuffer.size());
+					uint32_t vertexStart = static_cast<uint32_t>(model.vertices.size());
 
 					JsonObject primitive_ = primitives[j].GetObjectW();
 					JsonObject attributes = primitive_["attributes"].GetObjectW();
@@ -248,7 +271,7 @@ namespace gm
 							vertex.normal = normalBuffer ? glm::make_vec3(&normalBuffer[v * 3]) : glm::vec3(0.0f);
 							vertex.normal = glm::normalize(vertex.normal);
 
-							model.vertexBuffer.push_back(vertex);
+							model.vertices.push_back(vertex);
 						}
 					}
 
@@ -268,8 +291,10 @@ namespace gm
 
 							for (uint32_t i = 0; i < indexAccessor.count; ++i)
 							{
-								model.indexBuffer.push_back(indexBuffer[i] + vertexStart);
+								model.indices.push_back(indexBuffer[i] + vertexStart);
 							}
+
+							primitive.indexCount = indexAccessor.count;
 						}
 					}
 
@@ -283,12 +308,32 @@ namespace gm
 		for (rapidjson::SizeType i = 0; i < rootNodes.Size(); ++i)
 		{
 			uint32_t nodeIndex = (uint32_t)rootNodes[i].GetInt();
-			loadNode(nodeIndex, -1, nodes, meshes, model);
+			loadNode(nodeIndex, -1, nodes, meshes, model, device);
 		}
 
 		auto modelParseEnd = std::chrono::high_resolution_clock::now();
 		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
 		printf("[glTF] Model parsed in %.2f ms\n", modelParseDuration);
+
+		return model;
+	}
+
+	void destroyModel(gModel model, gm::VulkanDevice* device)
+	{
+		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
+		{
+			if (model.uniformBuffers[i].buffer != VK_NULL_HANDLE)
+			{
+				vkDestroyBuffer(device->Device, model.uniformBuffers[i].buffer, nullptr);
+				model.uniformBuffers[i].buffer = VK_NULL_HANDLE;
+			}
+
+			if (model.uniformBuffers[i].memory != VK_NULL_HANDLE)
+			{
+				vkFreeMemory(device->Device, model.uniformBuffers[i].memory, nullptr);
+				model.uniformBuffers[i].memory = VK_NULL_HANDLE;
+			}
+		}
 	}
 
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize)
@@ -352,16 +397,11 @@ namespace gm
 		return false;
 	}
 
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model)
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model, gm::VulkanDevice* device)
 	{
 		JsonObject node_ = nodes[nodeIndex].GetObjectW();
 		gNode node;
 		node.parentId = parentIndex;
-
-		if (node_.HasMember("mesh"))
-		{
-			node.meshId = node_["mesh"].GetInt();
-		}
 
 		if (node_.HasMember("matrix"))
 		{
@@ -374,6 +414,34 @@ namespace gm
 
 			node.matrix = glm::make_mat4x4(raw);
 		}
+		else
+		{
+			node.matrix = glm::mat4(1.0f);
+		}
+
+		if (node_.HasMember("mesh"))
+		{
+			node.meshId = node_["mesh"].GetInt();
+
+			gUniformBuffer uniformBuffer;
+
+			// Create 
+			GM_CHECK(gm::createBuffer(
+				device,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				sizeof(glm::mat4),
+				&uniformBuffer.buffer,
+				&uniformBuffer.memory,
+				&node.matrix), "Failed to create uniform buffer");
+
+			GM_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(glm::mat4), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
+
+			uniformBuffer.descriptor = { uniformBuffer.buffer, 0, sizeof(glm::mat4) };
+
+			// BUG: we are potentially overriding this buffer
+			model.uniformBuffers[node.meshId] = uniformBuffer;
+		}
 
 		// TODO: Add rotation, translation and scale
 
@@ -382,9 +450,10 @@ namespace gm
 		{
 			auto children = node_["children"].GetArray();
 			for (rapidjson::SizeType j = 0; j < children.Size(); ++j)
-				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model);
+				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model, device);
 		}
 
 		model.nodes[nodeIndex] = node;
+
 	}
 }
