@@ -17,14 +17,14 @@ layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 // layout (location = 2) in vec3 inUV;
 
-layout (location = 0) out vec4 outColor;
+layout (location = 0) out vec3 outWorldPosition;
+layout (location = 1) out vec3 outNormal;
 
 void main()
 {
 	vec4 localPosition = ubo.model * node.matrix * vec4(inPos, 1.0f);
-	vec3 worldPosition = localPosition.xyz / localPosition.w;
+	outWorldPosition = localPosition.xyz / localPosition.w;
+	outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);
 
-	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(worldPosition.xyz, 1.0f);
-
-	outColor = vec4(normalize(inNormal), 1);
+	gl_Position = ubo.projection * ubo.view * vec4(outWorldPosition.xyz, 1.0f);
 }

@@ -109,7 +109,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/rapidjson/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/rapidjson/include</AdditionalIncludeDirectories>
       <SupportJustMyCode>true</SupportJustMyCode>
     </ClCompile>
     <Link>
@@ -151,7 +151,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/tinygltf;../extern/rapidjson/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/rapidjson/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -47,8 +47,7 @@ struct IndexBuffer
 
 struct Models
 {
-	// gm::Model scene;
-	gm::gModel scene;
+	gm::Model scene;
 } models;
 
 // We need to create the buffers that will hold the data for our two uniform buffers
@@ -76,6 +75,13 @@ struct UBOMatrices
 	glm::vec3 cameraPosition;
 } shaderValuesScene; // TODO: Add one more for the skybox
 
+struct PushConstantBlockMaterial
+{
+	glm::vec4 baseColorFactor;
+	float metallicFactor;
+	float roughnessFactor;
+} pushConstantBlockMaterial;
+
 VkPipelineLayout pipelineLayout;
 VkPipelineCache pipelineCache;
 
@@ -89,6 +95,8 @@ struct Pipelines
 struct DescriptorSetLayouts {
 	VkDescriptorSetLayout scene;
 	VkDescriptorSetLayout node;
+	// TODO: When we have materials with samplers (textures) we need one more descriptorSetLayouts
+	// VkDescriptorSetLayout material;
 } descriptorSetLayouts;
 
 struct DescriptorSets {
@@ -160,17 +168,6 @@ void setupDescriptors()
 	GM_ASSERT(descriptorSets.size() > 0);
 
 	uint32_t meshCount = models.scene.meshes.size();
-	/*
-	std::vector<gm::Model*> modelList = { &models.scene };
-	for (auto& model : modelList)
-	{
-		for (auto node : model->linearNodes)
-		{
-			if (node->mesh)
-				meshCount++;
-		}
-	}
-	*/
 
 	// TODO: Add a pool size for image samplers (textures)
 	{
@@ -239,7 +236,7 @@ void setupDescriptors()
 				allocInfo.descriptorSetCount = 1;
 				allocInfo.pSetLayouts = &descriptorSetLayouts.node;
 				uint32_t meshId = models.scene.nodes[n].meshId;
-				gm::gUniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
+				gm::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
 
 				VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &uniformBuffer.descriptorSet);
 				GM_ASSERT(result == VK_SUCCESS);
@@ -256,17 +253,24 @@ void setupDescriptors()
 				vkUpdateDescriptorSets(app->device->Device, 1, &writeDescriptorSet, 0, nullptr);
 			}
 		}
-
-		/*
-		// Per-node descriptor set
-		for (auto& node : models.scene.nodes)
-		{
-			setupNodeDescriptorSet(node);
-		}
-		*/
 	}
 
 	// TODO: materials (samplers)
+	/*
+	{
+		for (size_t m = 0; m < models.scene.opaqueMaterials.size(); ++m)
+		{
+			gm::Material& material = models.scene.opaqueMaterials[i];
+
+			VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+			allocInfo.descriptorPool = descriptorPool;
+			allocInfo.pSetLayouts = &descriptorSetLayouts.material;
+			allocInfo.descriptorSetCount = 1;
+			VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &material.descriptorSet);
+			GM_ASSERT(result == VK_SUCCESS);
+		}
+	}
+	*/
 }
 
 void preparePipelines()
@@ -325,17 +329,24 @@ void preparePipelines()
 	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 
 	// Pipeline layout
+	// TODO: When we have materials with samplers (textures) we need one more descriptorSetLayouts
 	const std::vector<VkDescriptorSetLayout> setLayouts = {
 		descriptorSetLayouts.scene, descriptorSetLayouts.node
 	};
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
-	// TODO: When we have materials we need to add push constant ranges
+
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.size = sizeof(PushConstantBlockMaterial);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+
 	GM_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
 
 	// Vertex bindings and attributes
-	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::gVertex), VK_VERTEX_INPUT_RATE_VERTEX };
+	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
 		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 }, // Position
 		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3 }, // Normal
@@ -436,7 +447,7 @@ void recordCommands()
 
 		vkCmdBindPipeline(currentCB, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.scene);
 		// gm::Model& model = models.scene;
-		gm::gModel& model = models.scene;
+		gm::Model& model = models.scene;
 
 		// vkCmdBindVertexBuffers(currentCB, 0, 1, &model.vertices.buffer, offsets);
 		// vkCmdBindIndexBuffer(currentCB, model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -450,13 +461,23 @@ void recordCommands()
 		// 3. Transparent (after binding a transparent pipeline)
 		for (size_t p = 0; p < models.scene.primitives.size(); ++p)
 		{
-			gm::gPrimitive& primitive = models.scene.primitives[p];
-			gm::gUniformBuffer& uniformBuffer = models.scene.uniformBuffers[primitive.meshId];
+			gm::Primitive& primitive = models.scene.primitives[p];
+			gm::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[primitive.meshId];
 			// TODO: When we have materials we need to load the descriptor sets for the material as well
 			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[i].scene, uniformBuffer.descriptorSet };
 			vkCmdBindDescriptorSets(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets_.size()), descriptorSets_.data(), 0, nullptr);
 
 			// TODO: pass the materials as push constants
+			if (primitive.materialId >= 0)
+			{
+				// TODO: We're assuming a PBR Metallic Workflow with a baseColor and metallic and roughness factors
+				gm::Material& material = models.scene.opaqueMaterials[primitive.materialId];
+				pushConstantBlockMaterial.baseColorFactor = material.pbrMetallicRoughness.baseColorFactor;
+				pushConstantBlockMaterial.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
+				pushConstantBlockMaterial.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
+
+				vkCmdPushConstants(app->commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstantBlockMaterial), &pushConstantBlockMaterial);
+			}
 
 			vkCmdDrawIndexed(app->commandBuffers[i], primitive.indexCount, 1, primitive.firstIndex, 0, 0);
 		}
@@ -564,7 +585,7 @@ int main()
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
 		// match our model sizes
-		size_t vertexBufferSize = models.scene.vertices.size() * sizeof(gm::gVertex);
+		size_t vertexBufferSize = models.scene.vertices.size() * sizeof(gm::Vertex);
 		size_t indexBufferSize = models.scene.indices.size() * sizeof(uint32_t);
 		// TODO: Why do we need this?
 		indexBuffer.count = static_cast<uint32_t>(models.scene.indices.size());

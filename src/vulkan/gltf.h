@@ -22,33 +22,49 @@ namespace gm
 	typedef rapidjson::GenericObject<true, rapidjson::Value::ValueType> ConstJsonObject;
 	typedef rapidjson::GenericArray<true, rapidjson::Value::ValueType> ConstJsonArray;
 
-	struct gNode
+	struct Node
 	{
 		int32_t parentId = -1;
 		int32_t meshId = -1;
 		glm::mat4 matrix = glm::identity<glm::mat4>();
 	};
 
-	struct gMesh
+	struct Mesh
 	{
 		const char* name;
 	};
 
 	// TODO: Extend this once we can read more info
-	struct gVertex
+	struct Vertex
 	{
 		glm::vec3 position;
 		glm::vec3 normal;
 	};
 
-	struct gPrimitive
+	struct Primitive
 	{
 		uint32_t meshId;
+		int32_t materialId;
 		uint32_t firstIndex;
 		uint32_t indexCount;
 	};
 
-	struct gUniformBuffer
+	struct Material
+	{
+		std::string name = "";
+		std::string alphaMode = "OPAQUE";
+
+		struct PBRMetallicRoughness
+		{
+			glm::vec4 baseColorFactor = glm::vec4(1.0f);
+			float metallicFactor = 1.0f;
+			float roughnessFactor = 1.0f;
+		} pbrMetallicRoughness;
+
+		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+	};
+
+	struct UniformBuffer
 	{
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -57,14 +73,14 @@ namespace gm
 		void* mapped = {0};
 	};
 
-	struct gModel
+	struct Model
 	{
-		std::vector<gNode> nodes;
-		std::vector<gMesh> meshes;
-		std::vector<gUniformBuffer> uniformBuffers;
-		std::vector<gPrimitive> primitives;
+		std::vector<Node> nodes;
+		std::vector<Mesh> meshes;
+		std::vector<UniformBuffer> uniformBuffers;
+		std::vector<Primitive> primitives;
 
-		std::vector<gVertex> vertices;
+		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
 
 		// These are the offset into the two "big" vertex and index buffers that
@@ -72,15 +88,21 @@ namespace gm
 		// and one index buffer per model
 		uint32_t indexOffset;
 		uint32_t vertexOffet;
+
+		std::vector<Material> opaqueMaterials;
+		std::vector<Material> maskMaterials;
+		std::vector<Material> transparentMaterials;
 	};
 
 	static rapidjson::Document parseFile(std::string path);
 	static bool isValidFormat(rapidjson::Document& document);
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model, gm::VulkanDevice* device);
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device);
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize);
 
-	gModel loadModelFromFile(std::string path, gm::VulkanDevice* device)
+	Model loadModelFromFile(std::string path, gm::VulkanDevice* device)
 	{
+		Model model = {};
+
 		auto jsonParseStart = std::chrono::high_resolution_clock::now();
 		rapidjson::Document document = parseFile(path);
 		auto jsonParseEnd = std::chrono::high_resolution_clock::now();
@@ -195,8 +217,60 @@ namespace gm
 			}
 		}
 
+		// Parse materials
+		JsonArray materials = document["materials"].GetArray();
+		{
+			for (rapidjson::SizeType i = 0; i < materials.Size(); ++i)
+			{
+				JsonObject material_ = materials[i].GetObjectW();
+				Material material;
+				material.name = material_.HasMember("name") ? material_["name"].GetString() : "material_" + i;
+				material.alphaMode = material_.HasMember("alphaMode") ? material_["alphaMode"].GetString() : "OPAQUE";
+
+				// NOTE: We only support pbrMetallicRoughness for now
+				// TODO: Remove this assert and add support for more workflows
+				assert(material_.HasMember("pbrMetallicRoughness"));
+				JsonObject pbrMetallicRoughness = material_["pbrMetallicRoughness"].GetObjectW();
+
+				material.pbrMetallicRoughness = {};
+				material.pbrMetallicRoughness.baseColorFactor = glm::vec4(1.0f);
+				if (pbrMetallicRoughness.HasMember("baseColorFactor"))
+				{
+					JsonArray baseColorFactor = pbrMetallicRoughness["baseColorFactor"].GetArray();
+					material.pbrMetallicRoughness.baseColorFactor.r = baseColorFactor[0].GetFloat();
+					material.pbrMetallicRoughness.baseColorFactor.g = baseColorFactor[1].GetFloat();
+					material.pbrMetallicRoughness.baseColorFactor.b = baseColorFactor[2].GetFloat();
+					material.pbrMetallicRoughness.baseColorFactor.a = baseColorFactor[3].GetFloat();
+				}
+
+				material.pbrMetallicRoughness.metallicFactor = 1.0f;
+				if (pbrMetallicRoughness.HasMember("metallicFactor"))
+				{
+					material.pbrMetallicRoughness.metallicFactor = pbrMetallicRoughness["metallicFactor"].GetFloat();
+				}
+
+				material.pbrMetallicRoughness.roughnessFactor = 1.0f;
+				if (pbrMetallicRoughness.HasMember("roughnessFactor"))
+				{
+					material.pbrMetallicRoughness.roughnessFactor = pbrMetallicRoughness["roughnessFactor"].GetFloat();
+				}
+
+				if (material.alphaMode == "OPAQUE")
+				{
+					model.opaqueMaterials.push_back(material);
+				}
+				else if (material.alphaMode == "MASK")
+				{
+					model.maskMaterials.push_back(material);
+				}
+				else if (material.alphaMode == "BLEND")
+				{
+					model.transparentMaterials.push_back(material);
+				}
+			}
+		}
+
 		// NOTE: For now we're assuming there's only one scene, at index 0
-		gModel model = {};
 		auto modelParseStart = std::chrono::high_resolution_clock::now();
 		rapidjson::Value& value = document["scenes"];
 		JsonArray scenes = value.GetArray();
@@ -216,21 +290,22 @@ namespace gm
 			for (rapidjson::SizeType meshId = 0; meshId < meshes.Size(); ++meshId)
 			{
 				JsonObject mesh_ = meshes[meshId].GetObjectW();
-				gMesh mesh = {};
+				Mesh mesh = {};
 				mesh.name = mesh_["name"].GetString();
 
 				// Parse mesh primitives
 				JsonArray primitives = mesh_["primitives"].GetArray();
 				for (rapidjson::SizeType j = 0; j < primitives.Size(); ++j)
 				{
-					gPrimitive primitive;
+					JsonObject primitive_ = primitives[j].GetObjectW();
+					Primitive primitive;
 					primitive.meshId = meshId;
+					primitive.materialId = primitive_.HasMember("material") ? primitive_["material"].GetInt() : -1;
 					primitive.firstIndex = static_cast<uint32_t>(model.indices.size());
 
 					// NOTE: We need this for the indices
 					uint32_t vertexStart = static_cast<uint32_t>(model.vertices.size());
 
-					JsonObject primitive_ = primitives[j].GetObjectW();
 					JsonObject attributes = primitive_["attributes"].GetObjectW();
 
 					// 
@@ -258,6 +333,7 @@ namespace gm
 
 							// TODO: We're assuming entries are float, but we should check the accessor's componentType so we can
 							// do a reinterpet_cast based on that info
+							// assert(normalAccessor.componentType == GM_GLTF_COMPONENT_TYPE_FLOAT);
 							normalBuffer = reinterpret_cast<const float *>(&(buffers[normalBufferView.bufferId][normalAccessor.byteOffset + normalBufferView.byteOffset]));
 						}
 
@@ -266,7 +342,7 @@ namespace gm
 						for (uint32_t v = 0; v < positionAccessor.count; ++v)
 						{
 							// TODO: We're assuming we're dealing with 3D vectors here, but we should check the accessor's type
-							gVertex vertex;
+							Vertex vertex;
 							vertex.position = glm::make_vec3(&positionBuffer[v * 3]);
 							vertex.normal = normalBuffer ? glm::make_vec3(&normalBuffer[v * 3]) : glm::vec3(0.0f);
 							vertex.normal = glm::normalize(vertex.normal);
@@ -318,7 +394,7 @@ namespace gm
 		return model;
 	}
 
-	void destroyModel(gModel model, gm::VulkanDevice* device)
+	void destroyModel(gm::Model model, gm::VulkanDevice* device)
 	{
 		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
 		{
@@ -397,10 +473,10 @@ namespace gm
 		return false;
 	}
 
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, gModel& model, gm::VulkanDevice* device)
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device)
 	{
 		JsonObject node_ = nodes[nodeIndex].GetObjectW();
-		gNode node;
+		Node node;
 		node.parentId = parentIndex;
 
 		if (node_.HasMember("matrix"))
@@ -423,7 +499,7 @@ namespace gm
 		{
 			node.meshId = node_["mesh"].GetInt();
 
-			gUniformBuffer uniformBuffer;
+			UniformBuffer uniformBuffer;
 
 			// Create 
 			GM_CHECK(gm::createBuffer(
