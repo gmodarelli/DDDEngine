@@ -27,8 +27,8 @@
 
 #else
 
-#define GM_CHECK(call, message)
-#define GM_ASSERT(x)
+#define GM_CHECK(call, message) call
+#define GM_ASSERT(x) x
 
 #endif
 
@@ -78,6 +78,8 @@ namespace gm
 
 		GM_ASSERT(!"Validation error encountered!");
 		return VK_FALSE;
+#else
+		return VK_FALSE;
 #endif
 	}
 
@@ -95,6 +97,8 @@ namespace gm
 		printf(message);
 
 		return VK_FALSE;
+#else
+		return VK_FALSE;
 #endif
 	}
 
@@ -106,6 +110,8 @@ namespace gm
 		snprintf(message, ARRAYSIZE(message), "\n [ Vulkan Validation Debug ]\n%s\n\n", pMessage);
 		printf(message);
 
+		return VK_FALSE;
+#else
 		return VK_FALSE;
 #endif
 	}
