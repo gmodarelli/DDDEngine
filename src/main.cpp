@@ -721,14 +721,7 @@ int main()
 		vkDestroyBuffer(app->device->Device, indexStaging.buffer, nullptr);
 		vkFreeMemory(app->device->Device, indexStaging.memory, nullptr);
 	}
-	// gm::destroyModel(model, app->device);
 
-	// Load the scene models
-	// models.scene.loadFromFile("../data/models/Box/glTF/Box.gltf", app->device);
-	// models.scene.loadFromFile("../data/models/DamagedHelmet/glTF/DamagedHelmet.gltf", app->device);
-
-	//float scale = 1.0f / models.scene.dimensions.radius;
-	//app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
 	app->mainCamera.movementSpeed = 10.0f;
 	app->mainCamera.setPosition(glm::vec3(0.0f, 0.0f, -3.0f));
 
@@ -766,7 +759,6 @@ int main()
 
 	vkDeviceWaitIdle(app->device->Device);
 
-	// models.scene.destroy();
 	gm::destroyModel(models.scene, app->device);
 
 	// Destroy the vertex and index buffers

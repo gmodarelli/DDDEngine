@@ -285,8 +285,38 @@ namespace gm
 		model.meshes.resize((size_t)meshes.Size());
 		model.uniformBuffers.resize((size_t)meshes.Size());
 
+		uint32_t indexCount = 0;
+		uint32_t vertexCount = 0;
+		// Precompute the vertex and index count
+		for (rapidjson::SizeType meshId = 0; meshId < meshes.Size(); ++meshId)
+		{
+			JsonObject mesh_ = meshes[meshId].GetObjectW();
+			JsonArray primitives = mesh_["primitives"].GetArray();
+			for (rapidjson::SizeType pId = 0; pId < primitives.Size(); ++pId)
+			{
+				JsonObject primitive_ = primitives[pId].GetObjectW();
+				if (primitive_.HasMember("indices"))
+				{
+					uint32_t accessorId = primitive_["indices"].GetInt();
+					indexCount += accessors[accessorId].count;
+				}
+
+				JsonObject attributes = primitive_["attributes"].GetObjectW();
+				// Position should always be there
+				assert(attributes.HasMember("POSITION") && "POSITION attribute not found");
+				uint32_t accessorId = attributes["POSITION"].GetInt();
+				vertexCount += accessors[accessorId].count;
+			}
+		}
+
+		uint32_t* tmp_indices = new uint32_t[indexCount];
+		Vertex* tmp_vertices = new Vertex[vertexCount];
+
 		// Parse meshes
 		{
+			uint32_t vertexStart = 0;
+			uint32_t indexStart = 0;
+
 			for (rapidjson::SizeType meshId = 0; meshId < meshes.Size(); ++meshId)
 			{
 				JsonObject mesh_ = meshes[meshId].GetObjectW();
@@ -301,78 +331,89 @@ namespace gm
 					Primitive primitive;
 					primitive.meshId = meshId;
 					primitive.materialId = primitive_.HasMember("material") ? primitive_["material"].GetInt() : -1;
-					primitive.firstIndex = static_cast<uint32_t>(model.indices.size());
-
-					// NOTE: We need this for the indices
-					uint32_t vertexStart = static_cast<uint32_t>(model.vertices.size());
+					primitive.firstIndex = indexStart;
 
 					JsonObject attributes = primitive_["attributes"].GetObjectW();
 
 					// 
 					// Vertex Data
 					//
-					{
-						const float* positionBuffer = nullptr;
-						const float* normalBuffer = nullptr;
+					const float* positionBuffer = nullptr;
+					const float* normalBuffer = nullptr;
 
-						// Position should always be there
-						assert(attributes.HasMember("POSITION") && "POSITION attribute not found");
-						uint32_t positionAccessorId = attributes["POSITION"].GetInt();
-						Accessor& positionAccessor = accessors[positionAccessorId];
-						BufferView& positionBufferView = bufferViews[positionAccessor.bufferViewId];
+					// Position should always be there
+					assert(attributes.HasMember("POSITION") && "POSITION attribute not found");
+					uint32_t positionAccessorId = attributes["POSITION"].GetInt();
+					Accessor& positionAccessor = accessors[positionAccessorId];
+					BufferView& positionBufferView = bufferViews[positionAccessor.bufferViewId];
+
+					// TODO: We're assuming entries are float, but we should check the accessor's componentType so we can
+					// do a reinterpet_cast based on that info
+					positionBuffer = reinterpret_cast<const float *>(&(buffers[positionBufferView.bufferId][positionAccessor.byteOffset + positionBufferView.byteOffset]));
+
+					if (attributes.HasMember("NORMAL"))
+					{
+						uint32_t normalAccessorId = attributes["NORMAL"].GetInt();
+						Accessor& normalAccessor = accessors[normalAccessorId];
+						BufferView& normalBufferView = bufferViews[normalAccessor.bufferViewId];
 
 						// TODO: We're assuming entries are float, but we should check the accessor's componentType so we can
 						// do a reinterpet_cast based on that info
-						positionBuffer = reinterpret_cast<const float *>(&(buffers[positionBufferView.bufferId][positionAccessor.byteOffset + positionBufferView.byteOffset]));
+						// assert(normalAccessor.componentType == GM_GLTF_COMPONENT_TYPE_FLOAT);
+						normalBuffer = reinterpret_cast<const float *>(&(buffers[normalBufferView.bufferId][normalAccessor.byteOffset + normalBufferView.byteOffset]));
+					}
 
-						if (attributes.HasMember("NORMAL"))
+					// TODO: Add UVs
+
+					for (uint32_t v = 0; v < positionAccessor.count; ++v)
+					{
+						// TODO: We're assuming we're dealing with 3D vectors here, but we should check the accessor's type
+						Vertex vertex;
+
+						vertex.position.x = positionBuffer[v * 3];
+						vertex.position.y = positionBuffer[v * 3 + 1];
+						vertex.position.z = positionBuffer[v * 3 + 2];
+
+						if (normalBuffer)
 						{
-							uint32_t normalAccessorId = attributes["NORMAL"].GetInt();
-							Accessor& normalAccessor = accessors[normalAccessorId];
-							BufferView& normalBufferView = bufferViews[normalAccessor.bufferViewId];
-
-							// TODO: We're assuming entries are float, but we should check the accessor's componentType so we can
-							// do a reinterpet_cast based on that info
-							// assert(normalAccessor.componentType == GM_GLTF_COMPONENT_TYPE_FLOAT);
-							normalBuffer = reinterpret_cast<const float *>(&(buffers[normalBufferView.bufferId][normalAccessor.byteOffset + normalBufferView.byteOffset]));
+							vertex.normal.x = normalBuffer[v * 3];
+							vertex.normal.y = normalBuffer[v * 3 + 1];
+							vertex.normal.z = normalBuffer[v * 3 + 2];
+						}
+						else
+						{
+							vertex.normal = glm::vec3(0.0f);
 						}
 
-						// TODO: Add UVs
-
-						for (uint32_t v = 0; v < positionAccessor.count; ++v)
-						{
-							// TODO: We're assuming we're dealing with 3D vectors here, but we should check the accessor's type
-							Vertex vertex;
-							vertex.position = glm::make_vec3(&positionBuffer[v * 3]);
-							vertex.normal = normalBuffer ? glm::make_vec3(&normalBuffer[v * 3]) : glm::vec3(0.0f);
-							vertex.normal = glm::normalize(vertex.normal);
-
-							model.vertices.push_back(vertex);
-						}
+						tmp_vertices[vertexStart + v] = vertex;
 					}
 
 					//
 					// Index Data
 					//
+					if (primitive_.HasMember("indices"))
 					{
-						if (primitive_.HasMember("indices"))
+						uint32_t indexAccessorId = primitive_["indices"].GetInt();
+						Accessor& indexAccessor = accessors[indexAccessorId];
+						BufferView& indexBufferView = bufferViews[indexAccessor.bufferViewId];
+
+						// TODO: We're assuming entries are shorts, but we should check the accessor's componentType so we can
+						// do a reinterpet_cast based on that info
+						const uint16_t* indexBuffer = reinterpret_cast<const uint16_t *>(&(buffers[indexBufferView.bufferId][indexAccessor.byteOffset + indexBufferView.byteOffset]));
+
+						for (uint32_t i = 0; i < indexAccessor.count; ++i)
 						{
-							uint32_t indexAccessorId = primitive_["indices"].GetInt();
-							Accessor& indexAccessor = accessors[indexAccessorId];
-							BufferView& indexBufferView = bufferViews[indexAccessor.bufferViewId];
-
-							// TODO: We're assuming entries are shorts, but we should check the accessor's componentType so we can
-							// do a reinterpet_cast based on that info
-							const uint16_t* indexBuffer = reinterpret_cast<const uint16_t *>(&(buffers[indexBufferView.bufferId][indexAccessor.byteOffset + indexBufferView.byteOffset]));
-
-							for (uint32_t i = 0; i < indexAccessor.count; ++i)
-							{
-								model.indices.push_back(indexBuffer[i] + vertexStart);
-							}
-
-							primitive.indexCount = indexAccessor.count;
+							tmp_indices[primitive.firstIndex + i] = indexBuffer[i] + vertexStart;
 						}
+
+						primitive.indexCount = indexAccessor.count;
+
+						// NOTE: for the next mesh
+						indexStart += indexAccessor.count;
 					}
+
+					// NOTE: for the next mesh
+					vertexStart += positionAccessor.count;
 
 					model.primitives.push_back(primitive);
 				}
@@ -380,6 +421,13 @@ namespace gm
 				model.meshes[meshId] = mesh;
 			}
 		}
+
+		// Convert the temporary arrays to std::vectors to keep the rest of the code untouched
+		model.vertices.assign(tmp_vertices, tmp_vertices + vertexCount);
+		model.indices.assign(tmp_indices, tmp_indices + indexCount);
+
+		delete[] tmp_vertices;
+		delete[] tmp_indices;
 
 		for (rapidjson::SizeType i = 0; i < rootNodes.Size(); ++i)
 		{
