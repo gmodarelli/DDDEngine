@@ -19,12 +19,16 @@ layout (location = 1) in vec3 inNormal;
 
 layout (location = 0) out vec3 outWorldPosition;
 layout (location = 1) out vec3 outNormal;
+layout (location = 2) out vec3 outWorldNormal;
 
 void main()
 {
 	vec4 localPosition = ubo.model * node.matrix * vec4(inPos, 1.0f);
 	outWorldPosition = localPosition.xyz / localPosition.w;
-	outNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);
+	outNormal = inNormal;
+	// Transform the normal from object space to world space
+	// TODO: Maybe add why we're inverting, transposing and normalizing
+	outWorldNormal = normalize(transpose(inverse(mat3(ubo.model * node.matrix))) * inNormal);
 
 	gl_Position = ubo.projection * ubo.view * vec4(outWorldPosition.xyz, 1.0f);
 }

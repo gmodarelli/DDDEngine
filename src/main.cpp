@@ -50,8 +50,6 @@ struct Models
 	gm::Model scene;
 } models;
 
-// We need to create the buffers that will hold the data for our two uniform buffers
-// Since we have multiple frames in flight, we need to create 2 * app->maxFramesInFlight
 struct UniformBuffer
 {
 	VkBuffer buffer;
@@ -63,10 +61,10 @@ struct UniformBuffer
 struct UniformBufferSet
 {
 	UniformBuffer scene;
+	UniformBuffer params;
 	// TODO: Add one more for the skybox
 };
 
-// We start with the Uniform Buffer Object for the MVP Matrix and camera position
 struct UBOMatrices
 {
 	glm::mat4 model;
@@ -74,6 +72,18 @@ struct UBOMatrices
 	glm::mat4 projection;
 	glm::vec3 cameraPosition;
 } shaderValuesScene; // TODO: Add one more for the skybox
+
+struct UBOParams
+{
+	glm::vec3 lightPosition;
+	glm::vec4 lightColor;
+} shaderValuesParams;
+
+struct LightSource
+{
+	glm::vec3 color = glm::vec3(1.0f);
+	glm::vec3 rotation = glm::vec3(75.0f, 40.0f, 0.0f);
+} lightSource;
 
 struct PushConstantBlockMaterial
 {
@@ -133,30 +143,73 @@ void updateUniformBuffers()
 	);
 }
 
+// NOTE: The shader params don't have to be updated at the same frequency as the scene uniform buffers since they are not
+// influenced by camera movements
+void updateShaderParams()
+{
+	/*
+	shaderValuesParams.lightDirection = glm::vec4(
+		sin(glm::radians(lightSource.rotation.x)) * cos(glm::radians(lightSource.rotation.y)),
+		sin(glm::radians(lightSource.rotation.y)),
+		cos(glm::radians(lightSource.rotation.x)) * cos(glm::radians(lightSource.rotation.y)),
+		0.0f);
+	*/
+
+	shaderValuesParams.lightPosition = glm::vec3(0.0f, -2.0f, 0.0f);
+	shaderValuesParams.lightColor = glm::vec4(1.0f);
+}
+
 void prepareUniformBuffers()
 {
 	for (auto &uniformBuffer : uniformBuffers)
 	{
-		// TODO: this creating and mapping could be moved into its own buffer struct
-		GM_CHECK(gm::createBuffer(
-			app->device,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			sizeof(shaderValuesScene),
-			&uniformBuffer.scene.buffer,
-			&uniformBuffer.scene.memory), "Failed to create uniform buffer");
+		// Scene UBOs
+		{
+			// TODO: this "creating and mapping" could be moved into its own buffer struct
+			GM_CHECK(gm::createBuffer(
+				app->device,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				sizeof(shaderValuesScene),
+				&uniformBuffer.scene.buffer,
+				&uniformBuffer.scene.memory), "Failed to create uniform buffer");
 
-		GM_CHECK(vkMapMemory(
-			app->device->Device,
-			uniformBuffer.scene.memory,
-			0,
-			sizeof(shaderValuesScene),
-			0,
-			&uniformBuffer.scene.data), "Failed to map memory");
+			GM_CHECK(vkMapMemory(
+				app->device->Device,
+				uniformBuffer.scene.memory,
+				0,
+				sizeof(shaderValuesScene),
+				0,
+				&uniformBuffer.scene.data), "Failed to map memory");
 
-		uniformBuffer.scene.descriptor = { uniformBuffer.scene.buffer, 0, sizeof(shaderValuesScene) };
+			uniformBuffer.scene.descriptor = { uniformBuffer.scene.buffer, 0, sizeof(shaderValuesScene) };
+		}
+
+		// Shader Params UBOs (light info for now)
+		{
+			// TODO: this "creating and mapping" could be moved into its own buffer struct
+			GM_CHECK(gm::createBuffer(
+				app->device,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				sizeof(shaderValuesParams),
+				&uniformBuffer.params.buffer,
+				&uniformBuffer.params.memory), "Failed to create uniform buffer");
+
+			GM_CHECK(vkMapMemory(
+				app->device->Device,
+				uniformBuffer.params.memory,
+				0,
+				sizeof(shaderValuesParams),
+				0,
+				&uniformBuffer.params.data), "Failed to map memory");
+
+			uniformBuffer.params.descriptor = { uniformBuffer.params.buffer, 0, sizeof(shaderValuesParams) };
+		}
 	}
+
 	updateUniformBuffers();
+	updateShaderParams();
 }
 
 void setupDescriptors()
@@ -187,6 +240,7 @@ void setupDescriptors()
 	{
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
 			{ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+			{ 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
 			// TODO: Add other set layout bindings for textures
 		};
 		VkDescriptorSetLayoutCreateInfo createInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -203,14 +257,21 @@ void setupDescriptors()
 			GM_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
 
 			// TODO: Add more write descriptor sets once we have textures
-			std::vector<VkWriteDescriptorSet> writeDescriptorSets(1);
+			std::vector<VkWriteDescriptorSet> writeDescriptorSets(2);
 
-			writeDescriptorSets[0].sType = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			writeDescriptorSets[0].descriptorCount = 1;
 			writeDescriptorSets[0].dstSet = descriptorSets[i].scene;
 			writeDescriptorSets[0].dstBinding = 0;
 			writeDescriptorSets[0].pBufferInfo = &uniformBuffers[i].scene.descriptor;
+
+			writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			writeDescriptorSets[1].descriptorCount = 1;
+			writeDescriptorSets[1].dstSet = descriptorSets[i].scene;
+			writeDescriptorSets[1].dstBinding = 1;
+			writeDescriptorSets[1].pBufferInfo = &uniformBuffers[i].params.descriptor;
 
 			vkUpdateDescriptorSets(app->device->Device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 		}
@@ -517,6 +578,10 @@ void render(VkQueue queue, VkQueue presentQueue)
 	updateUniformBuffers();
 	memcpy(uniformBuffers[currentFrameIndex].scene.data, &shaderValuesScene, sizeof(shaderValuesScene));
 
+	// NOTE: We don't need to update this every frame
+	updateShaderParams();
+	memcpy(uniformBuffers[currentFrameIndex].params.data, &shaderValuesParams, sizeof(shaderValuesParams));
+
 	const VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submitInfo.pWaitDstStageMask = &waitDstStageMask;
@@ -712,6 +777,9 @@ int main()
 	{
 		vkDestroyBuffer(app->device->Device, uniformBuffer.scene.buffer, nullptr);
 		vkFreeMemory(app->device->Device, uniformBuffer.scene.memory, nullptr);
+
+		vkDestroyBuffer(app->device->Device, uniformBuffer.params.buffer, nullptr);
+		vkFreeMemory(app->device->Device, uniformBuffer.params.memory, nullptr);
 	}
 
 	app->device->destroyQueryPool(queryPool);
