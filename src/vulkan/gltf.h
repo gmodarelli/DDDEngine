@@ -243,13 +243,13 @@ namespace gm
 					material.pbrMetallicRoughness.baseColorFactor.a = baseColorFactor[3].GetFloat();
 				}
 
-				material.pbrMetallicRoughness.metallicFactor = 1.0f;
+				material.pbrMetallicRoughness.metallicFactor = 0.0f;
 				if (pbrMetallicRoughness.HasMember("metallicFactor"))
 				{
 					material.pbrMetallicRoughness.metallicFactor = pbrMetallicRoughness["metallicFactor"].GetFloat();
 				}
 
-				material.pbrMetallicRoughness.roughnessFactor = 1.0f;
+				material.pbrMetallicRoughness.roughnessFactor = 0.0f;
 				if (pbrMetallicRoughness.HasMember("roughnessFactor"))
 				{
 					material.pbrMetallicRoughness.roughnessFactor = pbrMetallicRoughness["roughnessFactor"].GetFloat();

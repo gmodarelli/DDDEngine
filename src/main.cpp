@@ -127,7 +127,7 @@ void updateUniformBuffers()
 	// Hard coding the model position to the center of the world
 	// the model rotation to 0 and the scale to 1
 	glm::vec3 modelPosition = glm::vec3(0.0f);
-	glm::vec3 modelRotation = glm::vec3(45.0f, 0.0f, 15.0f);
+	glm::vec3 modelRotation = glm::vec3(90.0f, 0.0f, 0.0f);
 	float scale = 1.0f;
 
 	shaderValuesScene.model = glm::translate(glm::mat4(1.0f), modelPosition);
@@ -155,7 +155,7 @@ void updateShaderParams()
 		0.0f);
 	*/
 
-	shaderValuesParams.lightPosition = glm::vec3(0.0f, -2.0f, 0.0f);
+	shaderValuesParams.lightPosition = glm::vec3(0.0f, -10.0f, -5.0f);
 	shaderValuesParams.lightColor = glm::vec4(1.0f);
 }
 
@@ -645,7 +645,8 @@ int main()
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
 
-	models.scene = gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf", app->device);
+	// models.scene = gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf", app->device);
+	models.scene = gm::loadModelFromFile("../data/models/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf", app->device);
 	// Upload this model indices and vertices to the index and vertex buffers on the GPU
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
@@ -728,6 +729,7 @@ int main()
 
 	//float scale = 1.0f / models.scene.dimensions.radius;
 	//app->mainCamera.setPosition(glm::vec3(-models.scene.dimensions.center.x * scale, -models.scene.dimensions.center.y * scale, -2 * app->mainCamera.position.z));
+	app->mainCamera.movementSpeed = 10.0f;
 	app->mainCamera.setPosition(glm::vec3(0.0f, 0.0f, -3.0f));
 
 	uniformBuffers.resize(app->maxFramesInFlight);

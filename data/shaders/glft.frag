@@ -53,7 +53,8 @@ void main()
 	vec3 L = normalize(uboParams.lightPosition - inWorldPos);
 	vec3 H = normalize(V + L);
 	float distance = length(uboParams.lightPosition - inWorldPos);
-	float attenuation = 1.0f / (distance * distance);
+	// float attenuation = 1.0f / (distance * distance);
+	float attenuation = 1.0f;// / (distance * distance);
 	vec3 radiance = uboParams.lightColor.rgb * attenuation;
 
 	// Cook-Torrance BRDF
