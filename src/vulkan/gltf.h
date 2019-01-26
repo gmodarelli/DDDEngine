@@ -22,6 +22,11 @@ namespace gm
 	typedef rapidjson::GenericObject<true, rapidjson::Value::ValueType> ConstJsonObject;
 	typedef rapidjson::GenericArray<true, rapidjson::Value::ValueType> ConstJsonArray;
 
+	static const uint32_t GLTF_MAGIC = 0x46546C67;
+	static const uint32_t GLTF_VERSION = 0x00000002;
+	static const uint32_t GLTF_CHUNK_TYPE_JSON = 0x4E4F534A;
+	static const uint32_t GLTF_CHUNK_TYPE_BIN = 0x004E4942;
+
 	struct Node
 	{
 		int32_t parentId = -1;
@@ -98,6 +103,93 @@ namespace gm
 	static bool isValidFormat(rapidjson::Document& document);
 	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device);
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize);
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, gm::VulkanDevice* device);
+
+
+	Model loadModelFromGLBFile(std::string path, gm::VulkanDevice* device)
+	{
+		Model model = {};
+
+		// Open the input file
+		FILE* fileHandle = NULL;
+		fileHandle = fopen(path.c_str(), "rb");
+		assert(fileHandle != NULL && "Could not open the file");
+
+		size_t fileLength = 0;
+		// Read the GLB Header
+		{
+			const size_t headerBufferSize = 3;
+			uint32_t headerBuffer[headerBufferSize];
+			uint32_t objectsRead = fread(headerBuffer, sizeof(uint32_t), headerBufferSize, fileHandle);
+			GM_ASSERT(objectsRead == headerBufferSize);
+
+			GM_ASSERT(headerBuffer[0] == GLTF_MAGIC);
+			GM_ASSERT(headerBuffer[1] == GLTF_VERSION);
+			fileLength = headerBuffer[2];
+		}
+
+		// Read the JSON Chunk "Header"
+		size_t jsonLength = 0;
+		{
+			const size_t chunkHeaderSize = 2;
+			uint32_t chunkHeader[chunkHeaderSize];
+			uint32_t objectsRead = fread(chunkHeader, sizeof(uint32_t), chunkHeaderSize, fileHandle);
+			GM_ASSERT(objectsRead == chunkHeaderSize);
+
+			GM_ASSERT(chunkHeader[1] == GLTF_CHUNK_TYPE_JSON);
+			jsonLength = static_cast<size_t>(chunkHeader[0]);
+		}
+
+		// Read the JSON Data
+		char* jsonString = new char[jsonLength + 1];
+		uint32_t bytesRead = fread(jsonString, sizeof(char), jsonLength, fileHandle);
+		GM_ASSERT(bytesRead == jsonLength);
+		jsonString[jsonLength] = '\0';
+
+		// Parse the JSON Data
+		rapidjson::Document document;
+		auto jsonParseStart = std::chrono::high_resolution_clock::now();
+		document.Parse<rapidjson::kParseStopWhenDoneFlag>(jsonString);
+		auto jsonParseEnd = std::chrono::high_resolution_clock::now();
+		auto jsonParseDuration = (jsonParseEnd - jsonParseStart).count() * 1e-6;
+		printf("[glb] JSON parsed in %.2f ms\n", jsonParseDuration);
+		assert(isValidFormat(document));
+
+		delete[] jsonString;
+
+		// Read all the buffers
+		size_t bufferCount = (size_t)document["buffers"].GetArray().Size();
+		unsigned char** buffers = new unsigned char*[bufferCount];
+
+		for (size_t i = 0; i < bufferCount; ++i)
+		{
+			// Read the next Chunk Header
+			size_t chunkLength = 0;
+			{
+				const size_t chunkHeaderSize = 2;
+				uint32_t chunkHeader[chunkHeaderSize];
+				uint32_t objectsRead = fread(chunkHeader, sizeof(uint32_t), chunkHeaderSize, fileHandle);
+				GM_ASSERT(objectsRead == chunkHeaderSize);
+
+				GM_ASSERT(chunkHeader[1] == GLTF_CHUNK_TYPE_BIN);
+				chunkLength = static_cast<size_t>(chunkHeader[0]);
+			}
+
+			buffers[i] = new unsigned char[chunkLength];
+			uint32_t bytesRead = fread(buffers[i], sizeof(unsigned char), chunkLength, fileHandle);
+			GM_ASSERT(bytesRead == chunkLength);
+		}
+
+		fclose(fileHandle);
+
+		auto modelParseStart = std::chrono::high_resolution_clock::now();
+		parseModel(model, document, buffers, device);
+		auto modelParseEnd = std::chrono::high_resolution_clock::now();
+		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
+		printf("[glb] Model parsed in %.2f ms\n", modelParseDuration);
+
+		return model;
+	}
 
 	Model loadModelFromFile(std::string path, gm::VulkanDevice* device)
 	{
@@ -130,6 +222,155 @@ namespace gm
 			}
 		}
 
+		auto modelParseStart = std::chrono::high_resolution_clock::now();
+		parseModel(model, document, buffers.data(), device);
+		auto modelParseEnd = std::chrono::high_resolution_clock::now();
+		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
+		printf("[gltf] Model parsed in %.2f ms\n", modelParseDuration);
+
+		return model;
+	}
+
+	void destroyModel(gm::Model model, gm::VulkanDevice* device)
+	{
+		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
+		{
+			if (model.uniformBuffers[i].buffer != VK_NULL_HANDLE)
+			{
+				vkDestroyBuffer(device->Device, model.uniformBuffers[i].buffer, nullptr);
+				model.uniformBuffers[i].buffer = VK_NULL_HANDLE;
+			}
+
+			if (model.uniformBuffers[i].memory != VK_NULL_HANDLE)
+			{
+				vkFreeMemory(device->Device, model.uniformBuffers[i].memory, nullptr);
+				model.uniformBuffers[i].memory = VK_NULL_HANDLE;
+			}
+		}
+	}
+
+	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize)
+	{
+		// Open the input file
+		FILE* fileHandle = NULL;
+		fileHandle = fopen(path.c_str(), "rb");
+		assert(fileHandle != NULL && "Could not open the file");
+
+		uint32_t bytesRead = fread(buffer, sizeof(unsigned char), bufferSize, fileHandle);
+		fclose(fileHandle);
+
+		assert(bytesRead == bufferSize);
+	}
+
+	static rapidjson::Document parseFile(std::string path)
+	{
+		// Open the input file
+		FILE* fileHandle = NULL;
+		fileHandle = fopen(path.c_str(), "rb");
+		assert(fileHandle != NULL && "Could not open the file");
+		// Compute the file size
+		fseek(fileHandle, 0, SEEK_END);
+		size_t size = ftell(fileHandle);
+		rewind(fileHandle);
+
+		// Allocate a buffer to hold the file content and read the file
+		char* buffer = new char[size + 1];
+		uint32_t bytesRead = fread(buffer, sizeof(buffer[0]), size, fileHandle);
+		assert(bytesRead == size);
+		// NOTE: Make sure the buffer is null terminated
+		buffer[size - 1] = '\0';
+
+		// Parse the JSON content
+		rapidjson::Document document;
+		document.Parse<rapidjson::kParseStopWhenDoneFlag>(buffer);
+		fclose(fileHandle);
+
+		if (document.HasParseError())
+		{
+			fprintf(stderr, "\nError(offset %u): %s\n",
+				(uint32_t)document.GetErrorOffset(),
+				rapidjson::GetParseError_En(document.GetParseError()));
+
+			assert(!"Error parsing the glFT document\n");
+		}
+
+		return document;
+	}
+
+	static bool isValidFormat(rapidjson::Document& document)
+	{
+		rapidjson::Value& asset = document["asset"];
+		if (asset.IsObject())
+		{
+			auto value = asset.GetObjectW();
+			if (value.HasMember("version") && strstr("2.0", value["version"].GetString()))
+				return true;
+		}
+
+		return false;
+	}
+
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device)
+	{
+		JsonObject node_ = nodes[nodeIndex].GetObjectW();
+		Node node;
+		node.parentId = parentIndex;
+
+		if (node_.HasMember("matrix"))
+		{
+			JsonArray matrix = node_["matrix"].GetArray();
+			float raw[16];
+			for (uint32_t m = 0; m < 16; ++m)
+			{
+				raw[m] = matrix[m].GetFloat();
+			}
+
+			node.matrix = glm::make_mat4x4(raw);
+		}
+		else
+		{
+			node.matrix = glm::mat4(1.0f);
+		}
+
+		if (node_.HasMember("mesh"))
+		{
+			node.meshId = node_["mesh"].GetInt();
+
+			UniformBuffer uniformBuffer;
+
+			// Create 
+			GM_CHECK(gm::createBuffer(
+				device,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				sizeof(glm::mat4),
+				&uniformBuffer.buffer,
+				&uniformBuffer.memory,
+				&node.matrix), "Failed to create uniform buffer");
+
+			GM_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(glm::mat4), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
+
+			uniformBuffer.descriptor = { uniformBuffer.buffer, 0, sizeof(glm::mat4) };
+
+			// BUG: we are potentially overriding this buffer
+			model.uniformBuffers[node.meshId] = uniformBuffer;
+		}
+
+		// TODO: Add rotation, translation and scale
+
+		// If it is a parent node
+		if (node_.HasMember("children"))
+		{
+			auto children = node_["children"].GetArray();
+			for (rapidjson::SizeType j = 0; j < children.Size(); ++j)
+				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model, device);
+		}
+
+		model.nodes[nodeIndex] = node;
+	}
+
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, gm::VulkanDevice* device)
+	{
 		// Parse buffer views
 		struct BufferView
 		{
@@ -271,7 +512,6 @@ namespace gm
 		}
 
 		// NOTE: For now we're assuming there's only one scene, at index 0
-		auto modelParseStart = std::chrono::high_resolution_clock::now();
 		rapidjson::Value& value = document["scenes"];
 		JsonArray scenes = value.GetArray();
 		JsonObject scene = scenes[0].GetObjectW();
@@ -434,150 +674,5 @@ namespace gm
 			uint32_t nodeIndex = (uint32_t)rootNodes[i].GetInt();
 			loadNode(nodeIndex, -1, nodes, meshes, model, device);
 		}
-
-		auto modelParseEnd = std::chrono::high_resolution_clock::now();
-		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
-		printf("[glTF] Model parsed in %.2f ms\n", modelParseDuration);
-
-		return model;
-	}
-
-	void destroyModel(gm::Model model, gm::VulkanDevice* device)
-	{
-		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
-		{
-			if (model.uniformBuffers[i].buffer != VK_NULL_HANDLE)
-			{
-				vkDestroyBuffer(device->Device, model.uniformBuffers[i].buffer, nullptr);
-				model.uniformBuffers[i].buffer = VK_NULL_HANDLE;
-			}
-
-			if (model.uniformBuffers[i].memory != VK_NULL_HANDLE)
-			{
-				vkFreeMemory(device->Device, model.uniformBuffers[i].memory, nullptr);
-				model.uniformBuffers[i].memory = VK_NULL_HANDLE;
-			}
-		}
-	}
-
-	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize)
-	{
-		// Open the input file
-		FILE* fileHandle = NULL;
-		fileHandle = fopen(path.c_str(), "rb");
-		assert(fileHandle != NULL && "Could not open the file");
-
-		uint32_t bytesRead = fread(buffer, sizeof(unsigned char), bufferSize, fileHandle);
-		fclose(fileHandle);
-
-		assert(bytesRead == bufferSize);
-	}
-
-	static rapidjson::Document parseFile(std::string path)
-	{
-		// Open the input file
-		FILE* fileHandle = NULL;
-		fileHandle = fopen(path.c_str(), "rb");
-		assert(fileHandle != NULL && "Could not open the file");
-		// Compute the file size
-		fseek(fileHandle, 0, SEEK_END);
-		size_t size = ftell(fileHandle);
-		rewind(fileHandle);
-
-		// Allocate a buffer to hold the file content and read the file
-		char* buffer = new char[size + 1];
-		uint32_t bytesRead = fread(buffer, sizeof(buffer[0]), size, fileHandle);
-		assert(bytesRead == size);
-		// NOTE: Make sure the buffer is null terminated
-		buffer[size - 1] = '\0';
-
-		// Parse the JSON content
-		rapidjson::Document document;
-		document.Parse<rapidjson::kParseStopWhenDoneFlag>(buffer);
-		fclose(fileHandle);
-
-		if (document.HasParseError())
-		{
-			fprintf(stderr, "\nError(offset %u): %s\n",
-				(uint32_t)document.GetErrorOffset(),
-				rapidjson::GetParseError_En(document.GetParseError()));
-
-			assert(!"Error parsing the glFT document\n");
-		}
-
-		return document;
-	}
-
-	static bool isValidFormat(rapidjson::Document& document)
-	{
-		rapidjson::Value& asset = document["asset"];
-		if (asset.IsObject())
-		{
-			auto value = asset.GetObjectW();
-			if (value.HasMember("version") && strstr("2.0", value["version"].GetString()))
-				return true;
-		}
-
-		return false;
-	}
-
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device)
-	{
-		JsonObject node_ = nodes[nodeIndex].GetObjectW();
-		Node node;
-		node.parentId = parentIndex;
-
-		if (node_.HasMember("matrix"))
-		{
-			JsonArray matrix = node_["matrix"].GetArray();
-			float raw[16];
-			for (uint32_t m = 0; m < 16; ++m)
-			{
-				raw[m] = matrix[m].GetFloat();
-			}
-
-			node.matrix = glm::make_mat4x4(raw);
-		}
-		else
-		{
-			node.matrix = glm::mat4(1.0f);
-		}
-
-		if (node_.HasMember("mesh"))
-		{
-			node.meshId = node_["mesh"].GetInt();
-
-			UniformBuffer uniformBuffer;
-
-			// Create 
-			GM_CHECK(gm::createBuffer(
-				device,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				sizeof(glm::mat4),
-				&uniformBuffer.buffer,
-				&uniformBuffer.memory,
-				&node.matrix), "Failed to create uniform buffer");
-
-			GM_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(glm::mat4), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
-
-			uniformBuffer.descriptor = { uniformBuffer.buffer, 0, sizeof(glm::mat4) };
-
-			// BUG: we are potentially overriding this buffer
-			model.uniformBuffers[node.meshId] = uniformBuffer;
-		}
-
-		// TODO: Add rotation, translation and scale
-
-		// If it is a parent node
-		if (node_.HasMember("children"))
-		{
-			auto children = node_["children"].GetArray();
-			for (rapidjson::SizeType j = 0; j < children.Size(); ++j)
-				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model, device);
-		}
-
-		model.nodes[nodeIndex] = node;
-
 	}
 }

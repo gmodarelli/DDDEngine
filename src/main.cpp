@@ -645,8 +645,8 @@ int main()
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
 
-	// models.scene = gm::loadModelFromFile("../data/models/Box/glTF/Box.gltf", app->device);
-	models.scene = gm::loadModelFromFile("../data/models/MetalRoughSpheres/glTF/MetalRoughSpheres.gltf", app->device);
+	// models.scene = gm::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->device);
+	models.scene = gm::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->device);
 	// Upload this model indices and vertices to the index and vertex buffers on the GPU
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
