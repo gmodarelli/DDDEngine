@@ -165,8 +165,8 @@
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
     </None>
+    <ClCompile Include="..\application\main.cpp" />
     <ClCompile Include="..\extern\volk\volk.c" />
-    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag" />
@@ -174,14 +174,14 @@
     <None Include="..\data\shaders\simple.vert" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="vulkan\app.h" />
-    <ClInclude Include="vulkan\buffer.h" />
-    <ClInclude Include="vulkan\camera.h" />
-    <ClInclude Include="vulkan\device.h" />
-    <ClInclude Include="vulkan\gltf.h" />
-    <ClInclude Include="vulkan\shaders.h" />
-    <ClInclude Include="vulkan\swapchain.h" />
-    <ClInclude Include="vulkan\utils.h" />
+    <ClInclude Include="..\renderer\camera.h" />
+    <ClInclude Include="..\vulkan\app.h" />
+    <ClInclude Include="..\vulkan\buffer.h" />
+    <ClInclude Include="..\vulkan\device.h" />
+    <ClInclude Include="..\vulkan\gltf.h" />
+    <ClInclude Include="..\vulkan\shaders.h" />
+    <ClInclude Include="..\vulkan\swapchain.h" />
+    <ClInclude Include="..\vulkan\utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

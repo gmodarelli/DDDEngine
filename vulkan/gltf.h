@@ -15,7 +15,7 @@
 #include "volk.h"
 #include "utils.h"
 
-namespace gm
+namespace Vulkan
 {
 	typedef rapidjson::GenericObject<false, rapidjson::Value::ValueType> JsonObject;
 	typedef rapidjson::GenericArray<false, rapidjson::Value::ValueType> JsonArray;
@@ -101,12 +101,12 @@ namespace gm
 
 	static rapidjson::Document parseFile(std::string path);
 	static bool isValidFormat(rapidjson::Document& document);
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device);
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::VulkanDevice* device);
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize);
-	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, gm::VulkanDevice* device);
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::VulkanDevice* device);
 
 
-	Model loadModelFromGLBFile(std::string path, gm::VulkanDevice* device)
+	Model loadModelFromGLBFile(std::string path, Vulkan::VulkanDevice* device)
 	{
 		Model model = {};
 
@@ -191,7 +191,7 @@ namespace gm
 		return model;
 	}
 
-	Model loadModelFromFile(std::string path, gm::VulkanDevice* device)
+	Model loadModelFromFile(std::string path, Vulkan::VulkanDevice* device)
 	{
 		Model model = {};
 
@@ -231,7 +231,7 @@ namespace gm
 		return model;
 	}
 
-	void destroyModel(gm::Model model, gm::VulkanDevice* device)
+	void destroyModel(Vulkan::Model model, Vulkan::VulkanDevice* device)
 	{
 		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
 		{
@@ -310,7 +310,7 @@ namespace gm
 		return false;
 	}
 
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, gm::VulkanDevice* device)
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::VulkanDevice* device)
 	{
 		JsonObject node_ = nodes[nodeIndex].GetObjectW();
 		Node node;
@@ -339,7 +339,7 @@ namespace gm
 			UniformBuffer uniformBuffer;
 
 			// Create 
-			GM_CHECK(gm::createBuffer(
+			GM_CHECK(Vulkan::createBuffer(
 				device,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -369,7 +369,7 @@ namespace gm
 		model.nodes[nodeIndex] = node;
 	}
 
-	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, gm::VulkanDevice* device)
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::VulkanDevice* device)
 	{
 		// Parse buffer views
 		struct BufferView

@@ -8,10 +8,10 @@
 
 #include "volk.h"
 
-#include "vulkan/utils.h"
+#include "utils.h"
 #include <vector>
 
-namespace gm
+namespace Vulkan
 {
 	struct VulkanDevice
 	{
@@ -278,7 +278,7 @@ namespace gm
 
 			for (uint32_t i = 0; i < ARRAYSIZE(requiredExtensions); ++i)
 			{
-				GM_ASSERT(gm::checkExtensionSupport(requiredExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE);
+				GM_ASSERT(Vulkan::checkExtensionSupport(requiredExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE);
 				EnabledExtensionNames[EnabledExtensionsCount++] = requiredExtensions[i];
 			}
 
@@ -290,7 +290,7 @@ namespace gm
 
 			for (uint32_t i = 0; i < ARRAYSIZE(optionalExtensions); ++i)
 			{
-				if(gm::checkExtensionSupport(optionalExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE)
+				if(Vulkan::checkExtensionSupport(optionalExtensions[i], AvailableExtensions, AvailableExtensionsCount) == VK_TRUE)
 					EnabledExtensionNames[EnabledExtensionsCount++] = optionalExtensions[i];
 			}
 #endif
@@ -311,7 +311,7 @@ namespace gm
 
 			for (uint32_t i = 0; i < ARRAYSIZE(layers); ++i)
 			{
-				if(gm::checkLayerSupport(layers[i], AvailableLayers, AvailableLayersCount) == VK_TRUE)
+				if(Vulkan::checkLayerSupport(layers[i], AvailableLayers, AvailableLayersCount) == VK_TRUE)
 					EnabledLayerNames[EnabledLayersCount++] = layers[i];
 			}
 #endif
@@ -344,13 +344,13 @@ namespace gm
 			// Create Debug Callbacks
 			VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
 			debugCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT;
-			debugCreateInfo.pfnCallback = gm::debugReportErrorCallback;
+			debugCreateInfo.pfnCallback = Vulkan::debugReportErrorCallback;
 			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &ErrorCallback), "Failed to create the debug error callback");
 			debugCreateInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-			debugCreateInfo.pfnCallback = gm::debugReportWarningCallback;
+			debugCreateInfo.pfnCallback = Vulkan::debugReportWarningCallback;
 			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &WarningCallback), "Failed to create the debug warning callback");
 			debugCreateInfo.flags = VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-			debugCreateInfo.pfnCallback = gm::debugReportDebugCallback;
+			debugCreateInfo.pfnCallback = Vulkan::debugReportDebugCallback;
 			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &DebugCallback), "Failed to create the debug warning callback");
 #endif
 		}
@@ -531,7 +531,7 @@ namespace gm
 
 			for (uint32_t i = 0; i < ARRAYSIZE(requiredExtensions); ++i)
 			{
-				GM_ASSERT(gm::checkExtensionSupport(requiredExtensions[i], AvailablePhysicalDeviceExtensions, AvailablePhysicalDeviceExtensionCount) == VK_TRUE);
+				GM_ASSERT(Vulkan::checkExtensionSupport(requiredExtensions[i], AvailablePhysicalDeviceExtensions, AvailablePhysicalDeviceExtensionCount) == VK_TRUE);
 				EnabledPhysicalDeviceExtensions[EnabledPhysicalDeviceExtensionsCount++] = requiredExtensions[i];
 			}
 

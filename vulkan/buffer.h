@@ -1,6 +1,6 @@
 #pragma once
 
-namespace gm
+namespace Vulkan
 {
 	struct Buffer
 	{
@@ -31,7 +31,7 @@ namespace gm
 		return ~0u;
 	}
 
-	VkResult createBuffer(gm::VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer* buffer, VkDeviceMemory* memory, void* data = nullptr)
+	VkResult createBuffer(Vulkan::VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer* buffer, VkDeviceMemory* memory, void* data = nullptr)
 	{
 		// Create the buffer handle
 		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };

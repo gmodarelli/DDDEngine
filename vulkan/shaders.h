@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-namespace gm
+namespace Vulkan
 {
 	void readCode(const char* path, char* outCode, uint32_t* outCodeSize)
 	{

@@ -36,7 +36,7 @@
 #define ARRAYSIZE(array) sizeof(array) / sizeof(array[0])
 #endif
 
-namespace gm
+namespace Vulkan
 {
 	static VkBool32 checkExtensionSupport(const char* extensionName, VkExtensionProperties* availableExtensions, uint32_t extensionsCount)
 	{

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "camera.h"
+#include "../renderer/camera.h"
 
-namespace gm
+namespace Vulkan
 {
 	struct App
 	{
@@ -16,8 +16,8 @@ namespace gm
 		HWND window;
 #endif
 
-		gm::VulkanDevice* device;
-		gm::VulkanSwapchain* swapchain;
+		Vulkan::VulkanDevice* device;
+		Vulkan::VulkanSwapchain* swapchain;
 
 		VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
 		// This format include stencil as well VK_FORMAT_D16_UNORM_S8_UINT
@@ -44,7 +44,7 @@ namespace gm
 		uint32_t commandBufferCount = 0;
 		std::vector<VkCommandBuffer> commandBuffers;
 
-		gm::Camera mainCamera;
+		Renderer::Camera mainCamera;
 		glm::vec2 mousePos;
 
 		struct MouseButtons {
@@ -290,12 +290,12 @@ namespace gm
 		void prepare()
 		{
 			VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
-			device = new gm::VulkanDevice(hInstance, window, requiredQueues);
+			device = new Vulkan::VulkanDevice(hInstance, window, requiredQueues);
 
 			VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
 			VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
-			swapchain = new gm::VulkanSwapchain(*device, desiredFormat, desiredPresentMode, width, height);
+			swapchain = new Vulkan::VulkanSwapchain(*device, desiredFormat, desiredPresentMode, width, height);
 
 			prepareRenderPass();
 			prepareDepthBuffer();
@@ -386,7 +386,7 @@ namespace gm
 			// Allocate memory for the depth buffer
 			VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 			allocateInfo.allocationSize = memoryRequirements.size;
-			allocateInfo.memoryTypeIndex = gm::findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocateInfo.memoryTypeIndex = Vulkan::findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 			depthBuffer.ImageMemory = { 0 };
 			GM_CHECK(vkAllocateMemory(device->Device, &allocateInfo, nullptr, &depthBuffer.ImageMemory), "Failed to allocate memory for the depth buffer");
@@ -433,7 +433,7 @@ namespace gm
 
 		void initMainCamera()
 		{
-			mainCamera.type = gm::Camera::CameraType::firstperson;
+			mainCamera.type = Renderer::Camera::CameraType::firstperson;
 			mainCamera.setPerspective(45.0f, (float)swapchain->ImageExtent.width / (float)swapchain->ImageExtent.height, 0.1f, 256.0f);
 			mainCamera.setPosition({ 0.0f, 0.0f, 2.5f });
 			mainCamera.setRotation({ 0.0f, 0.0f, 0.0f });

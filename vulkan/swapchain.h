@@ -1,9 +1,9 @@
 #pragma once
 
-#include "vulkan/utils.h"
-#include "vulkan/device.h"
+#include "utils.h"
+#include "device.h"
 
-namespace gm
+namespace Vulkan
 {
 	struct VulkanSwapchain
 	{
@@ -18,9 +18,9 @@ namespace gm
 
 		VkExtent2D ImageExtent;
 
-		gm::VulkanDevice VulkanDevice;
+		Vulkan::VulkanDevice VulkanDevice;
 		
-		VulkanSwapchain(const gm::VulkanDevice& vulkanDevice, VkSurfaceFormatKHR desiredFormat, VkPresentModeKHR desiredPresentMode, uint32_t windowWidth, uint32_t windowHeight)
+		VulkanSwapchain(const Vulkan::VulkanDevice& vulkanDevice, VkSurfaceFormatKHR desiredFormat, VkPresentModeKHR desiredPresentMode, uint32_t windowWidth, uint32_t windowHeight)
 		{
 			VulkanDevice = vulkanDevice;
 

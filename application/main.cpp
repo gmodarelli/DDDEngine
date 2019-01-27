@@ -2,19 +2,19 @@
 #include <Windows.h>
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
-#include "vulkan/utils.h"
-#include "vulkan/device.h" 
-#include "vulkan/swapchain.h"
-#include "vulkan/buffer.h"
-#include "vulkan/shaders.h"
-#include "vulkan/app.h"
-#include "vulkan/gltf.h"
+#include "../vulkan/utils.h"
+#include "../vulkan/device.h" 
+#include "../vulkan/swapchain.h"
+#include "../vulkan/buffer.h"
+#include "../vulkan/shaders.h"
+#include "../vulkan/app.h"
+#include "../vulkan/gltf.h"
 
 #include <assert.h>
 #include <stdio.h>
 #include <chrono>
 
-gm::App* app;
+Vulkan::App* app;
 
 LRESULT CALLBACK
 MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -47,7 +47,7 @@ struct IndexBuffer
 
 struct Models
 {
-	gm::Model scene;
+	Vulkan::Model scene;
 } models;
 
 struct UniformBuffer
@@ -166,7 +166,7 @@ void prepareUniformBuffers()
 		// Scene UBOs
 		{
 			// TODO: this "creating and mapping" could be moved into its own buffer struct
-			GM_CHECK(gm::createBuffer(
+			GM_CHECK(Vulkan::createBuffer(
 				app->device,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -188,7 +188,7 @@ void prepareUniformBuffers()
 		// Shader Params UBOs (light info for now)
 		{
 			// TODO: this "creating and mapping" could be moved into its own buffer struct
-			GM_CHECK(gm::createBuffer(
+			GM_CHECK(Vulkan::createBuffer(
 				app->device,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -297,7 +297,7 @@ void setupDescriptors()
 				allocInfo.descriptorSetCount = 1;
 				allocInfo.pSetLayouts = &descriptorSetLayouts.node;
 				uint32_t meshId = models.scene.nodes[n].meshId;
-				gm::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
+				Vulkan::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
 
 				VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &uniformBuffer.descriptorSet);
 				GM_ASSERT(result == VK_SUCCESS);
@@ -321,7 +321,7 @@ void setupDescriptors()
 	{
 		for (size_t m = 0; m < models.scene.opaqueMaterials.size(); ++m)
 		{
-			gm::Material& material = models.scene.opaqueMaterials[i];
+			Vulkan::Material& material = models.scene.opaqueMaterials[i];
 
 			VkDescriptorSetAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
 			allocInfo.descriptorPool = descriptorPool;
@@ -407,7 +407,7 @@ void preparePipelines()
 	GM_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
 
 	// Vertex bindings and attributes
-	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(gm::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
+	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(Vulkan::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
 		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0 }, // Position
 		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3 }, // Normal
@@ -426,7 +426,7 @@ void preparePipelines()
 	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
-	gm::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
+	Vulkan::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
 
 	shaderStages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -507,8 +507,8 @@ void recordCommands()
 		// TODO: When we introduce a skybox, this is where we would bind its pipeline
 
 		vkCmdBindPipeline(currentCB, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.scene);
-		// gm::Model& model = models.scene;
-		gm::Model& model = models.scene;
+		// Vulkan::Model& model = models.scene;
+		Vulkan::Model& model = models.scene;
 
 		// vkCmdBindVertexBuffers(currentCB, 0, 1, &model.vertices.buffer, offsets);
 		// vkCmdBindIndexBuffer(currentCB, model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -522,8 +522,8 @@ void recordCommands()
 		// 3. Transparent (after binding a transparent pipeline)
 		for (size_t p = 0; p < models.scene.primitives.size(); ++p)
 		{
-			gm::Primitive& primitive = models.scene.primitives[p];
-			gm::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[primitive.meshId];
+			Vulkan::Primitive& primitive = models.scene.primitives[p];
+			Vulkan::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[primitive.meshId];
 			// TODO: When we have materials we need to load the descriptor sets for the material as well
 			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[i].scene, uniformBuffer.descriptorSet };
 			vkCmdBindDescriptorSets(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets_.size()), descriptorSets_.data(), 0, nullptr);
@@ -532,7 +532,7 @@ void recordCommands()
 			if (primitive.materialId >= 0)
 			{
 				// TODO: We're assuming a PBR Metallic Workflow with a baseColor and metallic and roughness factors
-				gm::Material& material = models.scene.opaqueMaterials[primitive.materialId];
+				Vulkan::Material& material = models.scene.opaqueMaterials[primitive.materialId];
 				pushConstantBlockMaterial.baseColorFactor = material.pbrMetallicRoughness.baseColorFactor;
 				pushConstantBlockMaterial.metallicFactor = material.pbrMetallicRoughness.metallicFactor;
 				pushConstantBlockMaterial.roughnessFactor = material.pbrMetallicRoughness.roughnessFactor;
@@ -640,18 +640,18 @@ int main()
 {
 	uint32_t currentFrameIndex = 0;
 
-	app = new gm::App();
+	app = new Vulkan::App();
 	app->initVulkan();
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
 
-	// models.scene = gm::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->device);
-	models.scene = gm::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->device);
+	// models.scene = Vulkan::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->device);
+	models.scene = Vulkan::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->device);
 	// Upload this model indices and vertices to the index and vertex buffers on the GPU
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
 		// match our model sizes
-		size_t vertexBufferSize = models.scene.vertices.size() * sizeof(gm::Vertex);
+		size_t vertexBufferSize = models.scene.vertices.size() * sizeof(Vulkan::Vertex);
 		size_t indexBufferSize = models.scene.indices.size() * sizeof(uint32_t);
 		// TODO: Why do we need this?
 		indexBuffer.count = static_cast<uint32_t>(models.scene.indices.size());
@@ -666,7 +666,7 @@ int main()
 
 		// Create staging buffers
 		// Vertex data
-		GM_CHECK(gm::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(app->device,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			vertexBufferSize,
@@ -675,7 +675,7 @@ int main()
 			models.scene.vertices.data()), "Failed to upload vertices to staging buffer");
 
 		// Index data
-		GM_CHECK(gm::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(app->device,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			indexBufferSize,
@@ -685,7 +685,7 @@ int main()
 
 		// Create device local buffers
 		// Vertex buffer
-		GM_CHECK(gm::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(app->device,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			vertexBufferSize,
@@ -693,7 +693,7 @@ int main()
 			&vertexBuffer.memory), "Failed to create vertex buffer");
 
 		// Index buffer
-		GM_CHECK(gm::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(app->device,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			indexBufferSize,
@@ -759,7 +759,7 @@ int main()
 
 	vkDeviceWaitIdle(app->device->Device);
 
-	gm::destroyModel(models.scene, app->device);
+	Vulkan::destroyModel(models.scene, app->device);
 
 	// Destroy the vertex and index buffers
 	vkDestroyBuffer(app->device->Device, vertexBuffer.buffer, nullptr);

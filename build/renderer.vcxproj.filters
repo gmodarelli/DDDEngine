@@ -8,14 +8,22 @@
       <UniqueIdentifier>{57ff3419-90b9-491e-ac92-e39cef314a66}</UniqueIdentifier>
     </Filter>
     <Filter Include="vulkan">
-      <UniqueIdentifier>{16161690-f736-4fee-93df-403493fa8282}</UniqueIdentifier>
+      <UniqueIdentifier>{d27f50ad-d19f-4657-ab0e-6b267ae8e03c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="application">
+      <UniqueIdentifier>{bd185012-c2c4-4bdc-b8f8-b3e6a56afde2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="renderer">
+      <UniqueIdentifier>{0144cd11-c665-4ac8-aba8-b3cdb95720fe}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
       <Filter>volk</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="..\application\main.cpp">
+      <Filter>application</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\simple.frag">
@@ -32,29 +40,29 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="vulkan\app.h">
+    <ClInclude Include="..\vulkan\app.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\buffer.h">
+    <ClInclude Include="..\vulkan\buffer.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\camera.h">
+    <ClInclude Include="..\vulkan\device.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\device.h">
+    <ClInclude Include="..\vulkan\gltf.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\shaders.h">
+    <ClInclude Include="..\vulkan\shaders.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\swapchain.h">
+    <ClInclude Include="..\vulkan\swapchain.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\utils.h">
+    <ClInclude Include="..\vulkan\utils.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="vulkan\gltf.h">
-      <Filter>vulkan</Filter>
+    <ClInclude Include="..\renderer\camera.h">
+      <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
