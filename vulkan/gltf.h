@@ -8,9 +8,11 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include "volk.h"
 #include "utils.h"
@@ -328,6 +330,43 @@ namespace Vulkan
 		else
 		{
 			node.matrix = glm::mat4(1.0f);
+			glm::mat4 translation_matrix;
+			glm::mat4 scaling_matrix;
+
+			if (node_.HasMember("translation"))
+			{
+				JsonArray translation_ = node_["translation"].GetArray();
+				glm::vec3 translation;
+				translation.x = translation_[0].GetFloat();
+				translation.y = translation_[1].GetFloat();
+				translation.z = translation_[2].GetFloat();
+
+				node.matrix = glm::translate(node.matrix, translation);
+			}
+
+			if (node_.HasMember("rotation"))
+			{
+				JsonArray rotation_ = node_["rotation"].GetArray();
+				glm::quat rotation;
+				rotation.x = rotation_[0].GetFloat();
+				rotation.y = rotation_[1].GetFloat();
+				rotation.z = rotation_[2].GetFloat();
+				rotation.w = rotation_[3].GetFloat();
+
+				glm::mat4 rotation_matrix = glm::toMat4(rotation);
+
+				node.matrix = rotation_matrix * node.matrix;
+			}
+
+			if (node_.HasMember("scale"))
+			{
+				JsonArray scale_ = node_["scale"].GetArray();
+				glm::vec3 scale;
+				scale.x = scale_[0].GetFloat();
+				scale.y = scale_[1].GetFloat();
+				scale.z = scale_[2].GetFloat();
+				node.matrix = glm::scale(node.matrix, scale);
+			}
 		}
 
 		if (node_.HasMember("mesh"))

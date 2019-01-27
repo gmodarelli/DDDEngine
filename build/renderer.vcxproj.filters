@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="volk">
-      <UniqueIdentifier>{ce2ea799-4c5f-420b-a908-47b6397f3393}</UniqueIdentifier>
-    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{57ff3419-90b9-491e-ac92-e39cef314a66}</UniqueIdentifier>
     </Filter>
@@ -16,13 +13,70 @@
     <Filter Include="renderer">
       <UniqueIdentifier>{0144cd11-c665-4ac8-aba8-b3cdb95720fe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="extern">
+      <UniqueIdentifier>{a09d8fc1-868f-4016-baaf-865f204585c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern\volk">
+      <UniqueIdentifier>{ce2ea799-4c5f-420b-a908-47b6397f3393}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern\glfw">
+      <UniqueIdentifier>{80bf3a2f-a5ef-4122-901a-a1cb7d74bba0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
-      <Filter>volk</Filter>
+      <Filter>extern\volk</Filter>
     </ClCompile>
     <ClCompile Include="..\application\main.cpp">
       <Filter>application</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\context.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\egl_context.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\init.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\input.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\monitor.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\osmesa_context.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\vulkan.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\wgl_context.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_init.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_joystick.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_monitor.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_thread.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_time.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\win32_window.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\glfw\src\window.c">
+      <Filter>extern\glfw</Filter>
+    </ClCompile>
+    <ClCompile Include="..\renderer\renderer.cpp">
+      <Filter>renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -63,6 +117,24 @@
     </ClInclude>
     <ClInclude Include="..\vulkan\context.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\glfw\src\egl_context.h">
+      <Filter>extern\glfw</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\glfw\src\osmesa_context.h">
+      <Filter>extern\glfw</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\glfw\src\wgl_context.h">
+      <Filter>extern\glfw</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\glfw\src\win32_joystick.h">
+      <Filter>extern\glfw</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\glfw\src\win32_platform.h">
+      <Filter>extern\glfw</Filter>
+    </ClInclude>
+    <ClInclude Include="..\renderer\renderer.h">
+      <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,7 +1,6 @@
-#define NOMINMAX
+#if 0
 #include <Windows.h>
 
-#define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "../vulkan/utils.h"
 #include "../vulkan/context.h" 
 #include "../vulkan/swapchain.h"
@@ -122,18 +121,23 @@ void updateUniformBuffers()
 {
 	shaderValuesScene.view = app->mainCamera.matrices.view;
 	shaderValuesScene.projection = app->mainCamera.matrices.perspective;
+	// shaderValuesScene.projection[1][1] *= -1;
 
 	// Hard coding the model position to the center of the world
 	// the model rotation to 0 and the scale to 1
 	glm::vec3 modelPosition = glm::vec3(0.0f);
-	glm::vec3 modelRotation = glm::vec3(0.0f);
+	glm::vec3 modelRotation = glm::vec3(0.0f, 90.0f, 0.0f);
 	float scale = 1.0f;
 
+	shaderValuesScene.model = glm::mat4(1.0f);
+
+	/*
 	shaderValuesScene.model = glm::translate(glm::mat4(1.0f), modelPosition);
 	shaderValuesScene.model = glm::rotate(shaderValuesScene.model, glm::radians(modelRotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
 	shaderValuesScene.model = glm::rotate(shaderValuesScene.model, glm::radians(modelRotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 	shaderValuesScene.model = glm::rotate(shaderValuesScene.model, glm::radians(modelRotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 	shaderValuesScene.model = glm::scale(shaderValuesScene.model, glm::vec3(scale));
+	*/
 
 	shaderValuesScene.cameraPosition = glm::vec3(
 		-app->mainCamera.position.z * sin(glm::radians(app->mainCamera.rotation.y)) * cos(glm::radians(app->mainCamera.rotation.x)),
@@ -629,7 +633,7 @@ int main()
 	app->prepare();
 
 	// models.scene = Vulkan::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->context);
-	models.scene = Vulkan::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->context);
+	models.scene = Vulkan::loadModelFromGLBFile("../data/models/Giulia/Stairs.glb", app->context);
 	// Upload this model indices and vertices to the index and vertex buffers on the GPU
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
@@ -778,3 +782,19 @@ int main()
 
 	return (int)msg.wParam;
 }
+#else
+
+#include <inttypes.h>
+#include "../renderer/renderer.h"
+
+int main()
+{
+	uint32_t width = 1600;
+	uint32_t height = 1200;
+
+	Renderer::Renderer* renderer = new Renderer::Renderer(width, height);
+	renderer->run();
+
+	return 0;
+}
+#endif
