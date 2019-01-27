@@ -46,9 +46,6 @@
     <ClInclude Include="..\vulkan\buffer.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="..\vulkan\device.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="..\vulkan\gltf.h">
       <Filter>vulkan</Filter>
     </ClInclude>
@@ -63,6 +60,9 @@
     </ClInclude>
     <ClInclude Include="..\renderer\camera.h">
       <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vulkan\context.h">
+      <Filter>vulkan</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

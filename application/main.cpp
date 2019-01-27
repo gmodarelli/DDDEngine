@@ -3,7 +3,7 @@
 
 #define ENABLE_VULKAN_DEBUG_CALLBACK
 #include "../vulkan/utils.h"
-#include "../vulkan/device.h" 
+#include "../vulkan/context.h" 
 #include "../vulkan/swapchain.h"
 #include "../vulkan/buffer.h"
 #include "../vulkan/shaders.h"
@@ -167,7 +167,8 @@ void prepareUniformBuffers()
 		{
 			// TODO: this "creating and mapping" could be moved into its own buffer struct
 			GM_CHECK(Vulkan::createBuffer(
-				app->device,
+				app->context->Device,
+				app->context->PhysicalDevice,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				sizeof(shaderValuesScene),
@@ -175,7 +176,7 @@ void prepareUniformBuffers()
 				&uniformBuffer.scene.memory), "Failed to create uniform buffer");
 
 			GM_CHECK(vkMapMemory(
-				app->device->Device,
+				app->context->Device,
 				uniformBuffer.scene.memory,
 				0,
 				sizeof(shaderValuesScene),
@@ -189,7 +190,8 @@ void prepareUniformBuffers()
 		{
 			// TODO: this "creating and mapping" could be moved into its own buffer struct
 			GM_CHECK(Vulkan::createBuffer(
-				app->device,
+				app->context->Device,
+				app->context->PhysicalDevice,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				sizeof(shaderValuesParams),
@@ -197,7 +199,7 @@ void prepareUniformBuffers()
 				&uniformBuffer.params.memory), "Failed to create uniform buffer");
 
 			GM_CHECK(vkMapMemory(
-				app->device->Device,
+				app->context->Device,
 				uniformBuffer.params.memory,
 				0,
 				sizeof(shaderValuesParams),
@@ -232,7 +234,7 @@ void setupDescriptors()
 		createInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 		createInfo.pPoolSizes = poolSizes.data();
 		createInfo.maxSets = (2 + meshCount) * app->maxFramesInFlight;
-		GM_CHECK(vkCreateDescriptorPool(app->device->Device, &createInfo, nullptr, &descriptorPool), "Failed to create the descriptor pool");
+		GM_CHECK(vkCreateDescriptorPool(app->context->Device, &createInfo, nullptr, &descriptorPool), "Failed to create the descriptor pool");
 	}
 
 	// Descriptor sets
@@ -246,7 +248,7 @@ void setupDescriptors()
 		VkDescriptorSetLayoutCreateInfo createInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 		createInfo.pBindings = setLayoutBindings.data();
-		GM_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.scene), "Failed to create descriptor set layout for the scene");
+		GM_CHECK(vkCreateDescriptorSetLayout(app->context->Device, &createInfo, nullptr, &descriptorSetLayouts.scene), "Failed to create descriptor set layout for the scene");
 
 		for (auto i = 0; i < descriptorSets.size(); ++i)
 		{
@@ -254,7 +256,7 @@ void setupDescriptors()
 			allocInfo.descriptorPool = descriptorPool;
 			allocInfo.pSetLayouts = &descriptorSetLayouts.scene;
 			allocInfo.descriptorSetCount = 1;
-			GM_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
+			GM_CHECK(vkAllocateDescriptorSets(app->context->Device, &allocInfo, &descriptorSets[i].scene), "Failed to allocate descriptor sets for the scene");
 
 			// TODO: Add more write descriptor sets once we have textures
 			std::vector<VkWriteDescriptorSet> writeDescriptorSets(2);
@@ -273,7 +275,7 @@ void setupDescriptors()
 			writeDescriptorSets[1].dstBinding = 1;
 			writeDescriptorSets[1].pBufferInfo = &uniformBuffers[i].params.descriptor;
 
-			vkUpdateDescriptorSets(app->device->Device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+			vkUpdateDescriptorSets(app->context->Device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 		}
 	}
 
@@ -286,7 +288,7 @@ void setupDescriptors()
 		VkDescriptorSetLayoutCreateInfo createInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 		createInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
 		createInfo.pBindings = setLayoutBindings.data();
-		GM_CHECK(vkCreateDescriptorSetLayout(app->device->Device, &createInfo, nullptr, &descriptorSetLayouts.node), "Failed to create descriptor set layout for the node");
+		GM_CHECK(vkCreateDescriptorSetLayout(app->context->Device, &createInfo, nullptr, &descriptorSetLayouts.node), "Failed to create descriptor set layout for the node");
 
 		for (size_t n = 0; n < models.scene.nodes.size(); ++n)
 		{
@@ -299,10 +301,10 @@ void setupDescriptors()
 				uint32_t meshId = models.scene.nodes[n].meshId;
 				Vulkan::UniformBuffer& uniformBuffer = models.scene.uniformBuffers[meshId];
 
-				VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &uniformBuffer.descriptorSet);
+				VkResult result = vkAllocateDescriptorSets(app->context->Device, &allocInfo, &uniformBuffer.descriptorSet);
 				GM_ASSERT(result == VK_SUCCESS);
 
-				// VKR_CHECK(vkAllocateDescriptorSets(app->device->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet), "Failed to allocate descriptor set per node");
+				// VKR_CHECK(vkAllocateDescriptorSets(app->context->Device, &allocInfo, &node->mesh->uniformBuffer.descriptorSet), "Failed to allocate descriptor set per node");
 
 				VkWriteDescriptorSet writeDescriptorSet = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 				writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -311,7 +313,7 @@ void setupDescriptors()
 				writeDescriptorSet.dstBinding = 0;
 				writeDescriptorSet.pBufferInfo = &uniformBuffer.descriptor;
 
-				vkUpdateDescriptorSets(app->device->Device, 1, &writeDescriptorSet, 0, nullptr);
+				vkUpdateDescriptorSets(app->context->Device, 1, &writeDescriptorSet, 0, nullptr);
 			}
 		}
 	}
@@ -327,7 +329,7 @@ void setupDescriptors()
 			allocInfo.descriptorPool = descriptorPool;
 			allocInfo.pSetLayouts = &descriptorSetLayouts.material;
 			allocInfo.descriptorSetCount = 1;
-			VkResult result = vkAllocateDescriptorSets(app->device->Device, &allocInfo, &material.descriptorSet);
+			VkResult result = vkAllocateDescriptorSets(app->context->Device, &allocInfo, &material.descriptorSet);
 			GM_ASSERT(result == VK_SUCCESS);
 		}
 	}
@@ -404,7 +406,7 @@ void preparePipelines()
 	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-	GM_CHECK(vkCreatePipelineLayout(app->device->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
+	GM_CHECK(vkCreatePipelineLayout(app->context->Device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout), "Failed to create pipeline layout");
 
 	// Vertex bindings and attributes
 	VkVertexInputBindingDescription vertexInputBinding = { 0, sizeof(Vulkan::Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
@@ -426,7 +428,7 @@ void preparePipelines()
 	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
 	VkShaderModule vertShaderModule;
 	VkShaderModule fragShaderModule;
-	Vulkan::setupShader(app->device->Device, app->device->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
+	Vulkan::setupShader(app->context->Device, app->context->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
 
 	shaderStages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -456,13 +458,13 @@ void preparePipelines()
 
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo{};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	GM_CHECK(vkCreatePipelineCache(app->device->Device, &pipelineCacheCreateInfo, nullptr, &pipelineCache), "Failed to create the pipeline cache");
+	GM_CHECK(vkCreatePipelineCache(app->context->Device, &pipelineCacheCreateInfo, nullptr, &pipelineCache), "Failed to create the pipeline cache");
 
-	GM_CHECK(vkCreateGraphicsPipelines(app->device->Device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipelines.scene), "Failed to create graphics pipeline for the scene");
+	GM_CHECK(vkCreateGraphicsPipelines(app->context->Device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipelines.scene), "Failed to create graphics pipeline for the scene");
 
 	for (auto shaderStage : shaderStages)
 	{
-		vkDestroyShaderModule(app->device->Device, shaderStage.module, nullptr);
+		vkDestroyShaderModule(app->context->Device, shaderStage.module, nullptr);
 	}
 }
 
@@ -561,11 +563,11 @@ void render(VkQueue queue, VkQueue presentQueue)
 		return;
 	}
 
-	GM_CHECK(vkWaitForFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence");
-	GM_CHECK(vkResetFences(app->device->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to reset fences");
+	GM_CHECK(vkWaitForFences(app->context->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex], VK_TRUE, UINT64_MAX), "Failed to wait for fence");
+	GM_CHECK(vkResetFences(app->context->Device, 1, &app->syncObjects.InFlightFences[currentFrameIndex]), "Failed to reset fences");
 
 	uint32_t nextImageIndex;
-	VkResult acquire = vkAcquireNextImageKHR(app->device->Device, app->swapchain->Swapchain, UINT64_MAX, app->syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex);
+	VkResult acquire = vkAcquireNextImageKHR(app->context->Device, app->swapchain->Swapchain, UINT64_MAX, app->syncObjects.ImageAvailableSemaphores[currentFrameIndex], VK_NULL_HANDLE, &nextImageIndex);
 	if (acquire == VK_ERROR_OUT_OF_DATE_KHR || acquire == VK_SUBOPTIMAL_KHR)
 	{
 		// TODO: we need to resize the window
@@ -645,8 +647,8 @@ int main()
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
 	app->prepare();
 
-	// models.scene = Vulkan::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->device);
-	models.scene = Vulkan::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->device);
+	// models.scene = Vulkan::loadModelFromGLBFile("../data/models/MetalRoughSpheres/glTF-Binary/MetalRoughSpheres.glb", app->context);
+	models.scene = Vulkan::loadModelFromGLBFile("../data/models/Giulia/Materialtestsphere.glb", app->context);
 	// Upload this model indices and vertices to the index and vertex buffers on the GPU
 	{
 		// For now we only have one model so we're gonna make the vertexBuffer and indexBuffer
@@ -666,7 +668,9 @@ int main()
 
 		// Create staging buffers
 		// Vertex data
-		GM_CHECK(Vulkan::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(
+			app->context->Device,
+			app->context->PhysicalDevice,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			vertexBufferSize,
@@ -675,7 +679,9 @@ int main()
 			models.scene.vertices.data()), "Failed to upload vertices to staging buffer");
 
 		// Index data
-		GM_CHECK(Vulkan::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(
+			app->context->Device,
+			app->context->PhysicalDevice,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			indexBufferSize,
@@ -685,7 +691,9 @@ int main()
 
 		// Create device local buffers
 		// Vertex buffer
-		GM_CHECK(Vulkan::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(
+			app->context->Device,
+			app->context->PhysicalDevice,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			vertexBufferSize,
@@ -693,7 +701,9 @@ int main()
 			&vertexBuffer.memory), "Failed to create vertex buffer");
 
 		// Index buffer
-		GM_CHECK(Vulkan::createBuffer(app->device,
+		GM_CHECK(Vulkan::createBuffer(
+			app->context->Device,
+			app->context->PhysicalDevice,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			indexBufferSize,
@@ -701,8 +711,8 @@ int main()
 			&indexBuffer.memory), "Failed to create index buffer");
 
 		// Copy the staging buffers
-		VkCommandBuffer copyCmd = app->device->createTransferCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-		VkQueue queue = app->device->getQueue(app->device->TransferFamilyIndex);
+		VkCommandBuffer copyCmd = app->context->createTransferCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+		VkQueue queue = app->context->getQueue(app->context->TransferFamilyIndex);
 		
 		// NOTE: Once we have multiple objects we'll have to adjust the region we're copying
 		VkBufferCopy copyRegion = {};
@@ -713,13 +723,13 @@ int main()
 		copyRegion.size = indexBufferSize;
 		vkCmdCopyBuffer(copyCmd, indexStaging.buffer, indexBuffer.buffer, 1, &copyRegion);
 
-		app->device->flushCommandBuffer(copyCmd, queue, true, true);
+		app->context->flushCommandBuffer(copyCmd, queue, true, true);
 
 		// Destroy the staging vertex and index buffers
-		vkDestroyBuffer(app->device->Device, vertexStaging.buffer, nullptr);
-		vkFreeMemory(app->device->Device, vertexStaging.memory, nullptr);
-		vkDestroyBuffer(app->device->Device, indexStaging.buffer, nullptr);
-		vkFreeMemory(app->device->Device, indexStaging.memory, nullptr);
+		vkDestroyBuffer(app->context->Device, vertexStaging.buffer, nullptr);
+		vkFreeMemory(app->context->Device, vertexStaging.memory, nullptr);
+		vkDestroyBuffer(app->context->Device, indexStaging.buffer, nullptr);
+		vkFreeMemory(app->context->Device, indexStaging.memory, nullptr);
 	}
 
 	app->mainCamera.movementSpeed = 10.0f;
@@ -733,10 +743,10 @@ int main()
 	preparePipelines();
 	recordCommands();
 
-	VkQueryPool queryPool = app->device->createQueryPool(128);
+	VkQueryPool queryPool = app->context->createQueryPool(128);
 
-	VkQueue graphycsQueue = app->device->getQueue(app->device->GraphicsFamilyIndex);
-	VkQueue presentQueue = app->device->getQueue(app->device->PresentFamilyIndex);
+	VkQueue graphycsQueue = app->context->getQueue(app->context->GraphicsFamilyIndex);
+	VkQueue presentQueue = app->context->getQueue(app->context->PresentFamilyIndex);
 
 	MSG msg = { 0 };
 
@@ -757,33 +767,33 @@ int main()
 		}
 	}
 
-	vkDeviceWaitIdle(app->device->Device);
+	vkDeviceWaitIdle(app->context->Device);
 
-	Vulkan::destroyModel(models.scene, app->device);
+	Vulkan::destroyModel(models.scene, app->context);
 
 	// Destroy the vertex and index buffers
-	vkDestroyBuffer(app->device->Device, vertexBuffer.buffer, nullptr);
-	vkFreeMemory(app->device->Device, vertexBuffer.memory, nullptr);
-	vkDestroyBuffer(app->device->Device, indexBuffer.buffer, nullptr);
-	vkFreeMemory(app->device->Device, indexBuffer.memory, nullptr);
+	vkDestroyBuffer(app->context->Device, vertexBuffer.buffer, nullptr);
+	vkFreeMemory(app->context->Device, vertexBuffer.memory, nullptr);
+	vkDestroyBuffer(app->context->Device, indexBuffer.buffer, nullptr);
+	vkFreeMemory(app->context->Device, indexBuffer.memory, nullptr);
 
 	for (auto &uniformBuffer : uniformBuffers)
 	{
-		vkDestroyBuffer(app->device->Device, uniformBuffer.scene.buffer, nullptr);
-		vkFreeMemory(app->device->Device, uniformBuffer.scene.memory, nullptr);
+		vkDestroyBuffer(app->context->Device, uniformBuffer.scene.buffer, nullptr);
+		vkFreeMemory(app->context->Device, uniformBuffer.scene.memory, nullptr);
 
-		vkDestroyBuffer(app->device->Device, uniformBuffer.params.buffer, nullptr);
-		vkFreeMemory(app->device->Device, uniformBuffer.params.memory, nullptr);
+		vkDestroyBuffer(app->context->Device, uniformBuffer.params.buffer, nullptr);
+		vkFreeMemory(app->context->Device, uniformBuffer.params.memory, nullptr);
 	}
 
-	app->device->destroyQueryPool(queryPool);
+	app->context->destroyQueryPool(queryPool);
 
-	vkDestroyPipelineCache(app->device->Device, pipelineCache, nullptr);
-	vkDestroyPipelineLayout(app->device->Device, pipelineLayout, nullptr);
-	vkDestroyPipeline(app->device->Device, pipelines.scene, nullptr);
-	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts.scene, nullptr);
-	vkDestroyDescriptorSetLayout(app->device->Device, descriptorSetLayouts.node, nullptr);
-	vkDestroyDescriptorPool(app->device->Device, descriptorPool, nullptr);
+	vkDestroyPipelineCache(app->context->Device, pipelineCache, nullptr);
+	vkDestroyPipelineLayout(app->context->Device, pipelineLayout, nullptr);
+	vkDestroyPipeline(app->context->Device, pipelines.scene, nullptr);
+	vkDestroyDescriptorSetLayout(app->context->Device, descriptorSetLayouts.scene, nullptr);
+	vkDestroyDescriptorSetLayout(app->context->Device, descriptorSetLayouts.node, nullptr);
+	vkDestroyDescriptorPool(app->context->Device, descriptorPool, nullptr);
 
 	delete app;
 

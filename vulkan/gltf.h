@@ -101,12 +101,12 @@ namespace Vulkan
 
 	static rapidjson::Document parseFile(std::string path);
 	static bool isValidFormat(rapidjson::Document& document);
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::VulkanDevice* device);
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::Context* context);
 	static void readBuffer(std::string path, unsigned char* buffer, uint32_t bufferSize);
-	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::VulkanDevice* device);
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::Context* context);
 
 
-	Model loadModelFromGLBFile(std::string path, Vulkan::VulkanDevice* device)
+	Model loadModelFromGLBFile(std::string path, Vulkan::Context* context)
 	{
 		Model model = {};
 
@@ -183,7 +183,7 @@ namespace Vulkan
 		fclose(fileHandle);
 
 		auto modelParseStart = std::chrono::high_resolution_clock::now();
-		parseModel(model, document, buffers, device);
+		parseModel(model, document, buffers, context);
 		auto modelParseEnd = std::chrono::high_resolution_clock::now();
 		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
 		printf("[glb] Model parsed in %.2f ms\n", modelParseDuration);
@@ -191,7 +191,7 @@ namespace Vulkan
 		return model;
 	}
 
-	Model loadModelFromFile(std::string path, Vulkan::VulkanDevice* device)
+	Model loadModelFromFile(std::string path, Vulkan::Context* context)
 	{
 		Model model = {};
 
@@ -223,7 +223,7 @@ namespace Vulkan
 		}
 
 		auto modelParseStart = std::chrono::high_resolution_clock::now();
-		parseModel(model, document, buffers.data(), device);
+		parseModel(model, document, buffers.data(), context);
 		auto modelParseEnd = std::chrono::high_resolution_clock::now();
 		auto modelParseDuration = (modelParseEnd - modelParseStart).count() * 1e-6;
 		printf("[gltf] Model parsed in %.2f ms\n", modelParseDuration);
@@ -231,19 +231,19 @@ namespace Vulkan
 		return model;
 	}
 
-	void destroyModel(Vulkan::Model model, Vulkan::VulkanDevice* device)
+	void destroyModel(Vulkan::Model model, Vulkan::Context* context)
 	{
 		for (size_t i = 0; i < model.uniformBuffers.size(); ++i)
 		{
 			if (model.uniformBuffers[i].buffer != VK_NULL_HANDLE)
 			{
-				vkDestroyBuffer(device->Device, model.uniformBuffers[i].buffer, nullptr);
+				vkDestroyBuffer(context->Device, model.uniformBuffers[i].buffer, nullptr);
 				model.uniformBuffers[i].buffer = VK_NULL_HANDLE;
 			}
 
 			if (model.uniformBuffers[i].memory != VK_NULL_HANDLE)
 			{
-				vkFreeMemory(device->Device, model.uniformBuffers[i].memory, nullptr);
+				vkFreeMemory(context->Device, model.uniformBuffers[i].memory, nullptr);
 				model.uniformBuffers[i].memory = VK_NULL_HANDLE;
 			}
 		}
@@ -310,7 +310,7 @@ namespace Vulkan
 		return false;
 	}
 
-	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::VulkanDevice* device)
+	static void loadNode(uint32_t nodeIndex, int32_t parentIndex, const JsonArray& nodes, const JsonArray& meshes, Model& model, Vulkan::Context* context)
 	{
 		JsonObject node_ = nodes[nodeIndex].GetObjectW();
 		Node node;
@@ -340,7 +340,8 @@ namespace Vulkan
 
 			// Create 
 			GM_CHECK(Vulkan::createBuffer(
-				device,
+				context->Device,
+				context->PhysicalDevice,
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				sizeof(glm::mat4),
@@ -348,7 +349,7 @@ namespace Vulkan
 				&uniformBuffer.memory,
 				&node.matrix), "Failed to create uniform buffer");
 
-			GM_CHECK(vkMapMemory(device->Device, uniformBuffer.memory, 0, sizeof(glm::mat4), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
+			GM_CHECK(vkMapMemory(context->Device, uniformBuffer.memory, 0, sizeof(glm::mat4), 0, &uniformBuffer.mapped), "Failed to map memory to uniform buffer");
 
 			uniformBuffer.descriptor = { uniformBuffer.buffer, 0, sizeof(glm::mat4) };
 
@@ -363,13 +364,13 @@ namespace Vulkan
 		{
 			auto children = node_["children"].GetArray();
 			for (rapidjson::SizeType j = 0; j < children.Size(); ++j)
-				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model, device);
+				loadNode(children[j].GetInt(), nodeIndex, nodes, meshes, model, context);
 		}
 
 		model.nodes[nodeIndex] = node;
 	}
 
-	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::VulkanDevice* device)
+	static void parseModel(Model& model, rapidjson::Document& document, unsigned char** buffers, Vulkan::Context* context)
 	{
 		// Parse buffer views
 		struct BufferView
@@ -672,7 +673,7 @@ namespace Vulkan
 		for (rapidjson::SizeType i = 0; i < rootNodes.Size(); ++i)
 		{
 			uint32_t nodeIndex = (uint32_t)rootNodes[i].GetInt();
-			loadNode(nodeIndex, -1, nodes, meshes, model, device);
+			loadNode(nodeIndex, -1, nodes, meshes, model, context);
 		}
 	}
 }

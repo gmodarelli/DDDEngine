@@ -31,29 +31,29 @@ namespace Vulkan
 		return ~0u;
 	}
 
-	VkResult createBuffer(Vulkan::VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer* buffer, VkDeviceMemory* memory, void* data = nullptr)
+	VkResult createBuffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer* buffer, VkDeviceMemory* memory, void* data = nullptr)
 	{
 		// Create the buffer handle
 		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferInfo.size = size;
 		bufferInfo.usage = usageFlags;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		GM_CHECK(vkCreateBuffer(device->Device, &bufferInfo, nullptr, buffer), "Failed to create the buffer");
+		GM_CHECK(vkCreateBuffer(device, &bufferInfo, nullptr, buffer), "Failed to create the buffer");
 
 		// Create the memory backing up the buffer handle
 		VkMemoryRequirements memoryRequirements;
-		vkGetBufferMemoryRequirements(device->Device, *buffer, &memoryRequirements);
+		vkGetBufferMemoryRequirements(device, *buffer, &memoryRequirements);
 
 		VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 		allocateInfo.allocationSize = memoryRequirements.size;
-		allocateInfo.memoryTypeIndex = findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, memoryPropertyFlags);
-		GM_CHECK(vkAllocateMemory(device->Device, &allocateInfo, nullptr, memory), "Failed to allocate memory for the buffer");
+		allocateInfo.memoryTypeIndex = findMemoryType(gpu, memoryRequirements.memoryTypeBits, memoryPropertyFlags);
+		GM_CHECK(vkAllocateMemory(device, &allocateInfo, nullptr, memory), "Failed to allocate memory for the buffer");
 
 		// If a pointer to the buffer data has been passed, map the buffer and copy the data over
 		if (data != nullptr)
 		{
 			void *mapped;
-			GM_CHECK(vkMapMemory(device->Device, *memory, 0, size, 0, &mapped), "Failed to map memory");
+			GM_CHECK(vkMapMemory(device, *memory, 0, size, 0, &mapped), "Failed to map memory");
 			memcpy(mapped, data, size);
 			// If host coherent hasn't been requested, do a manual flush to make writes visilble
 			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
@@ -62,13 +62,13 @@ namespace Vulkan
 				mappedRange.memory = *memory;
 				mappedRange.offset = 0;
 				mappedRange.size = size;
-				vkFlushMappedMemoryRanges(device->Device, 1, &mappedRange);
+				vkFlushMappedMemoryRanges(device, 1, &mappedRange);
 			}
-			vkUnmapMemory(device->Device, *memory);
+			vkUnmapMemory(device, *memory);
 		}
 
 		// Attach the memory to the buffer object
-		GM_CHECK(vkBindBufferMemory(device->Device, *buffer, *memory, 0), "Failed to bind memory to the buffer");
+		GM_CHECK(vkBindBufferMemory(device, *buffer, *memory, 0), "Failed to bind memory to the buffer");
 
 		return VK_SUCCESS;
 	}

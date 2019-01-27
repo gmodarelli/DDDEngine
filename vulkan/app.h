@@ -16,7 +16,7 @@ namespace Vulkan
 		HWND window;
 #endif
 
-		Vulkan::VulkanDevice* device;
+		Vulkan::Context* context;
 		Vulkan::VulkanSwapchain* swapchain;
 
 		VkFormat colorFormat = VK_FORMAT_B8G8R8A8_UNORM;
@@ -59,31 +59,31 @@ namespace Vulkan
 		{
 			for (size_t i = 0; i < syncObjects.ImageAvailableSemaphores.size(); ++i)
 			{
-				vkDestroySemaphore(device->Device, syncObjects.ImageAvailableSemaphores[i], nullptr);
+				vkDestroySemaphore(context->Device, syncObjects.ImageAvailableSemaphores[i], nullptr);
 			}
 
 			for (size_t i = 0; i < syncObjects.RenderFinishedSemaphores.size(); ++i)
 			{
-				vkDestroySemaphore(device->Device, syncObjects.RenderFinishedSemaphores[i], nullptr);
+				vkDestroySemaphore(context->Device, syncObjects.RenderFinishedSemaphores[i], nullptr);
 			}
 
 			for (size_t i = 0; i < syncObjects.InFlightFences.size(); ++i)
 			{
-				vkDestroyFence(device->Device, syncObjects.InFlightFences[i], nullptr);
+				vkDestroyFence(context->Device, syncObjects.InFlightFences[i], nullptr);
 			}
 
 			syncObjects.ImageAvailableSemaphores.clear();
 			syncObjects.RenderFinishedSemaphores.clear();
 			syncObjects.InFlightFences.clear();
 
-			vkFreeCommandBuffers(device->Device, device->PresentCommandPool, commandBufferCount, commandBuffers.data());
+			vkFreeCommandBuffers(context->Device, context->PresentCommandPool, commandBufferCount, commandBuffers.data());
 			commandBufferCount = 0;
 
 			if (depthBuffer.Image != VK_NULL_HANDLE)
 			{
-				vkDestroyImageView(device->Device, depthBuffer.ImageView, nullptr);
-				vkDestroyImage(device->Device, depthBuffer.Image, nullptr);
-				vkFreeMemory(device->Device, depthBuffer.ImageMemory, nullptr);
+				vkDestroyImageView(context->Device, depthBuffer.ImageView, nullptr);
+				vkDestroyImage(context->Device, depthBuffer.Image, nullptr);
+				vkFreeMemory(context->Device, depthBuffer.ImageMemory, nullptr);
 
 				depthBuffer.Image = VK_NULL_HANDLE;
 				depthBuffer.ImageView = VK_NULL_HANDLE;
@@ -92,17 +92,17 @@ namespace Vulkan
 
 			for (uint32_t i = 0; i < framebuffers.size(); ++i)
 			{
-				vkDestroyFramebuffer(device->Device, framebuffers[i], nullptr);
+				vkDestroyFramebuffer(context->Device, framebuffers[i], nullptr);
 			}
 
 			if (renderPass != VK_NULL_HANDLE)
 			{
-				vkDestroyRenderPass(device->Device, renderPass, nullptr);
+				vkDestroyRenderPass(context->Device, renderPass, nullptr);
 				renderPass = VK_NULL_HANDLE;
 			}
 
 			swapchain->Destroy();
-			device->destroy();
+			context->destroy();
 		}
 
 		void initVulkan()
@@ -290,12 +290,12 @@ namespace Vulkan
 		void prepare()
 		{
 			VkQueueFlags requiredQueues = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
-			device = new Vulkan::VulkanDevice(hInstance, window, requiredQueues);
+			context = new Vulkan::Context(hInstance, window, requiredQueues);
 
 			VkSurfaceFormatKHR desiredFormat { VK_FORMAT_B8G8R8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
 			VkPresentModeKHR desiredPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
-			swapchain = new Vulkan::VulkanSwapchain(*device, desiredFormat, desiredPresentMode, width, height);
+			swapchain = new Vulkan::VulkanSwapchain(*context, desiredFormat, desiredPresentMode, width, height);
 
 			prepareRenderPass();
 			prepareDepthBuffer();
@@ -357,7 +357,7 @@ namespace Vulkan
 			renderPassInfo.subpassCount = 1;
 			renderPassInfo.pSubpasses = &subpass;
 
-			GM_CHECK(vkCreateRenderPass(device->Device, &renderPassInfo, nullptr, &renderPass), "Failed to create the render pass");
+			GM_CHECK(vkCreateRenderPass(context->Device, &renderPassInfo, nullptr, &renderPass), "Failed to create the render pass");
 		}
 
 		void prepareDepthBuffer()
@@ -377,20 +377,20 @@ namespace Vulkan
 			imageInfo.pQueueFamilyIndices = nullptr;
 			imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-			GM_CHECK(vkCreateImage(device->Device, &imageInfo, nullptr, &depthBuffer.Image), "Failed to create depth buffer image");
+			GM_CHECK(vkCreateImage(context->Device, &imageInfo, nullptr, &depthBuffer.Image), "Failed to create depth buffer image");
 
 			// Query for the memory requirements of the depth buffer
 			VkMemoryRequirements memoryRequirements;
-			vkGetImageMemoryRequirements(device->Device, depthBuffer.Image, &memoryRequirements);
+			vkGetImageMemoryRequirements(context->Device, depthBuffer.Image, &memoryRequirements);
 
 			// Allocate memory for the depth buffer
 			VkMemoryAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 			allocateInfo.allocationSize = memoryRequirements.size;
-			allocateInfo.memoryTypeIndex = Vulkan::findMemoryType(device->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			allocateInfo.memoryTypeIndex = Vulkan::findMemoryType(context->PhysicalDevice, memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 			depthBuffer.ImageMemory = { 0 };
-			GM_CHECK(vkAllocateMemory(device->Device, &allocateInfo, nullptr, &depthBuffer.ImageMemory), "Failed to allocate memory for the depth buffer");
-			GM_CHECK(vkBindImageMemory(device->Device, depthBuffer.Image, depthBuffer.ImageMemory, 0), "Faild to bind memory to the depth buffer");
+			GM_CHECK(vkAllocateMemory(context->Device, &allocateInfo, nullptr, &depthBuffer.ImageMemory), "Failed to allocate memory for the depth buffer");
+			GM_CHECK(vkBindImageMemory(context->Device, depthBuffer.Image, depthBuffer.ImageMemory, 0), "Faild to bind memory to the depth buffer");
 
 			// Create the depth image view
 			VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -405,7 +405,7 @@ namespace Vulkan
 			imageViewInfo.subresourceRange.baseArrayLayer = 0;
 			imageViewInfo.subresourceRange.layerCount = 1;
 
-			GM_CHECK(vkCreateImageView(device->Device, &imageViewInfo, nullptr, &depthBuffer.ImageView), "Failed to create depth image view");
+			GM_CHECK(vkCreateImageView(context->Device, &imageViewInfo, nullptr, &depthBuffer.ImageView), "Failed to create depth image view");
 		}
 
 		void prepareFrameBuffers()
@@ -427,7 +427,7 @@ namespace Vulkan
 				createInfo.height = swapchain->ImageExtent.height;
 				createInfo.layers = 1;
 
-				GM_CHECK(vkCreateFramebuffer(device->Device, &createInfo, nullptr, &framebuffers[i]), "");
+				GM_CHECK(vkCreateFramebuffer(context->Device, &createInfo, nullptr, &framebuffers[i]), "");
 			}
 		}
 
@@ -445,13 +445,13 @@ namespace Vulkan
 			GM_ASSERT(commandBufferCount > 0);
 
 			VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-			allocateInfo.commandPool = device->PresentCommandPool;
+			allocateInfo.commandPool = context->PresentCommandPool;
 			allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocateInfo.commandBufferCount = commandBufferCount;
 
 			commandBuffers.resize(commandBufferCount);
 
-			GM_CHECK(vkAllocateCommandBuffers(device->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
+			GM_CHECK(vkAllocateCommandBuffers(context->Device, &allocateInfo, commandBuffers.data()), "Failed to allocate command buffers");
 		}
 
 		void prepareSyncObjects()
@@ -467,9 +467,9 @@ namespace Vulkan
 
 			for (size_t i = 0; i < maxFramesInFlight; ++i)
 			{
-				GM_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]), "");
-				GM_CHECK(vkCreateSemaphore(device->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]), "");
-				GM_CHECK(vkCreateFence(device->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]), "");
+				GM_CHECK(vkCreateSemaphore(context->Device, &semaphoreInfo, nullptr, &syncObjects.ImageAvailableSemaphores[i]), "");
+				GM_CHECK(vkCreateSemaphore(context->Device, &semaphoreInfo, nullptr, &syncObjects.RenderFinishedSemaphores[i]), "");
+				GM_CHECK(vkCreateFence(context->Device, &fenceInfo, nullptr, &syncObjects.InFlightFences[i]), "");
 			}
 		}
 	};

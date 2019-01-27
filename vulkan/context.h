@@ -13,7 +13,7 @@
 
 namespace Vulkan
 {
-	struct VulkanDevice
+	struct Context
 	{
 		// Vulkan Instance
 		VkInstance Instance = VK_NULL_HANDLE;
@@ -61,18 +61,16 @@ namespace Vulkan
 
 #if _DEBUG
 		// Errors and Warnings Callbacks
-		VkDebugReportCallbackEXT ErrorCallback = VK_NULL_HANDLE;
-		VkDebugReportCallbackEXT WarningCallback = VK_NULL_HANDLE;
-		VkDebugReportCallbackEXT DebugCallback = VK_NULL_HANDLE;
+		VkDebugReportCallbackEXT ReportCallback = VK_NULL_HANDLE;
 #endif
 
-		VulkanDevice()
+		Context()
 		{
 
 		}
 
 		// TODO: this is only valid for _WIN32. Move the createSurface outside of this constructor
-		VulkanDevice(HINSTANCE hInstance, HWND hwnd, VkQueueFlags requiredQueues)
+		Context(HINSTANCE hInstance, HWND hwnd, VkQueueFlags requiredQueues)
 		{
 			// Load the Vulkan Library
 			GM_CHECK(volkInitialize(), "Failed to load the Vulkan Library");
@@ -91,7 +89,7 @@ namespace Vulkan
 			PresentCommandPool = createCommandPool(PresentFamilyIndex);
 		}
 
-		~VulkanDevice()
+		~Context()
 		{
 		}
 
@@ -121,22 +119,10 @@ namespace Vulkan
 				Device = VK_NULL_HANDLE;
 			}
 #if _DEBUG
-			if (ErrorCallback != VK_NULL_HANDLE)
+			if (ReportCallback != VK_NULL_HANDLE)
 			{
-				vkDestroyDebugReportCallbackEXT(Instance, ErrorCallback, nullptr);
-				ErrorCallback = VK_NULL_HANDLE;
-			}
-
-			if (WarningCallback != VK_NULL_HANDLE)
-			{
-				vkDestroyDebugReportCallbackEXT(Instance, WarningCallback, nullptr);
-				WarningCallback = VK_NULL_HANDLE;
-			}
-
-			if (DebugCallback != VK_NULL_HANDLE)
-			{
-				vkDestroyDebugReportCallbackEXT(Instance, DebugCallback, nullptr);
-				DebugCallback = VK_NULL_HANDLE;
+				vkDestroyDebugReportCallbackEXT(Instance, ReportCallback, nullptr);
+				ReportCallback = VK_NULL_HANDLE;
 			}
 #endif
 			if (Surface != VK_NULL_HANDLE)
@@ -343,15 +329,9 @@ namespace Vulkan
 #if _DEBUG
 			// Create Debug Callbacks
 			VkDebugReportCallbackCreateInfoEXT debugCreateInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
-			debugCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT;
-			debugCreateInfo.pfnCallback = Vulkan::debugReportErrorCallback;
-			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &ErrorCallback), "Failed to create the debug error callback");
-			debugCreateInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-			debugCreateInfo.pfnCallback = Vulkan::debugReportWarningCallback;
-			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &WarningCallback), "Failed to create the debug warning callback");
-			debugCreateInfo.flags = VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-			debugCreateInfo.pfnCallback = Vulkan::debugReportDebugCallback;
-			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &DebugCallback), "Failed to create the debug warning callback");
+			debugCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
+			debugCreateInfo.pfnCallback = Vulkan::vulkan_debug_callback;
+			GM_CHECK(vkCreateDebugReportCallbackEXT(Instance, &debugCreateInfo, nullptr, &ReportCallback), "Failed to create the debug error callback");
 #endif
 		}
 

@@ -68,51 +68,28 @@ namespace Vulkan
 		return supported;
 	}
 
-	VkBool32 debugReportErrorCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+	VkBool32 vulkan_debug_callback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 	{
 #if _DEBUG
-		char message[4096];
-		snprintf(message, ARRAYSIZE(message), "\n [ Vulkan Validation Error ]\n%s\n\n", pMessage);
-
-		printf(message);
-
-		GM_ASSERT(!"Validation error encountered!");
-		return VK_FALSE;
-#else
-		return VK_FALSE;
+		if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
+		{
+			printf("\n[Vulkan]: Error: %s: %s\n", pLayerPrefix, pMessage);
+			GM_ASSERT(!"Validation error encountered!");
+		}
+		else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT)
+		{
+			printf("\n[Vulkan]: Warning: %s: %s\n", pLayerPrefix, pMessage);
+		}
+		else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT)
+		{
+			printf("\n[Vulkan]: Performance Warning: %s: %s\n", pLayerPrefix, pMessage);
+		}
+		else
+		{
+			printf("\n[Vulkan]: Info: %s: %s\n", pLayerPrefix, pMessage);
+		}
 #endif
-	}
-
-	VkBool32 debugReportWarningCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
-	{
-#if _DEBUG
-		const char* type =
-			(flags & (VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))
-			? "Warning"
-			: "Info";
-
-		char message[4096];
-
-		snprintf(message, ARRAYSIZE(message), "\n [ Vulkan Validation %s ]\n%s\n\n", type, pMessage);
-		printf(message);
 
 		return VK_FALSE;
-#else
-		return VK_FALSE;
-#endif
-	}
-
-	VkBool32 debugReportDebugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
-	{
-#if _DEBUG
-		char message[4096];
-
-		snprintf(message, ARRAYSIZE(message), "\n [ Vulkan Validation Debug ]\n%s\n\n", pMessage);
-		printf(message);
-
-		return VK_FALSE;
-#else
-		return VK_FALSE;
-#endif
 	}
 }
