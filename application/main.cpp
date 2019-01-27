@@ -127,7 +127,7 @@ void updateUniformBuffers()
 	// Hard coding the model position to the center of the world
 	// the model rotation to 0 and the scale to 1
 	glm::vec3 modelPosition = glm::vec3(0.0f);
-	glm::vec3 modelRotation = glm::vec3(90.0f, 0.0f, 0.0f);
+	glm::vec3 modelRotation = glm::vec3(0.0f);
 	float scale = 1.0f;
 
 	shaderValuesScene.model = glm::translate(glm::mat4(1.0f), modelPosition);
@@ -515,7 +515,6 @@ void recordCommands()
 			const std::vector<VkDescriptorSet> descriptorSets_ = { descriptorSets[i].scene, uniformBuffer.descriptorSet };
 			vkCmdBindDescriptorSets(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets_.size()), descriptorSets_.data(), 0, nullptr);
 
-			// TODO: pass the materials as push constants
 			if (primitive.materialId >= 0)
 			{
 				// TODO: We're assuming a PBR Metallic Workflow with a baseColor and metallic and roughness factors
@@ -535,7 +534,6 @@ void recordCommands()
 	}
 }
 
-bool prepared = false;
 uint32_t currentFrameIndex = 0;
 
 void render(VkQueue queue, VkQueue presentQueue)
@@ -543,7 +541,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	auto frameCPUStart = std::chrono::high_resolution_clock::now();
 	static double frameCPUAvg = 0;
 
-	if (!prepared)
+	if (!app->prepared)
 	{
 		return;
 	}
@@ -556,6 +554,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	if (acquire == VK_ERROR_OUT_OF_DATE_KHR || acquire == VK_SUBOPTIMAL_KHR)
 	{
 		// TODO: we need to resize the window
+		GM_ASSERT(!"Resize the window");
 	}
 	else
 	{
@@ -593,6 +592,7 @@ void render(VkQueue queue, VkQueue presentQueue)
 	if (!((present == VK_SUCCESS) || (present == VK_SUBOPTIMAL_KHR))) {
 		if (present == VK_ERROR_OUT_OF_DATE_KHR) {
 			// TODO: Resize window
+			GM_ASSERT(!"Resize the window");
 			return;
 		}
 		else {
@@ -625,8 +625,6 @@ void render(VkQueue queue, VkQueue presentQueue)
 
 int main()
 {
-	uint32_t currentFrameIndex = 0;
-
 	app = new Vulkan::App();
 	app->initVulkan();
 	app->setupWindow(width, height, GetModuleHandle(nullptr), MainWndProc);
@@ -734,8 +732,6 @@ int main()
 	VkQueue presentQueue = app->context->getQueue(app->context->PresentFamilyIndex);
 
 	MSG msg = { 0 };
-
-	prepared = true;
 
 	while (msg.message != WM_QUIT)
 	{

@@ -6,7 +6,7 @@ namespace Vulkan
 {
 	struct App
 	{
-		bool ready = false;
+		bool prepared = false;
 		bool resizing = false;
 
 		uint32_t width;
@@ -307,6 +307,7 @@ namespace Vulkan
 
 			initMainCamera();
 
+			prepared = true;
 		}
 
 	private:

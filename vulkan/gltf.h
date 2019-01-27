@@ -65,8 +65,6 @@ namespace Vulkan
 			float metallicFactor = 1.0f;
 			float roughnessFactor = 1.0f;
 		} pbrMetallicRoughness;
-
-		VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 	};
 
 	struct UniformBuffer
