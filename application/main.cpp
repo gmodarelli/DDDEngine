@@ -10,7 +10,6 @@
 #include "../vulkan/app.h"
 #include "../vulkan/gltf.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <chrono>
 
@@ -621,7 +620,6 @@ void render(VkQueue queue, VkQueue presentQueue)
 	SetWindowTextA(app->window, title);
 #endif
 }
-
 
 int main()
 {
