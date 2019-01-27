@@ -7,41 +7,37 @@
 
 namespace Vulkan
 {
-	void readCode(const char* path, char* outCode, uint32_t* outCodeSize)
+	VkPipelineShaderStageCreateInfo loadShader(VkDevice device, VkPhysicalDevice gpu, const char* shaderPath, VkShaderStageFlagBits stage, const char* entrypoint = "main")
 	{
 		FILE* fileHandle = NULL;
-		fileHandle = fopen(path, "rb");
-		printf("Trying to open: %s\n", path);
-		GM_ASSERT(fileHandle != NULL && "Could not find the file");
-		*outCodeSize = static_cast<uint32_t>(fread(outCode, 1, 10000, fileHandle));
-		fclose(fileHandle);
-		fileHandle = NULL;
-	}
+		fileHandle = fopen(shaderPath, "rb");
+		GM_ASSERT(fileHandle != NULL && "Could not load the shader file");
 
-	void setupShader(VkDevice device, VkPhysicalDevice physicalDevice, const char* vertShaderPath, VkShaderModule* outVertShaderModule, const char* fragShaderPath, VkShaderModule* outFragShaderModule)
-	{
-		// Simple Vertex and Fragment Shaders
+		// Compute the file size
+		fseek(fileHandle, 0, SEEK_END);
+		size_t size = ftell(fileHandle);
+		rewind(fileHandle);
 
-		uint32_t codeSize = 0;
-		// FACEPALM: Assume your file is less than 10000 bytes
-		char* code = new char[10000];
-		readCode(vertShaderPath, code, &codeSize);
+		// Make sure size is a multiple of 4
+		size_t aligned_size = (size + 3) & -4;
 
-		VkShaderModuleCreateInfo vertexShaderCreateInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-		vertexShaderCreateInfo.codeSize = codeSize;
-		vertexShaderCreateInfo.pCode = (uint32_t*)code;
+		// Allocate a buffer to hold the file content and read the file
+		char* buffer = new char[aligned_size];
+		uint32_t bytes_read = fread(buffer, sizeof(buffer[0]), aligned_size, fileHandle);
+		assert(bytes_read == size);
 
-		GM_CHECK(vkCreateShaderModule(device, &vertexShaderCreateInfo, nullptr, outVertShaderModule), "");
+		VkShaderModuleCreateInfo shader_module_create_info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+		shader_module_create_info.codeSize = aligned_size;
+		shader_module_create_info.pCode = (uint32_t*)buffer;
 
-		readCode(fragShaderPath, code, &codeSize);
+		VkShaderModule shader_module;
+		GM_CHECK(vkCreateShaderModule(device, &shader_module_create_info, nullptr, &shader_module), "");
 
-		VkShaderModuleCreateInfo fragmentShaderCreateInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-		fragmentShaderCreateInfo.codeSize = codeSize;
-		fragmentShaderCreateInfo.pCode = (uint32_t*)code;
+		VkPipelineShaderStageCreateInfo stage_create_info = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+		stage_create_info.stage = stage;
+		stage_create_info.module = shader_module;
+		stage_create_info.pName = entrypoint;
 
-		GM_CHECK(vkCreateShaderModule(device, &fragmentShaderCreateInfo, nullptr, outFragShaderModule), "");
-
-		delete[] code;
-		code = NULL;
+		return stage_create_info;
 	}
 }

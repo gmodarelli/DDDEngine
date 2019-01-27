@@ -424,23 +424,8 @@ void preparePipelines()
 
 	// Shaders
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
-
-	// TODO: Add a function to load a shader and return a VkPipelineShaderStageCreateInfo
-	VkShaderModule vertShaderModule;
-	VkShaderModule fragShaderModule;
-	Vulkan::setupShader(app->context->Device, app->context->PhysicalDevice, "../data/shaders/vert.spv", &vertShaderModule, "../data/shaders/frag.spv", &fragShaderModule);
-
-	shaderStages[0] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderStages[0].module = vertShaderModule;
-	shaderStages[0].pName = "main"; // Shader entry point
-	shaderStages[0].pSpecializationInfo = nullptr;
-
-	shaderStages[1] = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderStages[1].module = fragShaderModule;
-	shaderStages[1].pName = "main"; // Shader entry point
-	shaderStages[1].pSpecializationInfo = nullptr;
+	shaderStages[0] = Vulkan::loadShader(app->context->Device, app->context->PhysicalDevice, "../data/shaders/vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = Vulkan::loadShader(app->context->Device, app->context->PhysicalDevice, "../data/shaders/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 	pipelineCreateInfo.layout = pipelineLayout;
