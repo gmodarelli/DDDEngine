@@ -12,14 +12,41 @@ Renderer::Renderer(GLFWwindow* window) : window(window)
 	glfwGetWindowSize(window, &width, &height);
 }
 
-void Renderer::run()
+void Renderer::init()
 {
-	vulkan_init();
 	init_window();
-	main_loop();
-	cleanup();
+	vulkan_init();
 }
 
+void Renderer::render()
+{
+	main_loop();
+}
+
+void Renderer::main_loop()
+{
+	while (!glfwWindowShouldClose(window))
+		glfwPollEvents();
+}
+
+void Renderer::cleanup()
+{
+	vulkan_destroy_debug_report_callback();
+	vulkan_destroy_debug_utils_messenger();
+
+	if (vulkan_device != VK_NULL_HANDLE)
+		vkDestroyDevice(vulkan_device, nullptr);
+
+	if (instance != VK_NULL_HANDLE)
+		vkDestroyInstance(instance, nullptr);
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+//
+// WSI
+//
 bool Renderer::init_window()
 {
 	// GLFW was designed to work with OpenGL so we need to tell it not to
@@ -48,14 +75,26 @@ bool Renderer::init_window()
 	return true;
 }
 
+// 
+// Vulkan
+//
+// Vulkan Instance
+//
 bool Renderer::vulkan_init()
 {
-	VkResult result = volkInitialize();
-	assert(result == VK_SUCCESS);
-	if (result != VK_SUCCESS)
-		return false;
+	VkResult vulkan_result = volkInitialize();
+	assert(vulkan_result == VK_SUCCESS);
 
-	vulkan_create_instance();
+	bool result = vulkan_create_instance();
+	assert(result);
+
+	result = vulkan_pick_suitable_gpu();
+	assert(result);
+
+	result = vulkan_create_device();
+	assert(result);
+
+	vulkan_retrieve_queues();
 
 	return true;
 }
@@ -209,21 +248,115 @@ void Renderer::vulkan_create_debug_utils_messenger()
 	assert(result == VK_SUCCESS);
 }
 
-void Renderer::main_loop()
+// 
+// Vulkan
+//
+// Vulkan Physical Device
+//
+bool Renderer::vulkan_pick_suitable_gpu()
 {
-	while (!glfwWindowShouldClose(window))
-		glfwPollEvents();
+	// Enumerate all available GPUs on the system
+	VkResult result = vkEnumeratePhysicalDevices(instance, &available_gpu_count, nullptr);
+	assert(result == VK_SUCCESS);
+
+	if (available_gpu_count == 0)
+		return false;
+
+	available_gpus = new VkPhysicalDevice[available_gpu_count];
+	result = vkEnumeratePhysicalDevices(instance, &available_gpu_count, available_gpus);
+	assert(result == VK_SUCCESS);
+
+	// Collect all GPUs properties, features and queue support
+	available_gpu_properties = new VkPhysicalDeviceProperties[available_gpu_count];
+	available_gpu_features = new VkPhysicalDeviceFeatures[available_gpu_count];
+
+	for (uint32_t i = 0; i < available_gpu_count; ++i)
+	{
+		vkGetPhysicalDeviceProperties(available_gpus[i], &available_gpu_properties[i]);
+		vkGetPhysicalDeviceFeatures(available_gpus[i], &available_gpu_features[i]);
+
+		// Check for graphics queue support
+		// TODO: Add check for transfer queue as well
+		bool support_queues = false;
+		uint32_t queue_family_count;
+		VkQueueFamilyProperties queue_families[16];
+		vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, nullptr);
+		assert(queue_family_count <= 16);
+		if (queue_family_count > 0)
+		{
+			vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, queue_families);
+			for (uint32_t q = 0; q < queue_family_count; ++q)
+			{
+				if (queue_families[q].queueCount > 0 && queue_families[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				{
+					support_queues = true;
+					if (gpu == VK_NULL_HANDLE)
+					{
+						vulkan_graphics_family_index = q;
+					}
+				}
+			}
+		}
+
+		if (gpu == VK_NULL_HANDLE && support_queues)
+		{
+			// Pick the first suitable GPU
+			gpu = available_gpus[i];
+			gpu_properties = available_gpu_properties[i];
+			gpu_features = available_gpu_features[i];
+		}
+	}
+
+	return (gpu != VK_NULL_HANDLE && vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
 }
 
-void Renderer::cleanup()
+bool Renderer::vulkan_create_device()
 {
-	vulkan_destroy_debug_report_callback();
-	vulkan_destroy_debug_utils_messenger();
+	assert(gpu != VK_NULL_HANDLE);
+	assert(vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
 
-	vkDestroyInstance(instance, nullptr);
+	// Queues Information
+	VkDeviceQueueCreateInfo queue_create_info = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+	queue_create_info.queueFamilyIndex = vulkan_graphics_family_index;
+	// We only need 1 graphics queue cause even if we start multithreading, all separate command buffers
+	// can record commands and then we can submit them all at once to 1 queue on the main thread
+	// with a single low-overhead call (vulkan-tutorial.com)
+	queue_create_info.queueCount = 1;
 
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	float queue_priority = 1.0f;
+	queue_create_info.pQueuePriorities = &queue_priority;
+
+	// Device Features to enable
+	// For now we don't need any features
+	gpu_enabled_features = {};
+
+	// Device create info
+	VkDeviceCreateInfo device_create_info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	device_create_info.pQueueCreateInfos = &queue_create_info;
+	device_create_info.queueCreateInfoCount = 1;
+	device_create_info.pEnabledFeatures = &gpu_enabled_features;
+
+	// Validation Layers
+#ifdef VULKAN_DEBUG_ENABLED
+	const char* validation_layers[] = { "VK_LAYER_LUNARG_standard_validation" };
+	uint32_t validation_layer_count = ARRAYSIZE(validation_layers);
+
+	device_create_info.enabledLayerCount = validation_layer_count;
+	device_create_info.ppEnabledLayerNames = validation_layer_count > 0 ? validation_layers : nullptr;
+#endif
+
+	VkResult result = vkCreateDevice(gpu, &device_create_info, nullptr, &vulkan_device);
+	assert(result == VK_SUCCESS);
+
+	return true;
+}
+
+void Renderer::vulkan_retrieve_queues()
+{
+	assert(vulkan_device != VK_NULL_HANDLE);
+	assert(vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
+
+	vkGetDeviceQueue(vulkan_device, vulkan_graphics_family_index, 0, &vulkan_graphics_queue);
 }
 
 } // namespace Renderer

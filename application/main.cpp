@@ -793,7 +793,12 @@ int main()
 	uint32_t height = 1200;
 
 	Renderer::Renderer* renderer = new Renderer::Renderer(width, height);
-	renderer->run();
+	renderer->init();
+
+	// This is also the main loop.
+	// TODO: Move the loop outside of this function and object. renderer->render() should
+	// only render one frame
+	renderer->render();
 
 	return 0;
 }

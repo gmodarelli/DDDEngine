@@ -19,17 +19,25 @@ namespace Renderer
 		Renderer(int width, int height);
 		Renderer(GLFWwindow* window);
 
-		void run();
+		void init();
+		void render();
+		void cleanup();
 
 	private:
+		//
 		// Window functions and data
+		//
 		int width;
 		int height;
 		GLFWwindow* window = NULL;
 		bool init_window();
 
+		void main_loop();
+
 		//
 		// Vulkan functions and data
+		// TODO: Eventually all this code will be moved to separate structs
+		// on a layer below the Renderer
 		//
 		// Vulkan Instance
 		VkInstance instance = VK_NULL_HANDLE;
@@ -50,11 +58,26 @@ namespace Renderer
 		VkDebugUtilsMessengerEXT vulkan_debug_utils_messenger = VK_NULL_HANDLE;
 		void vulkan_create_debug_utils_messenger();
 		void vulkan_destroy_debug_utils_messenger();
-		// Vulkan Cleanup
+		// Vulkan Physical Device
+		uint32_t available_gpu_count = 0;
+		VkPhysicalDevice* available_gpus = nullptr;
+		VkPhysicalDeviceProperties* available_gpu_properties = nullptr;
+		VkPhysicalDeviceFeatures* available_gpu_features = nullptr;
+		VkPhysicalDevice gpu = VK_NULL_HANDLE;
+		VkPhysicalDeviceProperties gpu_properties = {};
+		VkPhysicalDeviceFeatures gpu_features = {};
+		VkPhysicalDeviceFeatures gpu_enabled_features = {};
+		bool vulkan_pick_suitable_gpu();
+		// Vulkan Logical Device
+		VkDevice vulkan_device = VK_NULL_HANDLE;
+		bool vulkan_create_device();
+		// Vulkan Queues
+		uint32_t vulkan_graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
+		uint32_t vulkan_transfer_family_index = VK_QUEUE_FAMILY_IGNORED;
+		VkQueue vulkan_graphics_queue = VK_NULL_HANDLE;
+		VkQueue vulkan_transfer_queue = VK_NULL_HANDLE;
+		void vulkan_retrieve_queues();
 
-		void main_loop();
-
-		void cleanup();
 
 	}; // struct Renderer
 } // namespace Renderer
