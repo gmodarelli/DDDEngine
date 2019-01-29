@@ -54,6 +54,11 @@ namespace Renderer
 		uint32_t available_layer_count = 0;
 		bool vulkan_has_layer(const char* layer_name);
 
+		// Vulkan Device Required Extensions
+		uint32_t vulkan_device_required_extension_count = 0;
+		const char** vulkan_device_required_extensions = nullptr;
+		bool vulkan_has_gpu_extension(const char* extension_name, const VkExtensionProperties* gpu_available_extensions, uint32_t gpu_available_extension_count);
+
 		// Vulkan Debug callbacks
 		VkDebugReportCallbackEXT vulkan_debug_report_callback = VK_NULL_HANDLE;
 		void vulkan_create_debug_report_callback();
@@ -89,6 +94,9 @@ namespace Renderer
 		VkQueue vulkan_present_queue = VK_NULL_HANDLE;
 		VkQueue vulkan_transfer_queue = VK_NULL_HANDLE;
 		void vulkan_retrieve_queues();
+
+		// Vulkan Swapchain
+		VkSwapchainKHR vulkan_swapchain = VK_NULL_HANDLE;
 
 
 	}; // struct Renderer

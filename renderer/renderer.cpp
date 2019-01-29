@@ -100,6 +100,10 @@ bool Renderer::vulkan_init()
 	bool result = vulkan_create_instance();
 	assert(result);
 
+	vulkan_device_required_extension_count = 1;
+	vulkan_device_required_extensions = new const char*[vulkan_device_required_extension_count];
+	vulkan_device_required_extensions[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+
 	// TODO: The surface should come from the outside since it is platform dependent
 	result = vulkan_create_surface();
 	assert(result);
@@ -223,6 +227,19 @@ bool Renderer::vulkan_has_layer(const char* layer_name)
 	return false;
 }
 
+bool Renderer::vulkan_has_gpu_extension(const char* extension_name, const VkExtensionProperties* gpu_available_extensions, uint32_t gpu_available_extension_count)
+{
+	assert(gpu_available_extensions);
+
+	for (uint32_t i = 0; i < gpu_available_extension_count; ++i)
+	{
+		if (strcmp(extension_name, gpu_available_extensions[i].extensionName))
+			return true;
+	}
+
+	return false;
+}
+
 void Renderer::vulkan_create_debug_report_callback()
 {
 	assert(vkCreateDebugReportCallbackEXT);
@@ -274,6 +291,9 @@ bool Renderer::vulkan_pick_suitable_gpu()
 {
 	assert(vulkan_surface != VK_NULL_HANDLE);
 
+	assert(vulkan_device_required_extension_count > 0);
+	assert(vulkan_device_required_extensions);
+
 	// Enumerate all available GPUs on the system
 	VkResult result = vkEnumeratePhysicalDevices(vulkan_instance, &available_gpu_count, nullptr);
 	assert(result == VK_SUCCESS);
@@ -296,6 +316,19 @@ bool Renderer::vulkan_pick_suitable_gpu()
 
 		if (gpu == VK_NULL_HANDLE)
 		{
+			// Check for required device extensions support
+			uint32_t extension_count = 0;
+			vkEnumerateDeviceExtensionProperties(available_gpus[i], nullptr, &extension_count, nullptr);
+			assert(extension_count > 0 && extension_count <= 256);
+			VkExtensionProperties gpu_available_extensions[256];
+			vkEnumerateDeviceExtensionProperties(available_gpus[i], nullptr, &extension_count, gpu_available_extensions);
+			for (uint32_t ext_id = 0; ext_id < vulkan_device_required_extension_count; ++ext_id)
+			{
+				// If one of the required device extensions is not supported by the current physical device, we move on to the next
+				if (!vulkan_has_gpu_extension(vulkan_device_required_extensions[ext_id], gpu_available_extensions, extension_count))
+					continue;
+			}
+
 			// Check for graphics queue support
 			// TODO: Add check for transfer queue as well
 			uint32_t queue_family_count;
@@ -327,13 +360,21 @@ bool Renderer::vulkan_pick_suitable_gpu()
 					}
 				}
 
-				if (vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED && vulkan_present_family_index != VK_QUEUE_FAMILY_IGNORED)
+				// It the current physical device does not have support for either of graphics or present queue, reset the state
+				// and continue with the next physical device
+				if (vulkan_graphics_family_index == VK_QUEUE_FAMILY_IGNORED || vulkan_present_family_index == VK_QUEUE_FAMILY_IGNORED)
 				{
-					// Pick the first suitable GPU
-					gpu = available_gpus[i];
-					gpu_properties = available_gpu_properties[i];
-					gpu_features = available_gpu_features[i];
+					vulkan_graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
+					vulkan_present_family_index = VK_QUEUE_FAMILY_IGNORED;
+					continue;
 				}
+
+
+
+				// Pick the first suitable GPU
+				gpu = available_gpus[i];
+				gpu_properties = available_gpu_properties[i];
+				gpu_features = available_gpu_features[i];
 			}
 		}
 	}
@@ -391,6 +432,8 @@ bool Renderer::vulkan_create_device()
 	device_create_info.pQueueCreateInfos = queue_create_info;
 	device_create_info.queueCreateInfoCount = queue_count;
 	device_create_info.pEnabledFeatures = &gpu_enabled_features;
+	device_create_info.enabledExtensionCount = vulkan_device_required_extension_count;
+	device_create_info.ppEnabledExtensionNames = vulkan_device_required_extension_count > 0 ? vulkan_device_required_extensions : nullptr;
 
 	// Validation Layers
 #ifdef VULKAN_DEBUG_ENABLED
@@ -400,6 +443,7 @@ bool Renderer::vulkan_create_device()
 	device_create_info.enabledLayerCount = validation_layer_count;
 	device_create_info.ppEnabledLayerNames = validation_layer_count > 0 ? validation_layers : nullptr;
 #endif
+
 
 	VkResult result = vkCreateDevice(gpu, &device_create_info, nullptr, &vulkan_device);
 	assert(result == VK_SUCCESS);
