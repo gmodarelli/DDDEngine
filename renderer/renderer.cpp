@@ -272,6 +272,8 @@ void Renderer::vulkan_create_debug_utils_messenger()
 //
 bool Renderer::vulkan_pick_suitable_gpu()
 {
+	assert(vulkan_surface != VK_NULL_HANDLE);
+
 	// Enumerate all available GPUs on the system
 	VkResult result = vkEnumeratePhysicalDevices(vulkan_instance, &available_gpu_count, nullptr);
 	assert(result == VK_SUCCESS);
@@ -292,56 +294,93 @@ bool Renderer::vulkan_pick_suitable_gpu()
 		vkGetPhysicalDeviceProperties(available_gpus[i], &available_gpu_properties[i]);
 		vkGetPhysicalDeviceFeatures(available_gpus[i], &available_gpu_features[i]);
 
-		// Check for graphics queue support
-		// TODO: Add check for transfer queue as well
-		bool support_queues = false;
-		uint32_t queue_family_count;
-		VkQueueFamilyProperties queue_families[16];
-		vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, nullptr);
-		assert(queue_family_count <= 16);
-		if (queue_family_count > 0)
+		if (gpu == VK_NULL_HANDLE)
 		{
-			vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, queue_families);
-			for (uint32_t q = 0; q < queue_family_count; ++q)
+			// Check for graphics queue support
+			// TODO: Add check for transfer queue as well
+			uint32_t queue_family_count;
+			VkQueueFamilyProperties queue_families[16];
+			vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, nullptr);
+			assert(queue_family_count <= 16);
+			if (queue_family_count > 0)
 			{
-				if (queue_families[q].queueCount > 0 && queue_families[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, queue_families);
+				for (uint32_t q = 0; q < queue_family_count; ++q)
 				{
-					support_queues = true;
-					if (gpu == VK_NULL_HANDLE)
+					if (queue_families[q].queueCount > 0 && queue_families[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 					{
-						vulkan_graphics_family_index = q;
+						if (vulkan_graphics_family_index == VK_QUEUE_FAMILY_IGNORED)
+						{
+							vulkan_graphics_family_index = q;
+						}
+
+						if (vulkan_present_family_index == VK_QUEUE_FAMILY_IGNORED)
+						{
+							VkBool32 present_support = VK_FALSE;
+							vkGetPhysicalDeviceSurfaceSupportKHR(available_gpus[i], q, vulkan_surface, &present_support);
+
+							if (present_support)
+							{
+								vulkan_present_family_index = q;
+							}
+						}
 					}
+				}
+
+				if (vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED && vulkan_present_family_index != VK_QUEUE_FAMILY_IGNORED)
+				{
+					// Pick the first suitable GPU
+					gpu = available_gpus[i];
+					gpu_properties = available_gpu_properties[i];
+					gpu_features = available_gpu_features[i];
 				}
 			}
 		}
-
-		if (gpu == VK_NULL_HANDLE && support_queues)
-		{
-			// Pick the first suitable GPU
-			gpu = available_gpus[i];
-			gpu_properties = available_gpu_properties[i];
-			gpu_features = available_gpu_features[i];
-		}
 	}
 
-	return (gpu != VK_NULL_HANDLE && vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
+	return (gpu != VK_NULL_HANDLE && vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED && vulkan_present_family_index != VK_QUEUE_FAMILY_IGNORED);
 }
 
 bool Renderer::vulkan_create_device()
 {
 	assert(gpu != VK_NULL_HANDLE);
 	assert(vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
+	assert(vulkan_present_family_index != VK_QUEUE_FAMILY_IGNORED);
 
 	// Queues Information
-	VkDeviceQueueCreateInfo queue_create_info = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-	queue_create_info.queueFamilyIndex = vulkan_graphics_family_index;
-	// We only need 1 graphics queue cause even if we start multithreading, all separate command buffers
-	// can record commands and then we can submit them all at once to 1 queue on the main thread
-	// with a single low-overhead call (vulkan-tutorial.com)
-	queue_create_info.queueCount = 1;
-
+	VkDeviceQueueCreateInfo queue_create_info[2];
+	uint32_t queue_count = 0;
 	float queue_priority = 1.0f;
-	queue_create_info.pQueuePriorities = &queue_priority;
+
+	if (vulkan_graphics_family_index != vulkan_present_family_index)
+	{
+		queue_count = 2;
+
+		queue_create_info[0] = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+		queue_create_info[0].queueFamilyIndex = vulkan_graphics_family_index;
+		// We only need 1 graphics queue cause even if we start multithreading, all separate command buffers
+		// can record commands and then we can submit them all at once to 1 queue on the main thread
+		// with a single low-overhead call (vulkan-tutorial.com)
+		queue_create_info[0].queueCount = 1;
+		queue_create_info[0].pQueuePriorities = &queue_priority;
+
+		queue_create_info[1] = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+		queue_create_info[1].queueFamilyIndex = vulkan_present_family_index;
+		queue_create_info[1].queueCount = 1;
+		queue_create_info[1].pQueuePriorities = &queue_priority;
+	}
+	else
+	{
+		queue_count = 1;
+
+		queue_create_info[0] = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+		queue_create_info[0].queueFamilyIndex = vulkan_graphics_family_index;
+		// We only need 1 graphics queue cause even if we start multithreading, all separate command buffers
+		// can record commands and then we can submit them all at once to 1 queue on the main thread
+		// with a single low-overhead call (vulkan-tutorial.com)
+		queue_create_info[0].queueCount = 1;
+		queue_create_info[0].pQueuePriorities = &queue_priority;
+	}
 
 	// Device Features to enable
 	// For now we don't need any features
@@ -349,8 +388,8 @@ bool Renderer::vulkan_create_device()
 
 	// Device create info
 	VkDeviceCreateInfo device_create_info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
-	device_create_info.pQueueCreateInfos = &queue_create_info;
-	device_create_info.queueCreateInfoCount = 1;
+	device_create_info.pQueueCreateInfos = queue_create_info;
+	device_create_info.queueCreateInfoCount = queue_count;
 	device_create_info.pEnabledFeatures = &gpu_enabled_features;
 
 	// Validation Layers
@@ -372,8 +411,10 @@ void Renderer::vulkan_retrieve_queues()
 {
 	assert(vulkan_device != VK_NULL_HANDLE);
 	assert(vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
+	assert(vulkan_present_family_index != VK_QUEUE_FAMILY_IGNORED);
 
 	vkGetDeviceQueue(vulkan_device, vulkan_graphics_family_index, 0, &vulkan_graphics_queue);
+	vkGetDeviceQueue(vulkan_device, vulkan_present_family_index, 0, &vulkan_present_queue);
 }
 
 //

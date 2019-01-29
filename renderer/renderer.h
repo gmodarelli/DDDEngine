@@ -83,8 +83,10 @@ namespace Renderer
 
 		// Vulkan Queues
 		uint32_t vulkan_graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
+		uint32_t vulkan_present_family_index = VK_QUEUE_FAMILY_IGNORED;
 		uint32_t vulkan_transfer_family_index = VK_QUEUE_FAMILY_IGNORED;
 		VkQueue vulkan_graphics_queue = VK_NULL_HANDLE;
+		VkQueue vulkan_present_queue = VK_NULL_HANDLE;
 		VkQueue vulkan_transfer_queue = VK_NULL_HANDLE;
 		void vulkan_retrieve_queues();
 
