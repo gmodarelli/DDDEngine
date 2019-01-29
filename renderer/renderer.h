@@ -40,17 +40,20 @@ namespace Renderer
 		// on a layer below the Renderer
 		//
 		// Vulkan Instance
-		VkInstance instance = VK_NULL_HANDLE;
+		VkInstance vulkan_instance = VK_NULL_HANDLE;
 		bool vulkan_init();
 		bool vulkan_create_instance();
+
 		// Vulkan Instance Extensions
 		VkExtensionProperties* available_extensions = nullptr;
 		uint32_t available_extensions_count = 0;
 		bool vulkan_has_extension(const char* extension_name);
+
 		// Vulkan Instance Layers
 		VkLayerProperties* available_layers = nullptr;
 		uint32_t available_layer_count = 0;
 		bool vulkan_has_layer(const char* layer_name);
+
 		// Vulkan Debug callbacks
 		VkDebugReportCallbackEXT vulkan_debug_report_callback = VK_NULL_HANDLE;
 		void vulkan_create_debug_report_callback();
@@ -58,6 +61,11 @@ namespace Renderer
 		VkDebugUtilsMessengerEXT vulkan_debug_utils_messenger = VK_NULL_HANDLE;
 		void vulkan_create_debug_utils_messenger();
 		void vulkan_destroy_debug_utils_messenger();
+
+		// Vulkan Surface
+		VkSurfaceKHR vulkan_surface;
+		bool vulkan_create_surface();
+
 		// Vulkan Physical Device
 		uint32_t available_gpu_count = 0;
 		VkPhysicalDevice* available_gpus = nullptr;
@@ -68,9 +76,11 @@ namespace Renderer
 		VkPhysicalDeviceFeatures gpu_features = {};
 		VkPhysicalDeviceFeatures gpu_enabled_features = {};
 		bool vulkan_pick_suitable_gpu();
+
 		// Vulkan Logical Device
 		VkDevice vulkan_device = VK_NULL_HANDLE;
 		bool vulkan_create_device();
+
 		// Vulkan Queues
 		uint32_t vulkan_graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
 		uint32_t vulkan_transfer_family_index = VK_QUEUE_FAMILY_IGNORED;

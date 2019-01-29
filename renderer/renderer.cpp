@@ -31,14 +31,26 @@ void Renderer::main_loop()
 
 void Renderer::cleanup()
 {
+	if (vulkan_surface != VK_NULL_HANDLE)
+	{
+		vkDestroySurfaceKHR(vulkan_instance, vulkan_surface, nullptr);
+		vulkan_surface = VK_NULL_HANDLE;
+	}
+
 	vulkan_destroy_debug_report_callback();
 	vulkan_destroy_debug_utils_messenger();
 
 	if (vulkan_device != VK_NULL_HANDLE)
+	{
 		vkDestroyDevice(vulkan_device, nullptr);
+		vulkan_device = VK_NULL_HANDLE;
+	}
 
-	if (instance != VK_NULL_HANDLE)
-		vkDestroyInstance(instance, nullptr);
+	if (vulkan_instance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(vulkan_instance, nullptr);
+		vulkan_instance = VK_NULL_HANDLE;
+	}
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
@@ -88,6 +100,10 @@ bool Renderer::vulkan_init()
 	bool result = vulkan_create_instance();
 	assert(result);
 
+	// TODO: The surface should come from the outside since it is platform dependent
+	result = vulkan_create_surface();
+	assert(result);
+
 	result = vulkan_pick_suitable_gpu();
 	assert(result);
 
@@ -95,6 +111,7 @@ bool Renderer::vulkan_init()
 	assert(result);
 
 	vulkan_retrieve_queues();
+
 
 	return true;
 }
@@ -170,9 +187,9 @@ bool Renderer::vulkan_create_instance()
 	create_info.ppEnabledLayerNames = validation_layer_count > 0 ? validation_layers : nullptr;
 #endif
 
-	result = vkCreateInstance(&create_info, nullptr, &instance);
+	result = vkCreateInstance(&create_info, nullptr, &vulkan_instance);
 	assert(result == VK_SUCCESS);
-	volkLoadInstance(instance);
+	volkLoadInstance(vulkan_instance);
 
 #ifdef VULKAN_DEBUG_ENABLED
 	vulkan_create_debug_report_callback();
@@ -214,7 +231,7 @@ void Renderer::vulkan_create_debug_report_callback()
 	create_info.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 	create_info.pfnCallback = vulkan_debug_callback;
 	create_info.pUserData = this;
-	VkResult result = vkCreateDebugReportCallbackEXT(instance, &create_info, nullptr, &vulkan_debug_report_callback);
+	VkResult result = vkCreateDebugReportCallbackEXT(vulkan_instance, &create_info, nullptr, &vulkan_debug_report_callback);
 	assert(result == VK_SUCCESS);
 }
 
@@ -223,7 +240,7 @@ void Renderer::vulkan_destroy_debug_report_callback()
 	assert(vkDestroyDebugReportCallbackEXT);
 
 	if (vulkan_debug_report_callback != VK_NULL_HANDLE)
-		vkDestroyDebugReportCallbackEXT(instance, vulkan_debug_report_callback, nullptr);
+		vkDestroyDebugReportCallbackEXT(vulkan_instance, vulkan_debug_report_callback, nullptr);
 }
 
 void Renderer::vulkan_destroy_debug_utils_messenger()
@@ -231,7 +248,7 @@ void Renderer::vulkan_destroy_debug_utils_messenger()
 	assert(vkDestroyDebugUtilsMessengerEXT);
 
 	if (vulkan_debug_utils_messenger != VK_NULL_HANDLE)
-		vkDestroyDebugUtilsMessengerEXT(instance, vulkan_debug_utils_messenger, nullptr);
+		vkDestroyDebugUtilsMessengerEXT(vulkan_instance, vulkan_debug_utils_messenger, nullptr);
 }
 
 void Renderer::vulkan_create_debug_utils_messenger()
@@ -244,7 +261,7 @@ void Renderer::vulkan_create_debug_utils_messenger()
 	create_info.pfnUserCallback = vulkan_debug_messenger;
 	create_info.pUserData = this;
 
-	VkResult result = vkCreateDebugUtilsMessengerEXT(instance, &create_info, nullptr, &vulkan_debug_utils_messenger);
+	VkResult result = vkCreateDebugUtilsMessengerEXT(vulkan_instance, &create_info, nullptr, &vulkan_debug_utils_messenger);
 	assert(result == VK_SUCCESS);
 }
 
@@ -256,14 +273,14 @@ void Renderer::vulkan_create_debug_utils_messenger()
 bool Renderer::vulkan_pick_suitable_gpu()
 {
 	// Enumerate all available GPUs on the system
-	VkResult result = vkEnumeratePhysicalDevices(instance, &available_gpu_count, nullptr);
+	VkResult result = vkEnumeratePhysicalDevices(vulkan_instance, &available_gpu_count, nullptr);
 	assert(result == VK_SUCCESS);
 
 	if (available_gpu_count == 0)
 		return false;
 
 	available_gpus = new VkPhysicalDevice[available_gpu_count];
-	result = vkEnumeratePhysicalDevices(instance, &available_gpu_count, available_gpus);
+	result = vkEnumeratePhysicalDevices(vulkan_instance, &available_gpu_count, available_gpus);
 	assert(result == VK_SUCCESS);
 
 	// Collect all GPUs properties, features and queue support
@@ -357,6 +374,25 @@ void Renderer::vulkan_retrieve_queues()
 	assert(vulkan_graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
 
 	vkGetDeviceQueue(vulkan_device, vulkan_graphics_family_index, 0, &vulkan_graphics_queue);
+}
+
+//
+// Vulkan
+//
+// Vulkan Surface
+//
+bool Renderer::vulkan_create_surface()
+{
+	// TODO: This surface creation should be moved to a platform specific wsi file
+	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(vulkan_instance, "vkCreateWin32SurfaceKHR");
+	assert(vkCreateWin32SurfaceKHR != nullptr);
+
+	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
+	surfaceCreateInfo.hwnd = glfwGetWin32Window(window);
+	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
+
+	VkResult result = vkCreateWin32SurfaceKHR(vulkan_instance, &surfaceCreateInfo, nullptr, &vulkan_surface);
+	return (result == VK_SUCCESS);
 }
 
 } // namespace Renderer
