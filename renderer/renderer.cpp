@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdio.h>
+#include <algorithm>
 
 namespace Renderer
 {
@@ -14,7 +15,9 @@ Renderer::Renderer(GLFWwindow* window) : window(window)
 
 void Renderer::init()
 {
-	init_window();
+	bool result = init_window();
+	assert(result);
+
 	vulkan_init();
 }
 
@@ -31,6 +34,8 @@ void Renderer::main_loop()
 
 void Renderer::cleanup()
 {
+	vulkan_destroy_swapchain();
+
 	if (vulkan_surface != VK_NULL_HANDLE)
 	{
 		vkDestroySurfaceKHR(vulkan_instance, vulkan_surface, nullptr);
@@ -61,21 +66,35 @@ void Renderer::cleanup()
 //
 bool Renderer::init_window()
 {
+	glfwInit();
+
 	// GLFW was designed to work with OpenGL so we need to tell it not to
 	// create an OpenGL context, otherwise we won't be able to create a 
-	// VkSurfaceKHR later.
+	// VkSwapchainKHR later.
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+	const char* error;
+	glfwGetError(&error);
+	if (error)
+	{
+		printf("[WSI]: %s\n", error);
+		return false;
+	}
+
 
 	// Disable window resizing for now.
 	// TODO: Remove this line once we can handle window resize
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-	glfwInit();
+	glfwGetError(&error);
+	if (error)
+	{
+		printf("[WSI]: %s\n", error);
+		return false;
+	}
 
 	window = glfwCreateWindow(width, height, "A Fante", nullptr, nullptr);
 	if (window == NULL)
 	{
-		const char* error;
 		glfwGetError(&error);
 		if (error)
 		{
@@ -116,6 +135,8 @@ bool Renderer::vulkan_init()
 
 	vulkan_retrieve_queues();
 
+	result = vulkan_create_swapchain();
+	assert(result);
 
 	return true;
 }
@@ -329,6 +350,20 @@ bool Renderer::vulkan_pick_suitable_gpu()
 					continue;
 			}
 
+			// Check for swap chain details support
+			// 
+			// Surface Format and Color Space
+			uint32_t available_format_count = 0;
+			vkGetPhysicalDeviceSurfaceFormatsKHR(available_gpus[i], vulkan_surface, &available_format_count, nullptr);
+			// Present Mode
+			uint32_t available_present_mode_count = 0;
+			vkGetPhysicalDeviceSurfacePresentModesKHR(available_gpus[i], vulkan_surface, &available_present_mode_count, nullptr);
+
+			// The current physical device doesn't support any format or any present mode, we move on to the next
+			if (available_format_count == 0 || available_present_mode_count == 0)
+				continue;
+
+
 			// Check for graphics queue support
 			// TODO: Add check for transfer queue as well
 			uint32_t queue_family_count;
@@ -368,8 +403,6 @@ bool Renderer::vulkan_pick_suitable_gpu()
 					vulkan_present_family_index = VK_QUEUE_FAMILY_IGNORED;
 					continue;
 				}
-
-
 
 				// Pick the first suitable GPU
 				gpu = available_gpus[i];
@@ -477,7 +510,158 @@ bool Renderer::vulkan_create_surface()
 	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
 
 	VkResult result = vkCreateWin32SurfaceKHR(vulkan_instance, &surfaceCreateInfo, nullptr, &vulkan_surface);
+	assert(result == VK_SUCCESS);
 	return (result == VK_SUCCESS);
+}
+
+//
+// Vulkan
+//
+// Vulkan Swapchain
+//
+bool Renderer::vulkan_create_swapchain()
+{
+	assert(gpu);
+	assert(vulkan_device);
+	assert(vulkan_surface);
+
+	VkSurfaceCapabilitiesKHR surface_capabilities;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gpu, vulkan_surface, &surface_capabilities);
+
+	vulkan_surface_format = vulkan_find_best_surface_format({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+	vulkan_present_mode = vulkan_find_best_present_mode(VK_PRESENT_MODE_MAILBOX_KHR);
+	vulkan_surface_extent = vulkan_choose_swapchain_extent(surface_capabilities);
+
+	uint32_t image_count = surface_capabilities.minImageCount + 1;
+	// Make sure the surface supports it
+	if (surface_capabilities.maxImageCount > 0 && image_count > surface_capabilities.maxImageCount)
+		image_count = surface_capabilities.maxImageCount;
+
+	VkSwapchainCreateInfoKHR create_info = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+	create_info.surface = vulkan_surface;
+	create_info.minImageCount = image_count;
+	create_info.imageFormat = vulkan_surface_format.format;
+	create_info.imageColorSpace = vulkan_surface_format.colorSpace;
+	create_info.imageExtent = vulkan_surface_extent;
+	create_info.imageArrayLayers = 1;
+	// NOTE: imageUsage specifies what kind of operation we'll use the images in the swapchain for.
+	// If we're going to render directly to them we need to use VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT.
+	// If we're going to render to a separate image first to perform operations like post-processing,
+	// or multi-sampling (?) then we need to use VK_IMAGE_USAGE_TRANSFER_DST_BIT and use a memory
+	// operation to transfer the rendered image to a swapchain image.
+	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	// NOTE: VK_SHARING_MODE_EXCLUSIVE offers the best performance, so we should switch to it
+	// even if we have queues with different indices. With sharing mode exclusive and image is
+	// owned by a queue family at a time and ownership must be explicitly transfered before
+	// using it in another queue family.
+	// TODO: Check the specs
+	if (vulkan_graphics_family_index != vulkan_present_family_index)
+	{
+		uint32_t queue_family_indices[] = { vulkan_graphics_family_index, vulkan_present_family_index };
+		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		create_info.queueFamilyIndexCount = 2;
+		create_info.pQueueFamilyIndices = queue_family_indices;
+	}
+	else
+	{
+		create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		create_info.queueFamilyIndexCount = 0;
+		create_info.pQueueFamilyIndices = nullptr;
+	}
+
+	create_info.preTransform = surface_capabilities.currentTransform;
+	create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	create_info.presentMode = vulkan_present_mode;
+	create_info.clipped = VK_TRUE;
+	create_info.oldSwapchain = VK_NULL_HANDLE;
+
+	VkResult result = vkCreateSwapchainKHR(vulkan_device, &create_info, nullptr, &vulkan_swapchain);
+	if (result != VK_SUCCESS)
+		return false;
+
+	return true;
+}
+
+void Renderer::vulkan_destroy_swapchain()
+{
+	assert(vulkan_swapchain != VK_NULL_HANDLE);
+	vkDestroySwapchainKHR(vulkan_device, vulkan_swapchain, nullptr);
+}
+
+VkSurfaceFormatKHR Renderer::vulkan_find_best_surface_format(VkSurfaceFormatKHR preferred_format)
+{
+	assert(gpu);
+
+	uint32_t available_format_count = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, vulkan_surface, &available_format_count, nullptr);
+	VkSurfaceFormatKHR* available_formats = new VkSurfaceFormatKHR[available_format_count];
+	vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, vulkan_surface, &available_format_count, available_formats);
+
+	// If the surface has no preferred format
+	if (available_format_count == 1 && available_formats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		// we pick the one we want
+		delete[] available_formats;
+		return { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
+
+	for (uint32_t f = 0; f < available_format_count; ++f)
+	{
+		if (available_formats[f].format == preferred_format.format && available_formats[f].colorSpace == preferred_format.colorSpace)
+		{
+			delete[] available_formats;
+			return { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+		}
+	}
+
+	VkSurfaceFormatKHR best_match = { available_formats[0].format, available_formats[0].colorSpace };
+	delete[] available_formats;
+	return best_match;
+}
+
+VkPresentModeKHR Renderer::vulkan_find_best_present_mode(VkPresentModeKHR preferred_present_mode)
+{
+	assert(gpu);
+
+	uint32_t available_present_mode_count = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, vulkan_surface, &available_present_mode_count, nullptr);
+	VkPresentModeKHR* available_present_modes = new VkPresentModeKHR[available_present_mode_count];
+	vkGetPhysicalDeviceSurfacePresentModesKHR(gpu, vulkan_surface, &available_present_mode_count, available_present_modes);
+
+	for (uint32_t p = 0; p < available_present_mode_count; ++p)
+	{
+		if (available_present_modes[p] == preferred_present_mode)
+		{
+			delete[] available_present_modes;
+			return VK_PRESENT_MODE_MAILBOX_KHR;
+		}
+	}
+
+	delete[] available_present_modes;
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D Renderer::vulkan_choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_capabilities)
+{
+	assert(gpu);
+	assert(vulkan_surface);
+
+	// Min/Max Swapchain Images
+	// Mix/Max Width and Height 
+
+	if (surface_capabilities.currentExtent.width != UINT32_MAX)
+	{
+		return surface_capabilities.currentExtent;
+	}
+	else
+	{
+		VkExtent2D actual_extent = { width, height };
+		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
+		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
+
+		return actual_extent;
+	}
 }
 
 } // namespace Renderer

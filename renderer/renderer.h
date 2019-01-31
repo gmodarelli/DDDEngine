@@ -97,7 +97,16 @@ namespace Renderer
 
 		// Vulkan Swapchain
 		VkSwapchainKHR vulkan_swapchain = VK_NULL_HANDLE;
-
-
+		VkSurfaceCapabilitiesKHR vulkan_surface_capabilities = {};
+		VkExtent2D vulkan_surface_extent = {};
+		VkSurfaceFormatKHR vulkan_surface_format = { VK_FORMAT_UNDEFINED };
+		// VK_PRESENT_MODE_FIFO_KHR is the only mode guaranteed to be available, 
+		// so we set it as default present mode.
+		VkPresentModeKHR vulkan_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+		bool vulkan_create_swapchain();
+		void vulkan_destroy_swapchain();
+		VkSurfaceFormatKHR vulkan_find_best_surface_format(VkSurfaceFormatKHR preferred_format);
+		VkPresentModeKHR vulkan_find_best_present_mode(VkPresentModeKHR preferred_present_mode);
+		VkExtent2D vulkan_choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_capabilities);
 	}; // struct Renderer
 } // namespace Renderer
