@@ -97,6 +97,9 @@ namespace Renderer
 
 		// Vulkan Swapchain
 		VkSwapchainKHR vulkan_swapchain = VK_NULL_HANDLE;
+		uint32_t vulkan_swapchain_image_count = 0;
+		VkImage* vulkan_swapchain_images = nullptr;
+		VkImageView* vulkan_swapchain_image_views = nullptr;
 		VkSurfaceCapabilitiesKHR vulkan_surface_capabilities = {};
 		VkExtent2D vulkan_surface_extent = {};
 		VkSurfaceFormatKHR vulkan_surface_format = { VK_FORMAT_UNDEFINED };

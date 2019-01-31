@@ -34,6 +34,21 @@ void Renderer::main_loop()
 
 void Renderer::cleanup()
 {
+	if (vulkan_swapchain_images != nullptr)
+	{
+		delete[] vulkan_swapchain_images;
+	}
+
+	if (vulkan_swapchain_image_views != nullptr)
+	{
+		for (uint32_t i = 0; i < vulkan_swapchain_image_count; ++i)
+		{
+			vkDestroyImageView(vulkan_device, vulkan_swapchain_image_views[i], nullptr);
+		}
+
+		delete[] vulkan_swapchain_image_views;
+	}
+
 	vulkan_destroy_swapchain();
 
 	if (vulkan_surface != VK_NULL_HANDLE)
@@ -579,6 +594,34 @@ bool Renderer::vulkan_create_swapchain()
 	VkResult result = vkCreateSwapchainKHR(vulkan_device, &create_info, nullptr, &vulkan_swapchain);
 	if (result != VK_SUCCESS)
 		return false;
+
+	// Retrieve the Swapchain VkImage handles. These images are create by the implementation of the swapchain
+	// and will be automatically cleaned up
+	vulkan_swapchain_image_count = image_count;
+	vkGetSwapchainImagesKHR(vulkan_device, vulkan_swapchain, &vulkan_swapchain_image_count, nullptr);
+	assert(vulkan_swapchain_image_count == image_count);
+	vulkan_swapchain_images = new VkImage[vulkan_swapchain_image_count];
+	vkGetSwapchainImagesKHR(vulkan_device, vulkan_swapchain, &vulkan_swapchain_image_count, vulkan_swapchain_images);
+	// Create a VkImageView per VkImage
+	vulkan_swapchain_image_views = new VkImageView[vulkan_swapchain_image_count];
+	for (uint32_t i = 0; i < vulkan_swapchain_image_count; ++i)
+	{
+		VkImageViewCreateInfo create_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+		create_info.image = vulkan_swapchain_images[i];
+		create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		create_info.format = vulkan_surface_format.format;
+		// The components are used to swizzle the color channels around for different effects.
+		create_info.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+		// The subresourceRange describes the image's purporse and which part of the image should be accessed
+		create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		create_info.subresourceRange.baseMipLevel = 0;
+		create_info.subresourceRange.levelCount = 1;
+		create_info.subresourceRange.baseArrayLayer = 0;
+		create_info.subresourceRange.layerCount = 1;
+
+		VkResult result = vkCreateImageView(vulkan_device, &create_info, nullptr, &vulkan_swapchain_image_views[i]);
+		assert (result == VK_SUCCESS);
+	}
 
 	return true;
 }

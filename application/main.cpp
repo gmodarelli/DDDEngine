@@ -800,6 +800,8 @@ int main()
 	// only render one frame
 	renderer->render();
 
+	renderer->cleanup();
+
 	return 0;
 }
 #endif
