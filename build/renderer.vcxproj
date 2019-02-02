@@ -163,6 +163,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\renderer\renderer.cpp" />
+    <ClCompile Include="..\vulkan\wsi.cpp" />
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
     </None>
@@ -204,6 +205,7 @@
     <ClInclude Include="..\vulkan\shaders.h" />
     <ClInclude Include="..\vulkan\swapchain.h" />
     <ClInclude Include="..\vulkan\utils.h" />
+    <ClInclude Include="..\vulkan\wsi.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

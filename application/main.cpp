@@ -785,22 +785,28 @@ int main()
 #else
 
 #include <inttypes.h>
+#include "../vulkan/wsi.h"
 #include "../renderer/renderer.h"
+
+uint32_t width = 1600;
+uint32_t height = 1200;
+
+Vulkan::WSI* wsi;
+Renderer::Renderer* renderer;
 
 int main()
 {
-	uint32_t width = 1600;
-	uint32_t height = 1200;
-
-	Renderer::Renderer* renderer = new Renderer::Renderer(width, height);
+	wsi = new Vulkan::WSI(width, height);
+	renderer = new Renderer::Renderer(wsi);
 	renderer->init();
 
-	// This is also the main loop.
-	// TODO: Move the loop outside of this function and object. renderer->render() should
-	// only render one frame
-	renderer->render();
+	while (wsi->alive())
+	{
+		renderer->render();
+	}
 
 	renderer->cleanup();
+	wsi->cleanup();
 
 	return 0;
 }

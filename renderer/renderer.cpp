@@ -7,29 +7,17 @@
 namespace Renderer
 {
 
-Renderer::Renderer(int width, int height) : width(width), height(height) {}
-Renderer::Renderer(GLFWwindow* window) : window(window)
+Renderer::Renderer(Vulkan::WSI* wsi) : wsi(wsi)
 {
-	glfwGetWindowSize(window, &width, &height);
 }
 
 void Renderer::init()
 {
-	bool result = init_window();
-	assert(result);
-
 	vulkan_init();
 }
 
 void Renderer::render()
 {
-	main_loop();
-}
-
-void Renderer::main_loop()
-{
-	while (!glfwWindowShouldClose(window))
-		glfwPollEvents();
 }
 
 void Renderer::cleanup()
@@ -71,54 +59,6 @@ void Renderer::cleanup()
 		vkDestroyInstance(vulkan_instance, nullptr);
 		vulkan_instance = VK_NULL_HANDLE;
 	}
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-}
-
-//
-// WSI
-//
-bool Renderer::init_window()
-{
-	glfwInit();
-
-	// GLFW was designed to work with OpenGL so we need to tell it not to
-	// create an OpenGL context, otherwise we won't be able to create a 
-	// VkSwapchainKHR later.
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-	const char* error;
-	glfwGetError(&error);
-	if (error)
-	{
-		printf("[WSI]: %s\n", error);
-		return false;
-	}
-
-
-	// Disable window resizing for now.
-	// TODO: Remove this line once we can handle window resize
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	glfwGetError(&error);
-	if (error)
-	{
-		printf("[WSI]: %s\n", error);
-		return false;
-	}
-
-	window = glfwCreateWindow(width, height, "A Fante", nullptr, nullptr);
-	if (window == NULL)
-	{
-		glfwGetError(&error);
-		if (error)
-		{
-			printf(error);
-			return false;
-		}
-	}
-
-	return true;
 }
 
 // 
@@ -138,9 +78,7 @@ bool Renderer::vulkan_init()
 	vulkan_device_required_extensions = new const char*[vulkan_device_required_extension_count];
 	vulkan_device_required_extensions[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
 
-	// TODO: The surface should come from the outside since it is platform dependent
-	result = vulkan_create_surface();
-	assert(result);
+	vulkan_surface = wsi->create_surface(vulkan_instance);
 
 	result = vulkan_pick_suitable_gpu();
 	assert(result);
@@ -512,26 +450,6 @@ void Renderer::vulkan_retrieve_queues()
 //
 // Vulkan
 //
-// Vulkan Surface
-//
-bool Renderer::vulkan_create_surface()
-{
-	// TODO: This surface creation should be moved to a platform specific wsi file
-	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(vulkan_instance, "vkCreateWin32SurfaceKHR");
-	assert(vkCreateWin32SurfaceKHR != nullptr);
-
-	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-	surfaceCreateInfo.hwnd = glfwGetWin32Window(window);
-	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
-
-	VkResult result = vkCreateWin32SurfaceKHR(vulkan_instance, &surfaceCreateInfo, nullptr, &vulkan_surface);
-	assert(result == VK_SUCCESS);
-	return (result == VK_SUCCESS);
-}
-
-//
-// Vulkan
-//
 // Vulkan Swapchain
 //
 bool Renderer::vulkan_create_swapchain()
@@ -699,7 +617,7 @@ VkExtent2D Renderer::vulkan_choose_swapchain_extent(const VkSurfaceCapabilitiesK
 	}
 	else
 	{
-		VkExtent2D actual_extent = { width, height };
+		VkExtent2D actual_extent = { wsi->get_width(), wsi->get_height() };
 		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
 
