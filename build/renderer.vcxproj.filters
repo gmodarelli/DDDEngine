@@ -81,6 +81,9 @@
     <ClCompile Include="..\vulkan\wsi.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\vulkan\context.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\simple.frag">
@@ -118,9 +121,6 @@
     <ClInclude Include="..\renderer\camera.h">
       <Filter>renderer</Filter>
     </ClInclude>
-    <ClInclude Include="..\vulkan\context.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="..\extern\glfw\src\egl_context.h">
       <Filter>extern\glfw</Filter>
     </ClInclude>
@@ -140,6 +140,9 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="..\vulkan\wsi.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vulkan\context.h">
       <Filter>vulkan</Filter>
     </ClInclude>
   </ItemGroup>

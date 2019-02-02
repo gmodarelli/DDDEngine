@@ -797,6 +797,8 @@ Renderer::Renderer* renderer;
 int main()
 {
 	wsi = new Vulkan::WSI(width, height);
+	wsi->init();
+
 	renderer = new Renderer::Renderer(wsi);
 	renderer->init();
 

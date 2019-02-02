@@ -111,6 +111,7 @@
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>../extern/glfw/include;../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/rapidjson/include</AdditionalIncludeDirectories>
       <SupportJustMyCode>true</SupportJustMyCode>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -152,6 +153,7 @@
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>../extern/glfw/include;../extern/Vulkan-Headers/include;../extern/volk;../extern/glm;../extern/rapidjson/include</AdditionalIncludeDirectories>
+      <ObjectFileName>$(IntDir)/%(RelativeDir)/</ObjectFileName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -163,6 +165,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\renderer\renderer.cpp" />
+    <ClCompile Include="..\vulkan\context.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
