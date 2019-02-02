@@ -1,4 +1,5 @@
 #pragma once
+#if 0
 
 namespace Vulkan
 {
@@ -82,3 +83,4 @@ namespace Vulkan
 		buffer->Buffer = VK_NULL_HANDLE;
 	}
 }
+#endif

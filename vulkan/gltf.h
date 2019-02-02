@@ -1,4 +1,5 @@
 #pragma once
+#if 0
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
 
@@ -714,3 +715,4 @@ namespace Vulkan
 		}
 	}
 }
+#endif

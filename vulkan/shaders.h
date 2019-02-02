@@ -1,4 +1,5 @@
 #pragma once
+#if 0
 
 #include <volk.h>
 #include <stdio.h>
@@ -41,3 +42,5 @@ namespace Vulkan
 		return stage_create_info;
 	}
 }
+
+#endif

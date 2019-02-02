@@ -1,5 +1,5 @@
 #pragma once
-
+#if 0
 #include "../renderer/camera.h"
 
 namespace Vulkan
@@ -476,3 +476,4 @@ namespace Vulkan
 	};
 
 }
+#endif

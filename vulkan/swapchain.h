@@ -1,4 +1,5 @@
 #pragma once
+#if 0
 
 #include "utils.h"
 #include "context.h"
@@ -211,3 +212,4 @@ namespace Vulkan
 		}
 	};
 }
+#endif
