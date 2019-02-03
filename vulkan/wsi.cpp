@@ -122,6 +122,17 @@ VkSurfaceFormatKHR WSI::get_surface_format() const
 	return surface_format;
 }
 
+uint32_t WSI::get_swapchain_image_count() const
+{
+	return swapchain_image_count;
+}
+
+VkImageView WSI::get_swapchain_image_view(uint32_t index) const
+{
+	assert(index >= 0 && index < swapchain_image_count);
+	return swapchain_image_views[index];
+}
+
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
 {
 	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");

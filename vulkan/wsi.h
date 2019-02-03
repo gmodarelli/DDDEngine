@@ -25,6 +25,8 @@ struct WSI
 	VkDevice get_device() const;
 
 	VkSurfaceFormatKHR get_surface_format() const;
+	uint32_t get_swapchain_image_count() const;
+	VkImageView get_swapchain_image_view(uint32_t index) const;
 
 private:
 	int width;

@@ -803,6 +803,7 @@ int main()
 	renderer->init();
 	renderer->create_render_pass();
 	renderer->create_graphics_pipeline();
+	renderer->create_framebuffers();
 
 	while (wsi->alive())
 	{

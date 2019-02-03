@@ -14,6 +14,8 @@ struct Renderer
 
 	void create_render_pass();
 	void create_graphics_pipeline();
+	void create_framebuffers();
+
 	void render();
 
 private:
@@ -23,6 +25,10 @@ private:
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+
+	VkFramebuffer* framebuffers = nullptr;
+	uint32_t framebuffer_count = 0;
+	void destroy_framebuffers();
 
 }; // struct Renderer
 

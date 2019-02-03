@@ -19,6 +19,11 @@ void Renderer::render()
 
 void Renderer::cleanup()
 {
+	if (framebuffers != nullptr)
+	{
+		destroy_framebuffers();
+	}
+
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{
 		vkDestroyPipeline(wsi->get_device(), graphics_pipeline, nullptr);
@@ -161,6 +166,40 @@ void Renderer::create_graphics_pipeline()
 	{
 		vkDestroyShaderModule(wsi->get_device(), shader_stages[i].module, nullptr);
 	}
+}
+
+void Renderer::create_framebuffers()
+{
+	if (framebuffers != nullptr)
+		destroy_framebuffers();
+
+	framebuffer_count = wsi->get_swapchain_image_count();
+	framebuffers = new VkFramebuffer[framebuffer_count];
+	for (uint32_t i = 0; i < framebuffer_count; ++i)
+	{
+		VkImageView attachments[] = { wsi->get_swapchain_image_view(i) };
+
+		VkFramebufferCreateInfo framebuffer_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
+		framebuffer_ci.renderPass = render_pass;
+		framebuffer_ci.attachmentCount = ARRAYSIZE(attachments);
+		framebuffer_ci.pAttachments = attachments;
+		framebuffer_ci.width = wsi->get_width();
+		framebuffer_ci.height = wsi->get_height();
+		framebuffer_ci.layers = 1;
+
+		VkResult result = vkCreateFramebuffer(wsi->get_device(), &framebuffer_ci, nullptr, &framebuffers[i]);
+		assert(result == VK_SUCCESS);
+	}
+}
+
+void Renderer::destroy_framebuffers()
+{
+	for (uint32_t i = 0; i < framebuffer_count; ++i)
+	{
+		vkDestroyFramebuffer(wsi->get_device(), framebuffers[i], nullptr);
+	}
+
+	delete[] framebuffers;
 }
 
 } // namespace Renderer
