@@ -132,15 +132,16 @@ bool Context::create_instance()
 	// Create the application info struct
 	VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 	app_info.apiVersion = supported_api_version;
-	app_info.pApplicationName = "A Fante";
+	app_info.pApplicationName = "73 Games";
 	app_info.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
-	app_info.pEngineName = "A Fante";
+	app_info.pEngineName = "73 Games";
 	app_info.engineVersion = VK_MAKE_VERSION(0, 1, 0);
 
 	VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 	create_info.pApplicationInfo = &app_info;
 
 	// Required extensions
+	// TODO: VK_KHR_WIN32_SURFACE_EXTENSION_NAME should come from the WSI
 	const char* required_extensions[] = 
 	{
 		VK_KHR_SURFACE_EXTENSION_NAME,

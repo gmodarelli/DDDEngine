@@ -801,6 +801,8 @@ int main()
 
 	renderer = new Renderer::Renderer(wsi);
 	renderer->init();
+	renderer->create_render_pass();
+	renderer->create_graphics_pipeline();
 
 	while (wsi->alive())
 	{

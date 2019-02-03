@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClCompile Include="..\renderer\renderer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
+    <ClCompile Include="..\vulkan\shader.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
@@ -187,6 +188,8 @@
     <ClCompile Include="..\extern\glfw\src\win32_window.c" />
     <ClCompile Include="..\extern\glfw\src\window.c" />
     <ClCompile Include="..\extern\volk\volk.c" />
+    <None Include="..\data\shaders\simple_triangle.frag" />
+    <None Include="..\data\shaders\simple_triangle.vert" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag" />

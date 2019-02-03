@@ -20,6 +20,12 @@ struct WSI
 	bool alive();
 	void cleanup();
 
+	VkInstance get_instance() const;
+	VkPhysicalDevice get_gpu() const;
+	VkDevice get_device() const;
+
+	VkSurfaceFormatKHR get_surface_format() const;
+
 private:
 	int width;
 	int height;

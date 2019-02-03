@@ -84,6 +84,9 @@
     <ClCompile Include="..\vulkan\context.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\vulkan\shader.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\simple.frag">
@@ -96,6 +99,12 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="..\data\shaders\glft.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\simple_triangle.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\simple_triangle.frag">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

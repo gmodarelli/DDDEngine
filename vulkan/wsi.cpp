@@ -35,7 +35,7 @@ bool WSI::init()
 		assert(!"Failed to initialize GLFW");
 	}
 
-	window = glfwCreateWindow(width, height, "A Fante", nullptr, nullptr);
+	window = glfwCreateWindow(width, height, "73 Games", nullptr, nullptr);
 	if (window == NULL)
 	{
 		glfwGetError(&error);
@@ -86,13 +86,40 @@ void WSI::cleanup()
 }
 
 
-int WSI::get_width() { return width; }
-int WSI::get_height() { return height; }
+int WSI::get_width()
+{
+	return surface_extent.width;
+}
+
+int WSI::get_height()
+{
+	return surface_extent.height;
+}
 
 bool WSI::alive()
 {
 	glfwPollEvents();
 	return !glfwWindowShouldClose(window);
+}
+
+VkInstance WSI::get_instance() const
+{
+	return context->get_instance();
+}
+
+VkPhysicalDevice WSI::get_gpu() const
+{
+	return context->get_gpu();
+}
+
+VkDevice WSI::get_device() const
+{
+	return context->get_device();
+}
+
+VkSurfaceFormatKHR WSI::get_surface_format() const
+{
+	return surface_format;
 }
 
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
