@@ -24,6 +24,9 @@ struct WSI
 	VkPhysicalDevice get_gpu() const;
 	VkDevice get_device() const;
 
+	uint32_t get_graphics_family_index() const;
+	uint32_t get_present_family_index() const;
+
 	VkSurfaceFormatKHR get_surface_format() const;
 	uint32_t get_swapchain_image_count() const;
 	VkImageView get_swapchain_image_view(uint32_t index) const;

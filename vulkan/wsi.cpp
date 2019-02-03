@@ -133,6 +133,16 @@ VkImageView WSI::get_swapchain_image_view(uint32_t index) const
 	return swapchain_image_views[index];
 }
 
+uint32_t WSI::get_graphics_family_index() const
+{
+	return context->get_graphics_family_index();
+}
+
+uint32_t WSI::get_present_family_index() const
+{
+	return context->get_present_family_index();
+}
+
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
 {
 	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");

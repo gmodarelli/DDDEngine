@@ -19,6 +19,17 @@ void Renderer::render()
 
 void Renderer::cleanup()
 {
+	if (command_buffers != nullptr)
+	{
+		free_command_buffers();
+	}
+
+	if (command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
+		command_pool = VK_NULL_HANDLE;
+	}
+
 	if (framebuffers != nullptr)
 	{
 		destroy_framebuffers();
@@ -192,6 +203,36 @@ void Renderer::create_framebuffers()
 	}
 }
 
+void Renderer::create_command_pool()
+{
+	VkCommandPoolCreateInfo command_pool_ci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+	command_pool_ci.queueFamilyIndex = wsi->get_graphics_family_index();
+	// Flags values
+	// VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often (may change memory allocation behavior)
+	// VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: Allow command buffers to be rerecorded individually, without this flag they all have to be reset together
+	command_pool_ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	VkResult result = vkCreateCommandPool(wsi->get_device(), &command_pool_ci, nullptr, &command_pool);
+	assert(result == VK_SUCCESS);
+}
+
+void Renderer::create_command_buffers()
+{
+	if (command_buffers != nullptr)
+		free_command_buffers();
+
+	command_buffer_count = wsi->get_swapchain_image_count();
+	command_buffers = new VkCommandBuffer[command_buffer_count];
+
+	VkCommandBufferAllocateInfo command_buffer_ai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	command_buffer_ai.commandPool = command_pool;
+	command_buffer_ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	command_buffer_ai.commandBufferCount = command_buffer_count;
+
+	VkResult result = vkAllocateCommandBuffers(wsi->get_device(), &command_buffer_ai, command_buffers);
+	assert(result == VK_SUCCESS);
+}
+
 void Renderer::destroy_framebuffers()
 {
 	for (uint32_t i = 0; i < framebuffer_count; ++i)
@@ -200,6 +241,12 @@ void Renderer::destroy_framebuffers()
 	}
 
 	delete[] framebuffers;
+}
+
+void Renderer::free_command_buffers()
+{
+	vkFreeCommandBuffers(wsi->get_device(), command_pool, command_buffer_count, command_buffers);
+	delete[] command_buffers;
 }
 
 } // namespace Renderer
