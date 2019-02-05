@@ -88,12 +88,12 @@ void WSI::cleanup()
 
 int WSI::get_width()
 {
-	return surface_extent.width;
+	return swapchain_extent.width;
 }
 
 int WSI::get_height()
 {
-	return surface_extent.height;
+	return swapchain_extent.height;
 }
 
 bool WSI::alive()
@@ -133,6 +133,11 @@ VkImageView WSI::get_swapchain_image_view(uint32_t index) const
 	return swapchain_image_views[index];
 }
 
+VkExtent2D WSI::get_swapchain_extent() const
+{
+	return swapchain_extent;
+}
+
 uint32_t WSI::get_graphics_family_index() const
 {
 	return context->get_graphics_family_index();
@@ -168,7 +173,7 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 
 	surface_format = find_best_surface_format({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
 	present_mode = find_best_present_mode(VK_PRESENT_MODE_MAILBOX_KHR);
-	surface_extent = choose_swapchain_extent(surface_capabilities);
+	swapchain_extent = choose_swapchain_extent(surface_capabilities);
 
 	uint32_t image_count = surface_capabilities.minImageCount + 1;
 	// Make sure the surface supports it
@@ -180,7 +185,7 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	create_info.minImageCount = image_count;
 	create_info.imageFormat = surface_format.format;
 	create_info.imageColorSpace = surface_format.colorSpace;
-	create_info.imageExtent = surface_extent;
+	create_info.imageExtent = swapchain_extent;
 	create_info.imageArrayLayers = 1;
 	// NOTE: imageUsage specifies what kind of operation we'll use the images in the swapchain for.
 	// If we're going to render directly to them we need to use VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT.

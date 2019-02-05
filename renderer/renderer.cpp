@@ -101,7 +101,7 @@ void Renderer::create_graphics_pipeline()
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 	// Viewport and Scissor
-	VkViewport viewport = { 0, 0, (float)wsi->get_width(), (float)wsi->get_height(), 0.0f, 1.0f };
+	viewport = { 0, 0, (float)wsi->get_width(), (float)wsi->get_height(), 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
 	scissor.extent = { (uint32_t)wsi->get_width(), (uint32_t)wsi->get_height() };
@@ -231,6 +231,49 @@ void Renderer::create_command_buffers()
 
 	VkResult result = vkAllocateCommandBuffers(wsi->get_device(), &command_buffer_ai, command_buffers);
 	assert(result == VK_SUCCESS);
+}
+
+void Renderer::record_commands()
+{
+	assert(framebuffer_count == command_buffer_count);
+	assert(framebuffers != nullptr);
+	assert(command_buffers != nullptr);
+
+	for (uint32_t i = 0; i < command_buffer_count; ++i)
+	{
+		VkCommandBufferBeginInfo command_buffer_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		command_buffer_bi.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+		VkResult result = vkBeginCommandBuffer(command_buffers[i], &command_buffer_bi);
+		assert(result == VK_SUCCESS);
+
+		VkRenderPassBeginInfo render_pass_bi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+		render_pass_bi.renderPass = render_pass;
+		render_pass_bi.framebuffer = framebuffers[i];
+		render_pass_bi.renderArea.offset = { 0, 0 };
+		render_pass_bi.renderArea.extent = wsi->get_swapchain_extent();
+		
+		VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		render_pass_bi.clearValueCount = 1;
+		render_pass_bi.pClearValues = &clear_color;
+
+		// VK_SUBPASS_CONTENTS_INLINE means that the render pass commands (like drawing comands)
+		// will be embedded in the primary command buffer and no secondary command buffers will
+		// be executed
+		vkCmdBeginRenderPass(command_buffers[i], &render_pass_bi, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+
+		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
+		// Draw the static triangle
+		// Its vertices and colors are hard-coded in the shaders
+		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+
+		vkCmdEndRenderPass(command_buffers[i]);
+
+		result = vkEndCommandBuffer(command_buffers[i]);
+		assert(result == VK_SUCCESS);
+	}
 }
 
 void Renderer::destroy_framebuffers()

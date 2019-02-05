@@ -30,6 +30,7 @@ struct WSI
 	VkSurfaceFormatKHR get_surface_format() const;
 	uint32_t get_swapchain_image_count() const;
 	VkImageView get_swapchain_image_view(uint32_t index) const;
+	VkExtent2D get_swapchain_extent() const;
 
 private:
 	int width;
@@ -54,7 +55,7 @@ private:
 	VkImage* swapchain_images = nullptr;
 	VkImageView* swapchain_image_views = nullptr;
 	VkSurfaceCapabilitiesKHR surface_capabilities = {};
-	VkExtent2D surface_extent = {};
+	VkExtent2D swapchain_extent = {};
 	VkSurfaceFormatKHR surface_format = { VK_FORMAT_UNDEFINED };
 	// VK_PRESENT_MODE_FIFO_KHR is the only mode guaranteed to be available, 
 	// so we set it as default present mode.

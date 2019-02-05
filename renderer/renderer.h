@@ -17,6 +17,7 @@ struct Renderer
 	void create_framebuffers();
 	void create_command_pool();
 	void create_command_buffers();
+	void record_commands();
 
 	void render();
 
@@ -31,6 +32,8 @@ private:
 	VkFramebuffer* framebuffers = nullptr;
 	uint32_t framebuffer_count = 0;
 	void destroy_framebuffers();
+
+	VkViewport viewport;
 
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkCommandBuffer* command_buffers = nullptr;

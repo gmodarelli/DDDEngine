@@ -806,6 +806,7 @@ int main()
 	renderer->create_framebuffers();
 	renderer->create_command_pool();
 	renderer->create_command_buffers();
+	renderer->record_commands();
 
 	while (wsi->alive())
 	{
