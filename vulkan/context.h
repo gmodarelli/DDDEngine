@@ -30,6 +30,8 @@ struct Context
 
 	uint32_t get_graphics_family_index() const;
 	uint32_t get_present_family_index() const;
+	VkQueue get_graphics_queue() const;
+	VkQueue get_present_queue() const;
 
 private:
 

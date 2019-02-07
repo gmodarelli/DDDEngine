@@ -122,6 +122,11 @@ VkSurfaceFormatKHR WSI::get_surface_format() const
 	return surface_format;
 }
 
+VkSwapchainKHR WSI::get_swapchain() const
+{
+	return swapchain;
+}
+
 uint32_t WSI::get_swapchain_image_count() const
 {
 	return swapchain_image_count;
@@ -146,6 +151,16 @@ uint32_t WSI::get_graphics_family_index() const
 uint32_t WSI::get_present_family_index() const
 {
 	return context->get_present_family_index();
+}
+
+VkQueue WSI::get_graphics_queue() const
+{
+	return context->get_graphics_queue();
+}
+
+VkQueue WSI::get_present_queue() const
+{
+	return context->get_present_queue();
 }
 
 VkSurfaceKHR WSI::create_surface(VkInstance instance)

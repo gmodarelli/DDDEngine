@@ -806,11 +806,12 @@ int main()
 	renderer->create_framebuffers();
 	renderer->create_command_pool();
 	renderer->create_command_buffers();
+	renderer->create_semaphores();
 	renderer->record_commands();
 
 	while (wsi->alive())
 	{
-		renderer->render();
+		renderer->render_frame();
 	}
 
 	renderer->cleanup();

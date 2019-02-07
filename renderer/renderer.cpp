@@ -13,12 +13,62 @@ void Renderer::init()
 {
 }
 
-void Renderer::render()
+void Renderer::render_frame()
 {
+	// The first thing we need to do is acquire an image from the swapchain
+	uint32_t image_index;
+	vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
+
+	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+
+	// Which semaphores to wait on before execution begins and in which stages of the pipeline to wait.
+	// We want to wait with writing colors to the image until it's available.
+	VkSemaphore wait_semaphores[] = { image_available_semaphore };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submit_info.waitSemaphoreCount = ARRAYSIZE(wait_semaphores);
+	submit_info.pWaitSemaphores = wait_semaphores;
+	submit_info.pWaitDstStageMask = wait_stages;
+
+	// The command buffer to submit for execution. We submit the command buffer that
+	// binds the swapchain image we acquired with vkAcquireNextImageKHR
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffers[image_index];
+
+	// Specify the semaphores to signal once the command buffers have finished execution
+	VkSemaphore signal_semaphores[] = { render_finished_semaphore };
+	submit_info.signalSemaphoreCount = ARRAYSIZE(signal_semaphores);
+	submit_info.pSignalSemaphores = signal_semaphores;
+
+	// Submit the command buffer to the graphics queue
+	VkResult result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, VK_NULL_HANDLE);
+	assert(result == VK_SUCCESS);
+
+	VkPresentInfoKHR present_info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+
+	// Specify which semaphores to wait on before presentation can happen
+	present_info.waitSemaphoreCount = ARRAYSIZE(signal_semaphores);
+	present_info.pWaitSemaphores = signal_semaphores;
+
+	// Specify the swapchains to present the images to and the index of the image
+	// for each swapchain. Most likely a single one
+	VkSwapchainKHR swapchains[] = { wsi->get_swapchain() };
+	present_info.swapchainCount = ARRAYSIZE(swapchains);
+	present_info.pSwapchains = swapchains;
+	present_info.pImageIndices = &image_index;
+
+	vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
 }
 
 void Renderer::cleanup()
 {
+	// We need to wait for the operation in the present queue to be finished
+	// before we can cleanup our resources. The operations are asynchronous
+	// and when this function is called we don't know if they have finished
+	// execution, so we wait.
+	vkQueueWaitIdle(wsi->get_present_queue());
+
+	destroy_semaphores();
+
 	if (command_buffers != nullptr)
 	{
 		free_command_buffers();
@@ -80,6 +130,25 @@ void Renderer::create_render_pass()
 	render_pass_ci.pAttachments = &color_attachment;
 	render_pass_ci.subpassCount = 1;
 	render_pass_ci.pSubpasses = &subpass;
+
+	// Make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage
+	// We specify VK_SUBPASS_EXTERNAL to refer to the implicity subpass before the render pass
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	// We need to wait for the swapchain to finish reading from the image before we can access it,
+	// so we wait on the color attachment output stage.
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	// The operation that should wait on this are reading and writing of the color attachment in the 
+	// color attachment stage. These settings will prevent the transition from happening until it is
+	// necessary and allowed: when we want to start writing colors
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	render_pass_ci.dependencyCount = 1;
+	render_pass_ci.pDependencies = &dependency;
+
 
 	VkResult result = vkCreateRenderPass(wsi->get_device(), &render_pass_ci, nullptr, &render_pass);
 	assert(result == VK_SUCCESS);
@@ -276,6 +345,16 @@ void Renderer::record_commands()
 	}
 }
 
+void Renderer::create_semaphores()
+{
+	VkSemaphoreCreateInfo semaphore_ci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+
+	VkResult result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &image_available_semaphore);
+	assert(result == VK_SUCCESS);
+	result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &render_finished_semaphore);
+	assert(result == VK_SUCCESS);
+}
+
 void Renderer::destroy_framebuffers()
 {
 	for (uint32_t i = 0; i < framebuffer_count; ++i)
@@ -290,6 +369,21 @@ void Renderer::free_command_buffers()
 {
 	vkFreeCommandBuffers(wsi->get_device(), command_pool, command_buffer_count, command_buffers);
 	delete[] command_buffers;
+}
+
+void Renderer::destroy_semaphores()
+{
+	if (image_available_semaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(wsi->get_device(), image_available_semaphore, nullptr);
+		image_available_semaphore = VK_NULL_HANDLE;
+	}
+
+	if (render_finished_semaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(wsi->get_device(), render_finished_semaphore, nullptr);
+		render_finished_semaphore = VK_NULL_HANDLE;
+	}
 }
 
 } // namespace Renderer

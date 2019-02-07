@@ -47,6 +47,16 @@ uint32_t Context::get_present_family_index() const
 {
 	return present_family_index;
 }
+
+VkQueue Context::get_graphics_queue() const
+{
+	return graphics_queue;
+}
+
+VkQueue Context::get_present_queue() const
+{
+	return present_queue;
+}
 	
 bool Context::init_vulkan()
 {
