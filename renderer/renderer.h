@@ -5,6 +5,8 @@
 namespace Renderer
 {
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 struct Renderer
 {
 	Renderer(Vulkan::WSI* wsi);
@@ -17,7 +19,7 @@ struct Renderer
 	void create_framebuffers();
 	void create_command_pool();
 	void create_command_buffers();
-	void create_semaphores();
+	void create_sync_objects();
 	void record_commands();
 
 	void render_frame();
@@ -42,9 +44,12 @@ private:
 	void free_command_buffers();
 
 	// Sync objects
-	VkSemaphore image_available_semaphore = VK_NULL_HANDLE;
-	VkSemaphore render_finished_semaphore = VK_NULL_HANDLE;
-	void destroy_semaphores();
+	VkSemaphore image_available_semaphores[MAX_FRAMES_IN_FLIGHT];
+	VkSemaphore render_finished_semaphores[MAX_FRAMES_IN_FLIGHT];
+	VkFence in_flight_fences[MAX_FRAMES_IN_FLIGHT];
+	void destroy_sync_objects();
+
+	size_t current_frame = 0;
 
 }; // struct Renderer
 

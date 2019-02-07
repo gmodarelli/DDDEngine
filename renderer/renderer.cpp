@@ -15,15 +15,20 @@ void Renderer::init()
 
 void Renderer::render_frame()
 {
+	// We wait on the current frame fence to be signalled (ie commands have finished execution on
+	// the graphics queue for the frame).
+	vkWaitForFences(wsi->get_device(), 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+	vkResetFences(wsi->get_device(), 1, &in_flight_fences[current_frame]);
+
 	// The first thing we need to do is acquire an image from the swapchain
 	uint32_t image_index;
-	vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphore, VK_NULL_HANDLE, &image_index);
+	vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
 
 	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 
 	// Which semaphores to wait on before execution begins and in which stages of the pipeline to wait.
 	// We want to wait with writing colors to the image until it's available.
-	VkSemaphore wait_semaphores[] = { image_available_semaphore };
+	VkSemaphore wait_semaphores[] = { image_available_semaphores[current_frame] };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submit_info.waitSemaphoreCount = ARRAYSIZE(wait_semaphores);
 	submit_info.pWaitSemaphores = wait_semaphores;
@@ -35,12 +40,13 @@ void Renderer::render_frame()
 	submit_info.pCommandBuffers = &command_buffers[image_index];
 
 	// Specify the semaphores to signal once the command buffers have finished execution
-	VkSemaphore signal_semaphores[] = { render_finished_semaphore };
+	VkSemaphore signal_semaphores[] = { render_finished_semaphores[current_frame] };
 	submit_info.signalSemaphoreCount = ARRAYSIZE(signal_semaphores);
 	submit_info.pSignalSemaphores = signal_semaphores;
 
-	// Submit the command buffer to the graphics queue
-	VkResult result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, VK_NULL_HANDLE);
+	// Submit the command buffer to the graphics queue with the current frame fence to signal once
+	// execution has finished
+	VkResult result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, in_flight_fences[current_frame]);
 	assert(result == VK_SUCCESS);
 
 	VkPresentInfoKHR present_info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -57,6 +63,8 @@ void Renderer::render_frame()
 	present_info.pImageIndices = &image_index;
 
 	vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
+
+	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Renderer::cleanup()
@@ -67,7 +75,7 @@ void Renderer::cleanup()
 	// execution, so we wait.
 	vkQueueWaitIdle(wsi->get_present_queue());
 
-	destroy_semaphores();
+	destroy_sync_objects();
 
 	if (command_buffers != nullptr)
 	{
@@ -345,14 +353,24 @@ void Renderer::record_commands()
 	}
 }
 
-void Renderer::create_semaphores()
+void Renderer::create_sync_objects()
 {
 	VkSemaphoreCreateInfo semaphore_ci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	VkFenceCreateInfo fence_ci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	// We create the fence in a signaled state cause we wait on them before being able to 
+	// draw a frame, and since frame 0 doesn't have a previous frame that was submitted,
+	// it will wait indefinitely
+	fence_ci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	VkResult result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &image_available_semaphore);
-	assert(result == VK_SUCCESS);
-	result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &render_finished_semaphore);
-	assert(result == VK_SUCCESS);
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		VkResult result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &image_available_semaphores[i]);
+		assert(result == VK_SUCCESS);
+		result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &render_finished_semaphores[i]);
+		assert(result == VK_SUCCESS);
+		result = vkCreateFence(wsi->get_device(), &fence_ci, nullptr, &in_flight_fences[i]);
+		assert(result == VK_SUCCESS);
+	}
 }
 
 void Renderer::destroy_framebuffers()
@@ -371,18 +389,13 @@ void Renderer::free_command_buffers()
 	delete[] command_buffers;
 }
 
-void Renderer::destroy_semaphores()
+void Renderer::destroy_sync_objects()
 {
-	if (image_available_semaphore != VK_NULL_HANDLE)
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		vkDestroySemaphore(wsi->get_device(), image_available_semaphore, nullptr);
-		image_available_semaphore = VK_NULL_HANDLE;
-	}
-
-	if (render_finished_semaphore != VK_NULL_HANDLE)
-	{
-		vkDestroySemaphore(wsi->get_device(), render_finished_semaphore, nullptr);
-		render_finished_semaphore = VK_NULL_HANDLE;
+		vkDestroySemaphore(wsi->get_device(), image_available_semaphores[i], nullptr);
+		vkDestroySemaphore(wsi->get_device(), render_finished_semaphores[i], nullptr);
+		vkDestroyFence(wsi->get_device(), in_flight_fences[i], nullptr);
 	}
 }
 

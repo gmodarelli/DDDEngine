@@ -806,7 +806,7 @@ int main()
 	renderer->create_framebuffers();
 	renderer->create_command_pool();
 	renderer->create_command_buffers();
-	renderer->create_semaphores();
+	renderer->create_sync_objects();
 	renderer->record_commands();
 
 	while (wsi->alive())
