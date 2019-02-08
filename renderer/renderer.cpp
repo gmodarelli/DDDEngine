@@ -16,6 +16,15 @@ void Renderer::init()
 
 void Renderer::render_frame()
 {
+	if (wsi->resizing())
+		return;
+
+	if (recreate_frame_resources)
+	{
+		create_frame_resources();
+		return;
+	}
+
 	// We wait on the current frame fence to be signalled (ie commands have finished execution on
 	// the graphics queue for the frame).
 	vkWaitForFences(wsi->get_device(), 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
@@ -23,12 +32,10 @@ void Renderer::render_frame()
 	// The first thing we need to do is acquire an image from the swapchain
 	uint32_t image_index;
 	VkResult result = vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || wsi->window_resized())
 	{
-		// TODO: Tell the WSI to recreate the swapchain cause it has become
-		// incompatible with the surface and can no longer be used for rendering.
-		// This usually happens after a window resize.
-		assert(!"Recreate the swapchain!");
+		wsi->recreate_swapchain();
+		recreate_frame_resources = true;
 	} 
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 	{
@@ -76,12 +83,10 @@ void Renderer::render_frame()
 	present_info.pImageIndices = &image_index;
 
 	result = vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || wsi->window_resized())
 	{
-		// TODO: Tell the WSI to recreate the swapchain cause it has become
-		// incompatible with the surface and can no longer be used for rendering.
-		// This usually happens after a window resize.
-		assert(!"Recreate the swapchain!");
+		wsi->recreate_swapchain();
+		recreate_frame_resources = true;
 	} 
 	else if (result != VK_SUCCESS)
 	{
@@ -89,6 +94,44 @@ void Renderer::render_frame()
 	}
 
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Renderer::create_frame_resources()
+{
+	vkQueueWaitIdle(wsi->get_present_queue());
+
+	destroy_sync_objects();
+
+	if (command_buffers != nullptr)
+	{
+		free_command_buffers();
+	}
+
+	if (command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
+		command_pool = VK_NULL_HANDLE;
+	}
+
+	if (framebuffers != nullptr)
+	{
+		destroy_framebuffers();
+	}
+
+	if (render_pass != VK_NULL_HANDLE)
+	{
+		vkDestroyRenderPass(wsi->get_device(), render_pass, nullptr);
+		render_pass = VK_NULL_HANDLE;
+	}
+
+	create_render_pass();
+	create_framebuffers();
+	create_command_pool();
+	create_command_buffers();
+	create_sync_objects();
+	record_commands();
+
+	recreate_frame_resources = false;
 }
 
 void Renderer::cleanup()
@@ -282,9 +325,6 @@ void Renderer::create_graphics_pipeline()
 
 void Renderer::create_framebuffers()
 {
-	if (framebuffers != nullptr)
-		destroy_framebuffers();
-
 	framebuffer_count = wsi->get_swapchain_image_count();
 	framebuffers = new VkFramebuffer[framebuffer_count];
 	for (uint32_t i = 0; i < framebuffer_count; ++i)
@@ -319,9 +359,6 @@ void Renderer::create_command_pool()
 
 void Renderer::create_command_buffers()
 {
-	if (command_buffers != nullptr)
-		free_command_buffers();
-
 	command_buffer_count = wsi->get_swapchain_image_count();
 	command_buffers = new VkCommandBuffer[command_buffer_count];
 
@@ -365,7 +402,14 @@ void Renderer::record_commands()
 
 		vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
+		viewport = { 0, 0, (float)wsi->get_width(), (float)wsi->get_height(), 0.0f, 1.0f };
+		VkRect2D scissor = {};
+		scissor.offset = { 0, 0 };
+		scissor.extent = { (uint32_t)wsi->get_width(), (uint32_t)wsi->get_height() };
+
 		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
+
 		// Draw the static triangle
 		// Its vertices and colors are hard-coded in the shaders
 		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
@@ -410,7 +454,7 @@ void Renderer::destroy_framebuffers()
 void Renderer::free_command_buffers()
 {
 	vkFreeCommandBuffers(wsi->get_device(), command_pool, command_buffer_count, command_buffers);
-	delete[] command_buffers;
+	// delete[] command_buffers;
 }
 
 void Renderer::destroy_sync_objects()

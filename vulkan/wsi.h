@@ -37,10 +37,20 @@ struct WSI
 	VkImageView get_swapchain_image_view(uint32_t index) const;
 	VkExtent2D get_swapchain_extent() const;
 
+	bool resizing();
+	void recreate_swapchain();
+
+	// The following function and member are used to signal
+	// that the windows has been resized
+	bool window_resized();
+	bool framebuffer_resized = false;
+
 private:
 	int width;
 	int height;
 	GLFWwindow* window = NULL;
+
+	bool is_resizing = false;
 
 	Vulkan::Context* context;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;

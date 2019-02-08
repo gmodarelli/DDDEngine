@@ -28,6 +28,8 @@ private:
 	// WSI
 	Vulkan::WSI* wsi;
 
+	void create_frame_resources();
+
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
@@ -50,6 +52,8 @@ private:
 	void destroy_sync_objects();
 
 	size_t current_frame = 0;
+
+	bool recreate_frame_resources = false;
 
 }; // struct Renderer
 

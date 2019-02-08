@@ -182,6 +182,27 @@ VkSurfaceKHR WSI::create_surface(VkInstance instance)
 	return surface;
 }
 
+bool WSI::resizing()
+{
+	return is_resizing;
+}
+
+bool WSI::window_resized()
+{
+	return framebuffer_resized;
+}
+
+void WSI::recreate_swapchain()
+{
+	is_resizing = true;
+
+	VkSwapchainKHR new_swapchain = create_swapchain(swapchain);
+	vkDestroySwapchainKHR(context->get_device(), swapchain, nullptr);
+	swapchain = new_swapchain;
+
+	is_resizing = false;
+}
+
 VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 {
 	assert(surface);
@@ -237,17 +258,17 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	create_info.clipped = VK_TRUE;
 	create_info.oldSwapchain = old_swapchain;
 
-	VkSwapchainKHR swapchain;
-	VkResult result = vkCreateSwapchainKHR(context->get_device(), &create_info, nullptr, &swapchain);
+	VkSwapchainKHR new_swapchain;
+	VkResult result = vkCreateSwapchainKHR(context->get_device(), &create_info, nullptr, &new_swapchain);
 	assert(result == VK_SUCCESS);
 
 	// Retrieve the Swapchain VkImage handles. These images are create by the implementation of the swapchain
 	// and will be automatically cleaned up
 	swapchain_image_count = image_count;
-	vkGetSwapchainImagesKHR(context->get_device(), swapchain, &swapchain_image_count, nullptr);
+	vkGetSwapchainImagesKHR(context->get_device(), new_swapchain, &swapchain_image_count, nullptr);
 	assert(swapchain_image_count == image_count);
 	swapchain_images = new VkImage[swapchain_image_count];
-	vkGetSwapchainImagesKHR(context->get_device(), swapchain, &swapchain_image_count, swapchain_images);
+	vkGetSwapchainImagesKHR(context->get_device(), new_swapchain, &swapchain_image_count, swapchain_images);
 	// Create a VkImageView per VkImage
 	swapchain_image_views = new VkImageView[swapchain_image_count];
 	for (uint32_t i = 0; i < swapchain_image_count; ++i)
@@ -269,7 +290,7 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 		assert (result == VK_SUCCESS);
 	}
 
-	return swapchain;
+	return new_swapchain;
 }
 
 void WSI::destroy_swapchain()
@@ -376,7 +397,8 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 
 static void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
 {
-	printf("\nResized\n");
+	WSI* wsi = (WSI*)glfwGetWindowUserPointer(window);
+	wsi->framebuffer_resized = true;
 }
 
 } // namespace Vulkan
