@@ -151,9 +151,9 @@ uint32_t WSI::get_graphics_family_index() const
 	return context->get_graphics_family_index();
 }
 
-uint32_t WSI::get_present_family_index() const
+uint32_t WSI::get_transfer_family_index() const
 {
-	return context->get_present_family_index();
+	return context->get_transfer_family_index();
 }
 
 VkQueue WSI::get_graphics_queue() const
@@ -161,9 +161,9 @@ VkQueue WSI::get_graphics_queue() const
 	return context->get_graphics_queue();
 }
 
-VkQueue WSI::get_present_queue() const
+VkQueue WSI::get_transfer_queue() const
 {
-	return context->get_present_queue();
+	return context->get_transfer_queue();
 }
 
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
@@ -238,9 +238,9 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	// owned by a queue family at a time and ownership must be explicitly transfered before
 	// using it in another queue family.
 	// TODO: Check the specs
-	if (context->get_graphics_family_index() != context->get_present_family_index())
+	if (context->get_graphics_family_index() != context->get_transfer_family_index())
 	{
-		uint32_t queue_family_indices[] = { context->get_graphics_family_index(), context->get_present_family_index() };
+		uint32_t queue_family_indices[] = { context->get_graphics_family_index(), context->get_transfer_family_index() };
 		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		create_info.queueFamilyIndexCount = 2;
 		create_info.pQueueFamilyIndices = queue_family_indices;

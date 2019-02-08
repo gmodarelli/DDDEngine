@@ -43,9 +43,9 @@ uint32_t Context::get_graphics_family_index() const
 	return graphics_family_index;
 }
 
-uint32_t Context::get_present_family_index() const
+uint32_t Context::get_transfer_family_index() const
 {
-	return present_family_index;
+	return transfer_family_index;
 }
 
 VkQueue Context::get_graphics_queue() const
@@ -53,9 +53,9 @@ VkQueue Context::get_graphics_queue() const
 	return graphics_queue;
 }
 
-VkQueue Context::get_present_queue() const
+VkQueue Context::get_transfer_queue() const
 {
-	return present_queue;
+	return transfer_queue;
 }
 	
 bool Context::init_vulkan()
@@ -70,14 +70,14 @@ bool Context::create_device(const char** device_required_extensions, uint32_t de
 {
 	assert(gpu != VK_NULL_HANDLE);
 	assert(graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
-	assert(present_family_index != VK_QUEUE_FAMILY_IGNORED);
+	assert(transfer_family_index != VK_QUEUE_FAMILY_IGNORED);
 
 	// Queues Information
 	VkDeviceQueueCreateInfo queue_create_info[2];
 	uint32_t queue_count = 0;
 	float queue_priority = 1.0f;
 
-	if (graphics_family_index != present_family_index)
+	if (graphics_family_index != transfer_family_index)
 	{
 		queue_count = 2;
 
@@ -90,7 +90,7 @@ bool Context::create_device(const char** device_required_extensions, uint32_t de
 		queue_create_info[0].pQueuePriorities = &queue_priority;
 
 		queue_create_info[1] = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-		queue_create_info[1].queueFamilyIndex = present_family_index;
+		queue_create_info[1].queueFamilyIndex = transfer_family_index;
 		queue_create_info[1].queueCount = 1;
 		queue_create_info[1].pQueuePriorities = &queue_priority;
 	}
@@ -326,64 +326,89 @@ bool Context::pick_suitable_gpu(VkSurfaceKHR surface, const char** gpu_required_
 				continue;
 
 			// Check for graphics queue support
-			// TODO: Add check for transfer queue as well
-			uint32_t queue_family_count;
-			VkQueueFamilyProperties queue_families[16];
-			vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, nullptr);
-			assert(queue_family_count <= 16);
-			if (queue_family_count > 0)
+			QueueFamilyIndices queue_family_indices = find_queue_families(available_gpus[i], surface);
+			if (queue_family_indices.is_complete())
 			{
-				vkGetPhysicalDeviceQueueFamilyProperties(available_gpus[i], &queue_family_count, queue_families);
-				for (uint32_t q = 0; q < queue_family_count; ++q)
-				{
-					if (queue_families[q].queueCount > 0 && queue_families[q].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-					{
-						if (graphics_family_index == VK_QUEUE_FAMILY_IGNORED)
-						{
-							graphics_family_index = q;
-						}
-
-						if (present_family_index == VK_QUEUE_FAMILY_IGNORED)
-						{
-							VkBool32 present_support = VK_FALSE;
-							vkGetPhysicalDeviceSurfaceSupportKHR(available_gpus[i], q, surface, &present_support);
-
-							if (present_support)
-							{
-								present_family_index = q;
-							}
-						}
-					}
-				}
-
-				// It the current physical device does not have support for either of graphics or present queue, reset the state
-				// and continue with the next physical device
-				if (graphics_family_index == VK_QUEUE_FAMILY_IGNORED || present_family_index == VK_QUEUE_FAMILY_IGNORED)
-				{
-					graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
-					present_family_index = VK_QUEUE_FAMILY_IGNORED;
-					continue;
-				}
-
 				// Pick the first suitable GPU
 				gpu = available_gpus[i];
 				gpu_properties = available_gpu_properties[i];
 				gpu_features = available_gpu_features[i];
+
+				graphics_family_index = queue_family_indices.graphics_index;
+				transfer_family_index = queue_family_indices.transfer_index;
 			}
 		}
 	}
 
-	return (gpu != VK_NULL_HANDLE && graphics_family_index != VK_QUEUE_FAMILY_IGNORED && present_family_index != VK_QUEUE_FAMILY_IGNORED);
+	return (gpu != VK_NULL_HANDLE && graphics_family_index != VK_QUEUE_FAMILY_IGNORED && transfer_family_index != VK_QUEUE_FAMILY_IGNORED);
+}
+
+QueueFamilyIndices Context::find_queue_families(VkPhysicalDevice gpu, VkSurfaceKHR surface)
+{
+	QueueFamilyIndices queue_family_indices;
+
+	uint32_t queue_family_count = 0;
+	VkQueueFamilyProperties* queue_families;
+	vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queue_family_count, nullptr);
+	
+	if (queue_family_count == 0)
+		return queue_family_indices;
+
+	queue_families = new VkQueueFamilyProperties[queue_family_count];
+	vkGetPhysicalDeviceQueueFamilyProperties(gpu, &queue_family_count, queue_families);
+
+	// Look for graphics and present queues
+	for (uint32_t i = 0; i < queue_family_count; ++i)
+	{
+		VkQueueFlags required = VK_QUEUE_GRAPHICS_BIT;
+
+		VkBool32 present_support = VK_FALSE;
+		vkGetPhysicalDeviceSurfaceSupportKHR(gpu, i, surface, &present_support);
+
+		if (present_support && ((queue_families[i].queueFlags & required) == required))
+		{
+			queue_family_indices.graphics_index = i;
+		}
+	}
+
+	// Look for a dedicated transfer queue
+	for (uint32_t i = 0; i < queue_family_count; ++i)
+	{
+		VkQueueFlags required = VK_QUEUE_TRANSFER_BIT;
+
+		if (i != queue_family_indices.graphics_index && ((queue_families[i].queueFlags & required) == required))
+		{
+			queue_family_indices.transfer_index = i;
+		}
+	}
+
+	if (queue_family_indices.transfer_index == VK_QUEUE_FAMILY_IGNORED)
+	{
+		// Look for a shared transfer queue
+		for (uint32_t i = 0; i < queue_family_count; ++i)
+		{
+			VkQueueFlags required = VK_QUEUE_TRANSFER_BIT;
+
+			if ((queue_families[i].queueFlags & required) == required)
+			{
+				queue_family_indices.transfer_index = i;
+			}
+		}
+	}
+
+	delete[] queue_families;
+
+	return queue_family_indices;
 }
 
 void Context::retrieve_queues()
 {
 	assert(device != VK_NULL_HANDLE);
 	assert(graphics_family_index != VK_QUEUE_FAMILY_IGNORED);
-	assert(present_family_index != VK_QUEUE_FAMILY_IGNORED);
+	assert(transfer_family_index != VK_QUEUE_FAMILY_IGNORED);
 
 	vkGetDeviceQueue(device, graphics_family_index, 0, &graphics_queue);
-	vkGetDeviceQueue(device, present_family_index, 0, &present_queue);
+	vkGetDeviceQueue(device, transfer_family_index, 0, &transfer_queue);
 }
 
 void Context::create_debug_report_callback()

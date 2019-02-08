@@ -27,9 +27,9 @@ struct WSI
 	VkDevice get_device() const;
 
 	uint32_t get_graphics_family_index() const;
-	uint32_t get_present_family_index() const;
+	uint32_t get_transfer_family_index() const;
 	VkQueue get_graphics_queue() const;
-	VkQueue get_present_queue() const;
+	VkQueue get_transfer_queue() const;
 
 	VkSurfaceFormatKHR get_surface_format() const;
 	VkSwapchainKHR get_swapchain() const;

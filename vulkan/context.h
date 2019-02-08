@@ -12,6 +12,18 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger(VkDebugUtilsMessageSeverit
 namespace Vulkan
 {
 
+struct QueueFamilyIndices
+{
+	uint32_t graphics_index = VK_QUEUE_FAMILY_IGNORED;
+	uint32_t transfer_index = VK_QUEUE_FAMILY_IGNORED;
+
+	bool is_complete()
+	{
+		return graphics_index != VK_QUEUE_FAMILY_IGNORED
+			&& transfer_index != VK_QUEUE_FAMILY_IGNORED;
+	}
+};
+
 struct Context
 {
 	Context();
@@ -29,9 +41,9 @@ struct Context
 	void retrieve_queues();
 
 	uint32_t get_graphics_family_index() const;
-	uint32_t get_present_family_index() const;
+	uint32_t get_transfer_family_index() const;
 	VkQueue get_graphics_queue() const;
-	VkQueue get_present_queue() const;
+	VkQueue get_transfer_queue() const;
 
 private:
 
@@ -72,14 +84,13 @@ private:
 	VkPhysicalDeviceFeatures gpu_features = {};
 	VkPhysicalDeviceFeatures gpu_enabled_features = {};
 	// Vulkan Queues
+	QueueFamilyIndices find_queue_families(VkPhysicalDevice gpu, VkSurfaceKHR surface);
 	uint32_t graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
-	uint32_t present_family_index = VK_QUEUE_FAMILY_IGNORED;
 	uint32_t transfer_family_index = VK_QUEUE_FAMILY_IGNORED;
 
 	// Vulkan Logical Device
 	//
 	VkQueue graphics_queue = VK_NULL_HANDLE;
-	VkQueue present_queue = VK_NULL_HANDLE;
 	VkQueue transfer_queue = VK_NULL_HANDLE;
 };
 

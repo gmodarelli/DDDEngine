@@ -82,7 +82,7 @@ void Renderer::render_frame()
 	present_info.pSwapchains = swapchains;
 	present_info.pImageIndices = &image_index;
 
-	result = vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
+	result = vkQueuePresentKHR(wsi->get_graphics_queue(), &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || wsi->window_resized())
 	{
 		wsi->recreate_swapchain();
@@ -116,7 +116,7 @@ void Renderer::destroy_frame_resources()
 	// before we can cleanup our resources. The operations are asynchronous
 	// and when this function is called we don't know if they have finished
 	// execution, so we wait.
-	vkQueueWaitIdle(wsi->get_present_queue());
+	vkQueueWaitIdle(wsi->get_graphics_queue());
 
 	destroy_sync_objects();
 	free_command_buffers();
