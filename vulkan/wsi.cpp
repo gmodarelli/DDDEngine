@@ -25,6 +25,7 @@ bool WSI::init()
 		assert(!"Failed to initialize GLFW");
 	}
 
+	/*
 	// Disable window resizing for now.
 	// TODO: Remove this line once we can handle window resize
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -34,6 +35,7 @@ bool WSI::init()
 		printf("[WSI]: %s\n", error);
 		assert(!"Failed to initialize GLFW");
 	}
+	*/
 
 	window = glfwCreateWindow(width, height, "73 Games", nullptr, nullptr);
 	if (window == NULL)
@@ -45,6 +47,7 @@ bool WSI::init()
 			assert(false);
 		}
 	}
+	glfwSetWindowUserPointer(window, this);
 
 	context = new Vulkan::Context();
 	bool result = context->init();
@@ -354,12 +357,26 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 	}
 	else
 	{
+		glfwGetFramebufferSize(window, &width, &height);
+		const char* error;
+		glfwGetError(&error);
+		if (error)
+		{
+			printf("[WSI]: %s\n", error);
+			assert(!"Error acquiring the framebuffer size from GLFW");
+		}
+
 		VkExtent2D actual_extent = { width, height };
 		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
 
 		return actual_extent;
 	}
+}
+
+static void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
+{
+	printf("\nResized\n");
 }
 
 } // namespace Vulkan

@@ -9,6 +9,8 @@
 namespace Vulkan
 {
 
+static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
+
 struct WSI
 {
 	WSI(int width, int height);

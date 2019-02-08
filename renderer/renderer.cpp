@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "../vulkan/shaders.h"
 #include <cassert>
+#include <stdio.h>
 
 namespace Renderer
 {
@@ -18,11 +19,21 @@ void Renderer::render_frame()
 	// We wait on the current frame fence to be signalled (ie commands have finished execution on
 	// the graphics queue for the frame).
 	vkWaitForFences(wsi->get_device(), 1, &in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
-	vkResetFences(wsi->get_device(), 1, &in_flight_fences[current_frame]);
 
 	// The first thing we need to do is acquire an image from the swapchain
 	uint32_t image_index;
-	vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+	VkResult result = vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		// TODO: Tell the WSI to recreate the swapchain cause it has become
+		// incompatible with the surface and can no longer be used for rendering.
+		// This usually happens after a window resize.
+		assert(!"Recreate the swapchain!");
+	} 
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+	{
+		assert(!"Failed to acquire the next image");
+	}
 
 	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 
@@ -44,9 +55,11 @@ void Renderer::render_frame()
 	submit_info.signalSemaphoreCount = ARRAYSIZE(signal_semaphores);
 	submit_info.pSignalSemaphores = signal_semaphores;
 
+	vkResetFences(wsi->get_device(), 1, &in_flight_fences[current_frame]);
+
 	// Submit the command buffer to the graphics queue with the current frame fence to signal once
 	// execution has finished
-	VkResult result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, in_flight_fences[current_frame]);
+	result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, in_flight_fences[current_frame]);
 	assert(result == VK_SUCCESS);
 
 	VkPresentInfoKHR present_info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -62,7 +75,18 @@ void Renderer::render_frame()
 	present_info.pSwapchains = swapchains;
 	present_info.pImageIndices = &image_index;
 
-	vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
+	result = vkQueuePresentKHR(wsi->get_present_queue(), &present_info);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	{
+		// TODO: Tell the WSI to recreate the swapchain cause it has become
+		// incompatible with the surface and can no longer be used for rendering.
+		// This usually happens after a window resize.
+		assert(!"Recreate the swapchain!");
+	} 
+	else if (result != VK_SUCCESS)
+	{
+		assert(!"Failed to acquire the next image");
+	}
 
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

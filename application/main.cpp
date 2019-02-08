@@ -788,8 +788,8 @@ int main()
 #include "../vulkan/wsi.h"
 #include "../renderer/renderer.h"
 
-uint32_t width = 1600;
-uint32_t height = 1200;
+uint32_t width = 800;
+uint32_t height = 600;
 
 Vulkan::WSI* wsi;
 Renderer::Renderer* renderer;
