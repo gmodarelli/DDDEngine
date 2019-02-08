@@ -801,8 +801,11 @@ int main()
 
 	renderer = new Renderer::Renderer(wsi);
 	renderer->init();
+
 	renderer->create_render_pass();
+
 	renderer->create_graphics_pipeline();
+
 	renderer->create_framebuffers();
 	renderer->create_command_pool();
 	renderer->create_command_buffers();

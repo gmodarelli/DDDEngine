@@ -19,9 +19,9 @@ void Renderer::render_frame()
 	if (wsi->resizing())
 		return;
 
-	if (recreate_frame_resources)
+	if (is_recreating_frame_resources)
 	{
-		create_frame_resources();
+		recreate_frame_resources();
 		return;
 	}
 
@@ -35,7 +35,7 @@ void Renderer::render_frame()
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || wsi->window_resized())
 	{
 		wsi->recreate_swapchain();
-		recreate_frame_resources = true;
+		is_recreating_frame_resources = true;
 	} 
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 	{
@@ -86,7 +86,7 @@ void Renderer::render_frame()
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || wsi->window_resized())
 	{
 		wsi->recreate_swapchain();
-		recreate_frame_resources = true;
+		is_recreating_frame_resources = true;
 	} 
 	else if (result != VK_SUCCESS)
 	{
@@ -96,33 +96,9 @@ void Renderer::render_frame()
 	current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::create_frame_resources()
+void Renderer::recreate_frame_resources()
 {
-	vkQueueWaitIdle(wsi->get_present_queue());
-
-	destroy_sync_objects();
-
-	if (command_buffers != nullptr)
-	{
-		free_command_buffers();
-	}
-
-	if (command_pool != VK_NULL_HANDLE)
-	{
-		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
-		command_pool = VK_NULL_HANDLE;
-	}
-
-	if (framebuffers != nullptr)
-	{
-		destroy_framebuffers();
-	}
-
-	if (render_pass != VK_NULL_HANDLE)
-	{
-		vkDestroyRenderPass(wsi->get_device(), render_pass, nullptr);
-		render_pass = VK_NULL_HANDLE;
-	}
+	destroy_frame_resources();
 
 	create_render_pass();
 	create_framebuffers();
@@ -131,10 +107,10 @@ void Renderer::create_frame_resources()
 	create_sync_objects();
 	record_commands();
 
-	recreate_frame_resources = false;
+	is_recreating_frame_resources = false;
 }
 
-void Renderer::cleanup()
+void Renderer::destroy_frame_resources()
 {
 	// We need to wait for the operation in the present queue to be finished
 	// before we can cleanup our resources. The operations are asynchronous
@@ -143,22 +119,15 @@ void Renderer::cleanup()
 	vkQueueWaitIdle(wsi->get_present_queue());
 
 	destroy_sync_objects();
+	free_command_buffers();
+	destroy_command_pool();
+	destroy_framebuffers();
+	destroy_renderpass();
+}
 
-	if (command_buffers != nullptr)
-	{
-		free_command_buffers();
-	}
-
-	if (command_pool != VK_NULL_HANDLE)
-	{
-		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
-		command_pool = VK_NULL_HANDLE;
-	}
-
-	if (framebuffers != nullptr)
-	{
-		destroy_framebuffers();
-	}
+void Renderer::cleanup()
+{
+	destroy_frame_resources();
 
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{
@@ -170,12 +139,6 @@ void Renderer::cleanup()
 	{
 		vkDestroyPipelineLayout(wsi->get_device(), pipeline_layout, nullptr);
 		pipeline_layout = VK_NULL_HANDLE;
-	}
-
-	if (render_pass != VK_NULL_HANDLE)
-	{
-		vkDestroyRenderPass(wsi->get_device(), render_pass, nullptr);
-		render_pass = VK_NULL_HANDLE;
 	}
 }
 
@@ -223,7 +186,6 @@ void Renderer::create_render_pass()
 
 	render_pass_ci.dependencyCount = 1;
 	render_pass_ci.pDependencies = &dependency;
-
 
 	VkResult result = vkCreateRenderPass(wsi->get_device(), &render_pass_ci, nullptr, &render_pass);
 	assert(result == VK_SUCCESS);
@@ -441,20 +403,44 @@ void Renderer::create_sync_objects()
 	}
 }
 
+void Renderer::destroy_renderpass()
+{
+	if (render_pass != VK_NULL_HANDLE)
+	{
+		vkDestroyRenderPass(wsi->get_device(), render_pass, nullptr);
+		render_pass = VK_NULL_HANDLE;
+	}
+}
+
 void Renderer::destroy_framebuffers()
 {
-	for (uint32_t i = 0; i < framebuffer_count; ++i)
+	if (framebuffers != nullptr)
 	{
-		vkDestroyFramebuffer(wsi->get_device(), framebuffers[i], nullptr);
-	}
+		for (uint32_t i = 0; i < framebuffer_count; ++i)
+		{
+			vkDestroyFramebuffer(wsi->get_device(), framebuffers[i], nullptr);
+		}
 
-	delete[] framebuffers;
+		delete[] framebuffers;
+	}
+}
+
+void Renderer::destroy_command_pool()
+{
+	if (command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
+		command_pool = VK_NULL_HANDLE;
+	}
 }
 
 void Renderer::free_command_buffers()
 {
-	vkFreeCommandBuffers(wsi->get_device(), command_pool, command_buffer_count, command_buffers);
-	// delete[] command_buffers;
+	if (command_pool != VK_NULL_HANDLE && command_buffers != nullptr)
+	{
+		vkFreeCommandBuffers(wsi->get_device(), command_pool, command_buffer_count, command_buffers);
+		delete[] command_buffers;
+	}
 }
 
 void Renderer::destroy_sync_objects()

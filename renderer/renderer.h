@@ -28,10 +28,13 @@ private:
 	// WSI
 	Vulkan::WSI* wsi;
 
-	void create_frame_resources();
+	void recreate_frame_resources();
+	void destroy_frame_resources();
+
+	VkRenderPass render_pass = VK_NULL_HANDLE;
+	void destroy_renderpass();
 
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
-	VkRenderPass render_pass = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
 	VkFramebuffer* framebuffers = nullptr;
@@ -44,6 +47,7 @@ private:
 	VkCommandBuffer* command_buffers = nullptr;
 	uint32_t command_buffer_count = 0;
 	void free_command_buffers();
+	void destroy_command_pool();
 
 	// Sync objects
 	VkSemaphore image_available_semaphores[MAX_FRAMES_IN_FLIGHT];
@@ -53,7 +57,7 @@ private:
 
 	size_t current_frame = 0;
 
-	bool recreate_frame_resources = false;
+	bool is_recreating_frame_resources = false;
 
 }; // struct Renderer
 
