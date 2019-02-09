@@ -12,6 +12,23 @@ Renderer::Renderer(Vulkan::WSI* wsi) : wsi(wsi)
 
 void Renderer::init()
 {
+	vertex_count = 3;
+	vertices = new Vertex[vertex_count];
+	vertices[0] = { {0.0f, -0.5f}, {1.0f, 1.0f, 0.0f} };
+	vertices[1] = { {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} };
+	vertices[2] = { {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
+
+	vertex_buffer = new Vulkan::Buffer(
+		wsi->get_device(),
+		wsi->get_gpu(),
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		sizeof(vertices[0]) * vertex_count);
+
+	void* data;
+	vkMapMemory(wsi->get_device(), vertex_buffer->device_memory, 0, vertex_buffer->size, 0, &data);
+	memcpy(data, vertices, (size_t)vertex_buffer->size);
+	vkUnmapMemory(wsi->get_device(), vertex_buffer->device_memory);
 }
 
 void Renderer::render_frame()
@@ -200,8 +217,35 @@ void Renderer::create_graphics_pipeline()
 	// Pipeline Fixed Functions
 	// Vertex Input
 	VkPipelineVertexInputStateCreateInfo vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-	vertex_input_ci.vertexBindingDescriptionCount = 0;
-	vertex_input_ci.vertexAttributeDescriptionCount = 0;
+	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
+	// It specifies the number of bytes between data entries and whether to move to the next 
+	// data entry after each vertex or after each instance.
+	VkVertexInputBindingDescription vertex_binding_description = {};
+	vertex_binding_description.binding = 0;
+	vertex_binding_description.stride = sizeof(Vertex);
+	vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	vertex_input_ci.vertexBindingDescriptionCount = 1;
+	vertex_input_ci.pVertexBindingDescriptions = &vertex_binding_description;
+
+	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
+	// originating from a binding description. We have two attributes, position and color,
+	// so we need two attribute description structs
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[2];
+	// Position
+	vertex_input_attribute_descriptions[0].binding = 0;
+	vertex_input_attribute_descriptions[0].location = 0;
+	vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
+	// Color
+	vertex_input_attribute_descriptions[1].binding = 0;
+	vertex_input_attribute_descriptions[1].location = 1;
+	vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, color);
+
+	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
+	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;
+
 	// Input Assembly
 	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -352,7 +396,7 @@ void Renderer::record_commands()
 		render_pass_bi.framebuffer = framebuffers[i];
 		render_pass_bi.renderArea.offset = { 0, 0 };
 		render_pass_bi.renderArea.extent = wsi->get_swapchain_extent();
-		
+
 		VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 		render_pass_bi.clearValueCount = 1;
 		render_pass_bi.pClearValues = &clear_color;
@@ -372,9 +416,11 @@ void Renderer::record_commands()
 		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
 		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
 
-		// Draw the static triangle
-		// Its vertices and colors are hard-coded in the shaders
-		vkCmdDraw(command_buffers[i], 3, 1, 0, 0);
+		VkBuffer vertex_buffers[] = { vertex_buffer->buffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, vertex_buffers, offsets);
+
+		vkCmdDraw(command_buffers[i], vertex_count, 1, 0, 0);
 
 		vkCmdEndRenderPass(command_buffers[i]);
 

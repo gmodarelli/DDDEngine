@@ -165,6 +165,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\renderer\renderer.cpp" />
+    <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
     <ClCompile Include="..\vulkan\shader.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />

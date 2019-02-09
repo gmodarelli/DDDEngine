@@ -25,18 +25,6 @@ bool WSI::init()
 		assert(!"Failed to initialize GLFW");
 	}
 
-	/*
-	// Disable window resizing for now.
-	// TODO: Remove this line once we can handle window resize
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-	glfwGetError(&error);
-	if (error)
-	{
-		printf("[WSI]: %s\n", error);
-		assert(!"Failed to initialize GLFW");
-	}
-	*/
-
 	window = glfwCreateWindow(width, height, "73 Games", nullptr, nullptr);
 	if (window == NULL)
 	{
@@ -87,7 +75,6 @@ void WSI::cleanup()
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }
-
 
 int WSI::get_width()
 {

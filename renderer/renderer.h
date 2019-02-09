@@ -1,11 +1,19 @@
 #pragma once
 
 #include "../vulkan/wsi.h"
+#include "../vulkan/buffer.h"
+#include <glm/glm.hpp>
 
 namespace Renderer
 {
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+struct Vertex
+{
+	glm::vec2 position;
+	glm::vec3 color;
+};
 
 struct Renderer
 {
@@ -58,6 +66,11 @@ private:
 	size_t current_frame = 0;
 
 	bool is_recreating_frame_resources = false;
+
+	// Scene related stuff?
+	uint32_t vertex_count = 0;
+	Vulkan::Buffer* vertex_buffer;
+	Vertex* vertices;
 
 }; // struct Renderer
 
