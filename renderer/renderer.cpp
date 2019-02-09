@@ -146,6 +146,9 @@ void Renderer::cleanup()
 {
 	destroy_frame_resources();
 
+	vertex_buffer->destroy(wsi->get_device());
+	delete[] vertices;
+
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{
 		vkDestroyPipeline(wsi->get_device(), graphics_pipeline, nullptr);
@@ -296,7 +299,7 @@ void Renderer::create_graphics_pipeline()
 	color_blend_ci.attachmentCount = 1;
 	color_blend_ci.pAttachments = &color_blend_attachment_ci;
 	// Dynamic States (state that can be changed without having to recreate the pipeline)
-	VkDynamicState dynamic_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_LINE_WIDTH };
+	VkDynamicState dynamic_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_LINE_WIDTH };
 	VkPipelineDynamicStateCreateInfo dynamic_state_ci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 	dynamic_state_ci.dynamicStateCount = ARRAYSIZE(dynamic_states);
 	dynamic_state_ci.pDynamicStates = dynamic_states;
