@@ -249,6 +249,22 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	VkResult result = vkCreateSwapchainKHR(context->get_device(), &create_info, nullptr, &new_swapchain);
 	assert(result == VK_SUCCESS);
 
+	// NOTE: Destroying old image views
+	if (old_swapchain != VK_NULL_HANDLE && swapchain_image_count > 0 && swapchain_image_views != nullptr)
+	{
+		vkQueueWaitIdle(context->get_graphics_queue());
+
+		for (uint32_t i = 0; i < swapchain_image_count; ++i)
+		{
+			if (swapchain_image_views[i] != VK_NULL_HANDLE)
+			{
+				vkDestroyImageView(context->get_device(), swapchain_image_views[i], nullptr);
+			}
+		}
+
+		delete[] swapchain_image_views;
+	}
+
 	// Retrieve the Swapchain VkImage handles. These images are create by the implementation of the swapchain
 	// and will be automatically cleaned up
 	swapchain_image_count = image_count;
