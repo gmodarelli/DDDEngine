@@ -6,7 +6,7 @@
 namespace Vulkan
 {
 
-WSI::WSI(int width, int height) : width(width), height(height) {}
+WSI::WSI(int window_width, int window_height) : window_width(window_width), window_height(window_height) {}
 
 bool WSI::init()
 {
@@ -25,7 +25,7 @@ bool WSI::init()
 		assert(!"Failed to initialize GLFW");
 	}
 
-	window = glfwCreateWindow(width, height, "73 Games", nullptr, nullptr);
+	window = glfwCreateWindow(window_width, window_height, "73 Games", nullptr, nullptr);
 	if (window == NULL)
 	{
 		glfwGetError(&error);
@@ -41,7 +41,7 @@ bool WSI::init()
 	bool result = context->init();
 	assert(result);
 
-	surface = create_surface(context->get_instance());
+	surface = create_surface(context->instance);
 
 	const char* device_required_extensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 	result = context->pick_suitable_gpu(surface, device_required_extensions, ARRAYSIZE(device_required_extensions));
@@ -66,7 +66,7 @@ void WSI::cleanup()
 
 	if (surface != VK_NULL_HANDLE)
 	{
-		vkDestroySurfaceKHR(context->get_instance(), surface, nullptr);
+		vkDestroySurfaceKHR(context->instance, surface, nullptr);
 		surface = VK_NULL_HANDLE;
 	}
 
@@ -76,81 +76,10 @@ void WSI::cleanup()
 	glfwTerminate();
 }
 
-int WSI::get_width()
-{
-	return swapchain_extent.width;
-}
-
-int WSI::get_height()
-{
-	return swapchain_extent.height;
-}
-
 bool WSI::alive()
 {
 	glfwPollEvents();
 	return !glfwWindowShouldClose(window);
-}
-
-VkInstance WSI::get_instance() const
-{
-	return context->get_instance();
-}
-
-VkPhysicalDevice WSI::get_gpu() const
-{
-	return context->get_gpu();
-}
-
-VkDevice WSI::get_device() const
-{
-	return context->get_device();
-}
-
-VkSurfaceFormatKHR WSI::get_surface_format() const
-{
-	return surface_format;
-}
-
-VkSwapchainKHR WSI::get_swapchain() const
-{
-	return swapchain;
-}
-
-uint32_t WSI::get_swapchain_image_count() const
-{
-	return swapchain_image_count;
-}
-
-VkImageView WSI::get_swapchain_image_view(uint32_t index) const
-{
-	assert(index >= 0 && index < swapchain_image_count);
-	return swapchain_image_views[index];
-}
-
-VkExtent2D WSI::get_swapchain_extent() const
-{
-	return swapchain_extent;
-}
-
-uint32_t WSI::get_graphics_family_index() const
-{
-	return context->get_graphics_family_index();
-}
-
-uint32_t WSI::get_transfer_family_index() const
-{
-	return context->get_transfer_family_index();
-}
-
-VkQueue WSI::get_graphics_queue() const
-{
-	return context->get_graphics_queue();
-}
-
-VkQueue WSI::get_transfer_queue() const
-{
-	return context->get_transfer_queue();
 }
 
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
@@ -184,7 +113,7 @@ void WSI::recreate_swapchain()
 	is_resizing = true;
 
 	VkSwapchainKHR new_swapchain = create_swapchain(swapchain);
-	vkDestroySwapchainKHR(context->get_device(), swapchain, nullptr);
+	vkDestroySwapchainKHR(context->device, swapchain, nullptr);
 	swapchain = new_swapchain;
 
 	is_resizing = false;
@@ -195,7 +124,7 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	assert(surface);
 
 	VkSurfaceCapabilitiesKHR surface_capabilities;
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->get_gpu(), surface, &surface_capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->gpu, surface, &surface_capabilities);
 
 	surface_format = find_best_surface_format({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
 	present_mode = find_best_present_mode(VK_PRESENT_MODE_MAILBOX_KHR);
@@ -225,9 +154,9 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	// owned by a queue family at a time and ownership must be explicitly transfered before
 	// using it in another queue family.
 	// TODO: Check the specs
-	if (context->get_graphics_family_index() != context->get_transfer_family_index())
+	if (context->graphics_family_index != context->transfer_family_index)
 	{
-		uint32_t queue_family_indices[] = { context->get_graphics_family_index(), context->get_transfer_family_index() };
+		uint32_t queue_family_indices[] = { context->graphics_family_index, context->transfer_family_index };
 		create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		create_info.queueFamilyIndexCount = 2;
 		create_info.pQueueFamilyIndices = queue_family_indices;
@@ -246,19 +175,19 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	create_info.oldSwapchain = old_swapchain;
 
 	VkSwapchainKHR new_swapchain;
-	VkResult result = vkCreateSwapchainKHR(context->get_device(), &create_info, nullptr, &new_swapchain);
+	VkResult result = vkCreateSwapchainKHR(context->device, &create_info, nullptr, &new_swapchain);
 	assert(result == VK_SUCCESS);
 
 	// NOTE: Destroying old image views
 	if (old_swapchain != VK_NULL_HANDLE && swapchain_image_count > 0 && swapchain_image_views != nullptr)
 	{
-		vkQueueWaitIdle(context->get_graphics_queue());
+		vkQueueWaitIdle(context->graphics_queue);
 
 		for (uint32_t i = 0; i < swapchain_image_count; ++i)
 		{
 			if (swapchain_image_views[i] != VK_NULL_HANDLE)
 			{
-				vkDestroyImageView(context->get_device(), swapchain_image_views[i], nullptr);
+				vkDestroyImageView(context->device, swapchain_image_views[i], nullptr);
 			}
 		}
 
@@ -268,10 +197,10 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 	// Retrieve the Swapchain VkImage handles. These images are create by the implementation of the swapchain
 	// and will be automatically cleaned up
 	swapchain_image_count = image_count;
-	vkGetSwapchainImagesKHR(context->get_device(), new_swapchain, &swapchain_image_count, nullptr);
+	vkGetSwapchainImagesKHR(context->device, new_swapchain, &swapchain_image_count, nullptr);
 	assert(swapchain_image_count == image_count);
 	swapchain_images = new VkImage[swapchain_image_count];
-	vkGetSwapchainImagesKHR(context->get_device(), new_swapchain, &swapchain_image_count, swapchain_images);
+	vkGetSwapchainImagesKHR(context->device, new_swapchain, &swapchain_image_count, swapchain_images);
 	// Create a VkImageView per VkImage
 	swapchain_image_views = new VkImageView[swapchain_image_count];
 	for (uint32_t i = 0; i < swapchain_image_count; ++i)
@@ -289,7 +218,7 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 		create_info.subresourceRange.baseArrayLayer = 0;
 		create_info.subresourceRange.layerCount = 1;
 
-		VkResult result = vkCreateImageView(context->get_device(), &create_info, nullptr, &swapchain_image_views[i]);
+		VkResult result = vkCreateImageView(context->device, &create_info, nullptr, &swapchain_image_views[i]);
 		assert (result == VK_SUCCESS);
 	}
 
@@ -307,7 +236,7 @@ void WSI::destroy_swapchain()
 	{
 		for (uint32_t i = 0; i < swapchain_image_count; ++i)
 		{
-			vkDestroyImageView(context->get_device(), swapchain_image_views[i], nullptr);
+			vkDestroyImageView(context->device, swapchain_image_views[i], nullptr);
 		}
 
 		delete[] swapchain_image_views;
@@ -315,16 +244,16 @@ void WSI::destroy_swapchain()
 
 	if (swapchain != VK_NULL_HANDLE)
 	{
-		vkDestroySwapchainKHR(context->get_device(), swapchain, nullptr);
+		vkDestroySwapchainKHR(context->device, swapchain, nullptr);
 	}
 }
 
 VkSurfaceFormatKHR WSI::find_best_surface_format(VkSurfaceFormatKHR preferred_format)
 {
 	uint32_t available_format_count = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(context->get_gpu(), surface, &available_format_count, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(context->gpu, surface, &available_format_count, nullptr);
 	VkSurfaceFormatKHR* available_formats = new VkSurfaceFormatKHR[available_format_count];
-	vkGetPhysicalDeviceSurfaceFormatsKHR(context->get_gpu(), surface, &available_format_count, available_formats);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(context->gpu, surface, &available_format_count, available_formats);
 
 	// If the surface has no preferred format
 	if (available_format_count == 1 && available_formats[0].format == VK_FORMAT_UNDEFINED)
@@ -351,9 +280,9 @@ VkSurfaceFormatKHR WSI::find_best_surface_format(VkSurfaceFormatKHR preferred_fo
 VkPresentModeKHR WSI::find_best_present_mode(VkPresentModeKHR preferred_present_mode)
 {
 	uint32_t available_present_mode_count = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(context->get_gpu(), surface, &available_present_mode_count, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(context->gpu, surface, &available_present_mode_count, nullptr);
 	VkPresentModeKHR* available_present_modes = new VkPresentModeKHR[available_present_mode_count];
-	vkGetPhysicalDeviceSurfacePresentModesKHR(context->get_gpu() , surface, &available_present_mode_count, available_present_modes);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(context->gpu , surface, &available_present_mode_count, available_present_modes);
 
 	for (uint32_t p = 0; p < available_present_mode_count; ++p)
 	{
@@ -381,7 +310,7 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 	}
 	else
 	{
-		glfwGetFramebufferSize(window, &width, &height);
+		glfwGetFramebufferSize(window, &window_width, &window_height);
 		const char* error;
 		glfwGetError(&error);
 		if (error)
@@ -390,7 +319,7 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 			assert(!"Error acquiring the framebuffer size from GLFW");
 		}
 
-		VkExtent2D actual_extent = { width, height };
+		VkExtent2D actual_extent = { window_width, window_height };
 		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
 

@@ -25,7 +25,7 @@ void Device::cleanup()
 	// before we can cleanup our resources. The operations are asynchronous
 	// and when this function is called we don't know if they have finished
 	// execution, so we wait.
-	vkQueueWaitIdle(wsi->get_graphics_queue());
+	vkQueueWaitIdle(context->graphics_queue);
 
 	destroy_query_pool();
 	destroy_sync_objects();
@@ -41,18 +41,18 @@ FrameResources& Device::begin_draw_frame()
 
 	// We wait on the current frame fence to be signalled (ie commands have finished execution on
 	// the graphics queue for the frame).
-	vkWaitForFences(wsi->get_device(), 1, &current_frame.drawing_finished_fence, VK_TRUE, UINT64_MAX);
-	vkResetFences(wsi->get_device(), 1, &current_frame.drawing_finished_fence);
+	vkWaitForFences(context->device, 1, &current_frame.drawing_finished_fence, VK_TRUE, UINT64_MAX);
+	vkResetFences(context->device, 1, &current_frame.drawing_finished_fence);
 
 	if (current_frame.framebuffer != VK_NULL_HANDLE)
 	{
-		vkDestroyFramebuffer(wsi->get_device(), current_frame.framebuffer, nullptr);
+		vkDestroyFramebuffer(context->device, current_frame.framebuffer, nullptr);
 		current_frame.framebuffer = VK_NULL_HANDLE;
 	}
 
 	// Acquire a swapchain image
 	uint32_t image_index;
-	VkResult result = vkAcquireNextImageKHR(wsi->get_device(), wsi->get_swapchain(), UINT64_MAX, current_frame.image_acquired_semaphore, VK_NULL_HANDLE, &image_index);
+	VkResult result = vkAcquireNextImageKHR(context->device, wsi->swapchain, UINT64_MAX, current_frame.image_acquired_semaphore, VK_NULL_HANDLE, &image_index);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || wsi->window_resized())
 	{
 		wsi->recreate_swapchain();
@@ -66,17 +66,17 @@ FrameResources& Device::begin_draw_frame()
 	current_frame.image_index = image_index;
 
 	// Prepare the framebuffer
-	VkImageView attachments[] = { wsi->get_swapchain_image_view(image_index) };
+	VkImageView attachments[] = { wsi->swapchain_image_views[image_index] };
 
 	VkFramebufferCreateInfo framebuffer_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebuffer_ci.renderPass = render_pass;
 	framebuffer_ci.attachmentCount = ARRAYSIZE(attachments);
 	framebuffer_ci.pAttachments = attachments;
-	framebuffer_ci.width = wsi->get_width();
-	framebuffer_ci.height = wsi->get_height();
+	framebuffer_ci.width = wsi->swapchain_extent.width;
+	framebuffer_ci.height = wsi->swapchain_extent.height;
 	framebuffer_ci.layers = 1;
 
-	result = vkCreateFramebuffer(wsi->get_device(), &framebuffer_ci, nullptr, &current_frame.framebuffer);
+	result = vkCreateFramebuffer(context->device, &framebuffer_ci, nullptr, &current_frame.framebuffer);
 	assert(result == VK_SUCCESS);
 
 	VkCommandBufferBeginInfo command_buffer_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
@@ -92,7 +92,7 @@ FrameResources& Device::begin_draw_frame()
 	render_pass_bi.renderPass = render_pass;
 	render_pass_bi.framebuffer = current_frame.framebuffer;
 	render_pass_bi.renderArea.offset = { 0, 0 };
-	render_pass_bi.renderArea.extent = wsi->get_swapchain_extent();
+	render_pass_bi.renderArea.extent = wsi->swapchain_extent;
 
 	VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	render_pass_bi.clearValueCount = 1;
@@ -114,10 +114,10 @@ void Device::end_draw_frame(FrameResources& current_frame)
 
 	vkCmdWriteTimestamp(current_frame.command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, current_frame.timestamp_query_pool, 1);
 	uint64_t timestamp_results[2] = {};
-	VkResult result = vkGetQueryPoolResults(wsi->get_device(), current_frame.timestamp_query_pool, 0, ARRAYSIZE(timestamp_results), sizeof(timestamp_results), timestamp_results, sizeof(timestamp_results[0]), VK_QUERY_RESULT_64_BIT);
+	VkResult result = vkGetQueryPoolResults(context->device, current_frame.timestamp_query_pool, 0, ARRAYSIZE(timestamp_results), sizeof(timestamp_results), timestamp_results, sizeof(timestamp_results[0]), VK_QUERY_RESULT_64_BIT);
 
-	double frame_gpu_begin = double(timestamp_results[0]) * context->get_gpu_properties().limits.timestampPeriod * 1e-6;
-	double frame_gpu_end = double(timestamp_results[1]) * context->get_gpu_properties().limits.timestampPeriod * 1e-6;
+	double frame_gpu_begin = double(timestamp_results[0]) * context->gpu_properties.limits.timestampPeriod * 1e-6;
+	double frame_gpu_end = double(timestamp_results[1]) * context->gpu_properties.limits.timestampPeriod * 1e-6;
 	frame_gpu_avg = frame_gpu_avg * 0.95 + (frame_gpu_end - frame_gpu_begin) * 0.05;
 
 	printf("\n: GPU: %.4fms\n", frame_gpu_avg);
@@ -147,7 +147,7 @@ void Device::end_draw_frame(FrameResources& current_frame)
 
 	// Submit the command buffer to the graphics queue with the current frame fence to signal once
 	// execution has finished
-	result = vkQueueSubmit(wsi->get_graphics_queue(), 1, &submit_info, current_frame.drawing_finished_fence);
+	result = vkQueueSubmit(context->graphics_queue, 1, &submit_info, current_frame.drawing_finished_fence);
 	assert(result == VK_SUCCESS);
 
 	VkPresentInfoKHR present_info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -158,12 +158,12 @@ void Device::end_draw_frame(FrameResources& current_frame)
 
 	// Specify the swapchains to present the images to and the index of the image
 	// for each swapchain. Most likely a single one
-	VkSwapchainKHR swapchains[] = { wsi->get_swapchain() };
+	VkSwapchainKHR swapchains[] = { wsi->swapchain };
 	present_info.swapchainCount = ARRAYSIZE(swapchains);
 	present_info.pSwapchains = swapchains;
 	present_info.pImageIndices = &current_frame.image_index;
 
-	result = vkQueuePresentKHR(wsi->get_graphics_queue(), &present_info);
+	result = vkQueuePresentKHR(context->graphics_queue, &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || wsi->window_resized())
 	{
 		wsi->recreate_swapchain();
@@ -186,7 +186,7 @@ void Device::create_render_pass()
 	VkAttachmentDescription color_attachment = {};
 	// Its format should match the format of the swapchain images (that we
 	// get from the surface).
-	color_attachment.format = wsi->get_surface_format().format;
+	color_attachment.format = wsi->surface_format.format;
 	// Since we're not doing any multisampling, we'll only have 1 sample
 	// per pixel for now
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -236,7 +236,7 @@ void Device::create_render_pass()
 	render_pass_ci.dependencyCount = 1;
 	render_pass_ci.pDependencies = &dependency;
 
-	VkResult result = vkCreateRenderPass(wsi->get_device(), &render_pass_ci, nullptr, &render_pass);
+	VkResult result = vkCreateRenderPass(context->device, &render_pass_ci, nullptr, &render_pass);
 	assert(result == VK_SUCCESS);
 }
 
@@ -244,7 +244,7 @@ void Device::destroy_render_pass()
 {
 	if (render_pass != VK_NULL_HANDLE)
 	{
-		vkDestroyRenderPass(wsi->get_device(), render_pass, nullptr);
+		vkDestroyRenderPass(context->device, render_pass, nullptr);
 		render_pass = VK_NULL_HANDLE;
 	}
 }
@@ -254,7 +254,7 @@ void Device::destroy_framebuffers()
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
 		if (frame_resources[i].framebuffer != VK_NULL_HANDLE)
-			vkDestroyFramebuffer(wsi->get_device(), frame_resources[i].framebuffer, nullptr);
+			vkDestroyFramebuffer(context->device, frame_resources[i].framebuffer, nullptr);
 	}
 }
 
@@ -262,13 +262,13 @@ void Device::destroy_framebuffers()
 void Device::create_command_pool()
 {
 	VkCommandPoolCreateInfo command_pool_ci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
-	command_pool_ci.queueFamilyIndex = wsi->get_graphics_family_index();
+	command_pool_ci.queueFamilyIndex = context->graphics_family_index;
 	// Flags values
 	// VK_COMMAND_POOL_CREATE_TRANSIENT_BIT: Hint that command buffers are rerecorded with new commands very often (may change memory allocation behavior)
 	// VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT: Allow command buffers to be rerecorded individually, without this flag they all have to be reset together
 	command_pool_ci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	VkResult result = vkCreateCommandPool(wsi->get_device(), &command_pool_ci, nullptr, &command_pool);
+	VkResult result = vkCreateCommandPool(context->device, &command_pool_ci, nullptr, &command_pool);
 	assert(result == VK_SUCCESS);
 }
 
@@ -276,7 +276,7 @@ void Device::destroy_command_pool()
 {
 	if (command_pool != VK_NULL_HANDLE)
 	{
-		vkDestroyCommandPool(wsi->get_device(), command_pool, nullptr);
+		vkDestroyCommandPool(context->device, command_pool, nullptr);
 		command_pool = VK_NULL_HANDLE;
 	}
 }
@@ -290,7 +290,7 @@ void Device::allocate_command_buffers()
 	command_buffer_ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	command_buffer_ai.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-	VkResult result = vkAllocateCommandBuffers(wsi->get_device(), &command_buffer_ai, command_buffers);
+	VkResult result = vkAllocateCommandBuffers(context->device, &command_buffer_ai, command_buffers);
 	assert(result == VK_SUCCESS);
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
@@ -305,7 +305,7 @@ void Device::free_command_buffers()
 	{
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 		{
-			vkFreeCommandBuffers(wsi->get_device(), command_pool, 1, &frame_resources[i].command_buffer);
+			vkFreeCommandBuffers(context->device, command_pool, 1, &frame_resources[i].command_buffer);
 		}
 	}
 }
@@ -322,13 +322,13 @@ void Device::create_sync_objects()
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		VkResult result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &frame_resources[i].image_acquired_semaphore);
+		VkResult result = vkCreateSemaphore(context->device, &semaphore_ci, nullptr, &frame_resources[i].image_acquired_semaphore);
 		assert(result == VK_SUCCESS);
 
-		result = vkCreateSemaphore(wsi->get_device(), &semaphore_ci, nullptr, &frame_resources[i].ready_to_present_semaphore);
+		result = vkCreateSemaphore(context->device, &semaphore_ci, nullptr, &frame_resources[i].ready_to_present_semaphore);
 		assert(result == VK_SUCCESS);
 
-		result = vkCreateFence(wsi->get_device(), &fence_ci, nullptr, &frame_resources[i].drawing_finished_fence);
+		result = vkCreateFence(context->device, &fence_ci, nullptr, &frame_resources[i].drawing_finished_fence);
 		assert(result == VK_SUCCESS);
 	}
 }
@@ -337,9 +337,9 @@ void Device::destroy_sync_objects()
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		vkDestroySemaphore(wsi->get_device(), frame_resources[i].image_acquired_semaphore, nullptr);
-		vkDestroySemaphore(wsi->get_device(), frame_resources[i].ready_to_present_semaphore, nullptr);
-		vkDestroyFence(wsi->get_device(), frame_resources[i].drawing_finished_fence, nullptr);
+		vkDestroySemaphore(context->device, frame_resources[i].image_acquired_semaphore, nullptr);
+		vkDestroySemaphore(context->device, frame_resources[i].ready_to_present_semaphore, nullptr);
+		vkDestroyFence(context->device, frame_resources[i].drawing_finished_fence, nullptr);
 	}
 }
 
@@ -355,7 +355,7 @@ void Device::create_query_pool()
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		VkResult result = vkCreateQueryPool(wsi->get_device(), &create_info, nullptr, &frame_resources[i].timestamp_query_pool);
+		VkResult result = vkCreateQueryPool(context->device, &create_info, nullptr, &frame_resources[i].timestamp_query_pool);
 		assert(result == VK_SUCCESS);
 		frame_resources[i].timestamp_query_pool_count = query_count;
 	}
@@ -365,7 +365,7 @@ void Device::destroy_query_pool()
 {
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		vkDestroyQueryPool(wsi->get_device(), frame_resources[i].timestamp_query_pool, nullptr);
+		vkDestroyQueryPool(context->device, frame_resources[i].timestamp_query_pool, nullptr);
 	}
 }
 

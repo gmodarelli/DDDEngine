@@ -79,6 +79,7 @@ struct Device
 	// Command Pool
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 
+	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
 
 	// Query pool
@@ -106,8 +107,6 @@ private:
 	// Query pool helpers
 	void create_query_pool();
 	void destroy_query_pool();
-
-	uint32_t frame_index = 0;
 
 }; // struct Device
 

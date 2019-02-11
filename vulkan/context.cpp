@@ -20,49 +20,6 @@ bool Context::init()
 	return true;
 }
 
-VkInstance Context::get_instance() const
-{
-	assert(instance != VK_NULL_HANDLE);
-	return instance;
-}
-
-VkPhysicalDevice Context::get_gpu() const
-{
-	assert(gpu != VK_NULL_HANDLE);
-	return gpu;
-}
-
-VkPhysicalDeviceProperties Context::get_gpu_properties() const
-{
-	return gpu_properties;
-}
-
-VkDevice Context::get_device() const
-{
-	assert(device != VK_NULL_HANDLE);
-	return device;
-}
-
-uint32_t Context::get_graphics_family_index() const
-{
-	return graphics_family_index;
-}
-
-uint32_t Context::get_transfer_family_index() const
-{
-	return transfer_family_index;
-}
-
-VkQueue Context::get_graphics_queue() const
-{
-	return graphics_queue;
-}
-
-VkQueue Context::get_transfer_queue() const
-{
-	return transfer_queue;
-}
-	
 bool Context::init_vulkan()
 {
 	VkResult result = volkInitialize();

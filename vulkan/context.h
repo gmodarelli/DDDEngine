@@ -26,35 +26,34 @@ struct QueueFamilyIndices
 
 struct Context
 {
+	VkInstance instance = VK_NULL_HANDLE;
+	VkPhysicalDevice gpu = VK_NULL_HANDLE;
+	VkDevice device = VK_NULL_HANDLE;
+
+	VkPhysicalDeviceProperties gpu_properties = {};
+	VkPhysicalDeviceFeatures gpu_features = {};
+	VkPhysicalDeviceFeatures gpu_enabled_features = {};
+
+	VkQueue graphics_queue = VK_NULL_HANDLE;
+	VkQueue transfer_queue = VK_NULL_HANDLE;
+	uint32_t graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
+	uint32_t transfer_family_index = VK_QUEUE_FAMILY_IGNORED;
+
 	Context();
 	~Context() {}
 
 	bool init();
 	void cleanup();
 
-	VkInstance get_instance() const;
-	VkPhysicalDevice get_gpu() const;
-	VkDevice get_device() const;
-
 	bool pick_suitable_gpu(VkSurfaceKHR surface, const char** gpu_required_extensions, uint32_t gpu_required_extension_count);
 	bool create_device(const char** device_required_extensions, uint32_t device_required_extension_count);
 	void retrieve_queues();
 
-	uint32_t get_graphics_family_index() const;
-	uint32_t get_transfer_family_index() const;
-	VkQueue get_graphics_queue() const;
-	VkQueue get_transfer_queue() const;
-
-	VkPhysicalDeviceProperties get_gpu_properties() const;
-
 private:
 
+	// Helpers
 	bool init_vulkan();
 	bool create_instance();
-
-	VkInstance instance = VK_NULL_HANDLE;
-	VkPhysicalDevice gpu = VK_NULL_HANDLE;
-	VkDevice device = VK_NULL_HANDLE;
 
 	// Vulkan Instance
 	//
@@ -82,18 +81,8 @@ private:
 	VkPhysicalDevice* available_gpus = nullptr;
 	VkPhysicalDeviceProperties* available_gpu_properties = nullptr;
 	VkPhysicalDeviceFeatures* available_gpu_features = nullptr;
-	VkPhysicalDeviceProperties gpu_properties = {};
-	VkPhysicalDeviceFeatures gpu_features = {};
-	VkPhysicalDeviceFeatures gpu_enabled_features = {};
 	// Vulkan Queues
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice gpu, VkSurfaceKHR surface);
-	uint32_t graphics_family_index = VK_QUEUE_FAMILY_IGNORED;
-	uint32_t transfer_family_index = VK_QUEUE_FAMILY_IGNORED;
-
-	// Vulkan Logical Device
-	//
-	VkQueue graphics_queue = VK_NULL_HANDLE;
-	VkQueue transfer_queue = VK_NULL_HANDLE;
 };
 
 } // namespace Vulkan

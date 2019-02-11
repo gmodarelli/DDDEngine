@@ -25,7 +25,6 @@ struct Renderer
 	void create_graphics_pipeline();
 	void render_frame();
 
-private:
 	// Device
 	Vulkan::Device* device;
 

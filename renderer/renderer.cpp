@@ -21,16 +21,16 @@ void Renderer::init()
 	vertices[2] = { {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
 
 	vertex_buffer = new Vulkan::Buffer(
-		device->wsi->get_device(),
-		device->wsi->get_gpu(),
+		device->context->device,
+		device->context->gpu,
 		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		sizeof(vertices[0]) * vertex_count);
 
 	void* data;
-	vkMapMemory(device->wsi->get_device(), vertex_buffer->device_memory, 0, vertex_buffer->size, 0, &data);
+	vkMapMemory(device->context->device, vertex_buffer->device_memory, 0, vertex_buffer->size, 0, &data);
 	memcpy(data, vertices, (size_t)vertex_buffer->size);
-	vkUnmapMemory(device->wsi->get_device(), vertex_buffer->device_memory);
+	vkUnmapMemory(device->context->device, vertex_buffer->device_memory);
 }
 
 void Renderer::render_frame()
@@ -39,10 +39,10 @@ void Renderer::render_frame()
 
 	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
-	VkViewport viewport = { 0, 0, (float)device->wsi->get_width(), (float)device->wsi->get_height(), 0.0f, 1.0f };
+	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = { (uint32_t)device->wsi->get_width(), (uint32_t)device->wsi->get_height() };
+	scissor.extent = device->wsi->swapchain_extent;
 
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
@@ -58,19 +58,19 @@ void Renderer::render_frame()
 
 void Renderer::cleanup()
 {
-	vkQueueWaitIdle(device->wsi->get_graphics_queue());
+	vkQueueWaitIdle(device->context->graphics_queue);
 
-	vertex_buffer->destroy(device->wsi->get_device());
+	vertex_buffer->destroy(device->context->device);
 
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(device->wsi->get_device(), graphics_pipeline, nullptr);
+		vkDestroyPipeline(device->context->device, graphics_pipeline, nullptr);
 		graphics_pipeline = VK_NULL_HANDLE;
 	}
 
 	if (pipeline_layout != VK_NULL_HANDLE)
 	{
-		vkDestroyPipelineLayout(device->wsi->get_device(), pipeline_layout, nullptr);
+		vkDestroyPipelineLayout(device->context->device, pipeline_layout, nullptr);
 		pipeline_layout = VK_NULL_HANDLE;
 	}
 }
@@ -78,8 +78,8 @@ void Renderer::cleanup()
 void Renderer::create_graphics_pipeline()
 {
 	VkPipelineShaderStageCreateInfo shader_stages[2];
-	shader_stages[0] = Vulkan::Shader::load_shader(device->wsi->get_device(), device->wsi->get_gpu(), "../data/shaders/simple_triangle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shader_stages[1] = Vulkan::Shader::load_shader(device->wsi->get_device(), device->wsi->get_gpu(), "../data/shaders/simple_triangle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple_triangle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple_triangle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	// Pipeline Fixed Functions
 	// Vertex Input
@@ -118,10 +118,10 @@ void Renderer::create_graphics_pipeline()
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 	// Viewport and Scissor
-	VkViewport viewport = { 0, 0, (float)device->wsi->get_width(), (float)device->wsi->get_height(), 0.0f, 1.0f };
+	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = { (uint32_t)device->wsi->get_width(), (uint32_t)device->wsi->get_height() };
+	scissor.extent = device->wsi->swapchain_extent;
 	VkPipelineViewportStateCreateInfo viewport_ci = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 	viewport_ci.viewportCount = 1;
 	viewport_ci.pViewports = &viewport;
@@ -170,7 +170,7 @@ void Renderer::create_graphics_pipeline()
 	// Pipeline Layout
 	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	// NOTE: Fill the CI when we have actual uniform data to send to shaders
-	VkResult result = vkCreatePipelineLayout(device->wsi->get_device(), &pipeline_layout_ci, nullptr, &pipeline_layout);
+	VkResult result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &pipeline_layout);
 	assert(result == VK_SUCCESS);
 
 	VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -187,12 +187,12 @@ void Renderer::create_graphics_pipeline()
 	pipeline_ci.renderPass = device->render_pass;
 	pipeline_ci.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(device->wsi->get_device(), nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline);
+	result = vkCreateGraphicsPipelines(device->context->device, nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline);
 	assert(result == VK_SUCCESS);
 
 	for (uint32_t i = 0; i < ARRAYSIZE(shader_stages); ++i)
 	{
-		vkDestroyShaderModule(device->wsi->get_device(), shader_stages[i].module, nullptr);
+		vkDestroyShaderModule(device->context->device, shader_stages[i].module, nullptr);
 	}
 }
 
