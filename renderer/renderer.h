@@ -31,10 +31,13 @@ struct Renderer
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
+	double frame_cpu_avg = 0;
+
 	// Scene related stuff?
 	uint32_t vertex_count = 0;
 	Vulkan::Buffer* vertex_buffer;
 	Vertex* vertices;
+
 }; // struct Renderer
 
 } // namespace Renderer

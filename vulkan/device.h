@@ -85,6 +85,8 @@ struct Device
 	// Query pool
 	VkQueryPool timestamp_query_pool;
 
+	double frame_gpu_avg = 0;
+
 private:
 
 	// Render pass helpers

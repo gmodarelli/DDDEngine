@@ -108,8 +108,6 @@ FrameResources& Device::begin_draw_frame()
 
 void Device::end_draw_frame(FrameResources& current_frame)
 {
-	static double frame_gpu_avg = 0;
-
 	vkCmdEndRenderPass(current_frame.command_buffer);
 
 	vkCmdWriteTimestamp(current_frame.command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, current_frame.timestamp_query_pool, 1);
@@ -119,8 +117,6 @@ void Device::end_draw_frame(FrameResources& current_frame)
 	double frame_gpu_begin = double(timestamp_results[0]) * context->gpu_properties.limits.timestampPeriod * 1e-6;
 	double frame_gpu_end = double(timestamp_results[1]) * context->gpu_properties.limits.timestampPeriod * 1e-6;
 	frame_gpu_avg = frame_gpu_avg * 0.95 + (frame_gpu_end - frame_gpu_begin) * 0.05;
-
-	printf("\n: GPU: %.4fms\n", frame_gpu_avg);
 
 	result = vkEndCommandBuffer(current_frame.command_buffer);
 	assert(result == VK_SUCCESS);

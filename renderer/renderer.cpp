@@ -2,6 +2,7 @@
 #include "../vulkan/shaders.h"
 #include <cassert>
 #include <stdio.h>
+#include <chrono>
 
 namespace Renderer
 {
@@ -35,6 +36,8 @@ void Renderer::init()
 
 void Renderer::render_frame()
 {
+	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
+
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
 
 	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
@@ -54,6 +57,9 @@ void Renderer::render_frame()
 	vkCmdDraw(frame_resources.command_buffer, vertex_count, 1, 0, 0);
 
 	device->end_draw_frame(frame_resources);
+
+	auto frame_cpu_end = std::chrono::high_resolution_clock::now();
+	frame_cpu_avg = frame_cpu_avg * 0.95 + (frame_cpu_end - frame_cpu_start).count() * 1e-6 * 0.05;
 }
 
 void Renderer::cleanup()
