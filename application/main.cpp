@@ -786,12 +786,14 @@ int main()
 
 #include <inttypes.h>
 #include "../vulkan/wsi.h"
+#include "../vulkan/device.h"
 #include "../renderer/renderer.h"
 
-uint32_t width = 800;
-uint32_t height = 600;
+uint32_t width = 1600;
+uint32_t height = 1200;
 
 Vulkan::WSI* wsi;
+Vulkan::Device* device;
 Renderer::Renderer* renderer;
 
 int main()
@@ -799,18 +801,11 @@ int main()
 	wsi = new Vulkan::WSI(width, height);
 	wsi->init();
 
-	renderer = new Renderer::Renderer(wsi);
+	device = new Vulkan::Device(wsi, wsi->context);
+	device->init();
+
+	renderer = new Renderer::Renderer(device);
 	renderer->init();
-
-	renderer->create_render_pass();
-
-	renderer->create_graphics_pipeline();
-
-	renderer->create_framebuffers();
-	renderer->create_command_pool();
-	renderer->create_command_buffers();
-	renderer->create_sync_objects();
-	renderer->record_commands();
 
 	while (wsi->alive())
 	{
@@ -818,6 +813,7 @@ int main()
 	}
 
 	renderer->cleanup();
+	device->cleanup();
 	wsi->cleanup();
 
 	return 0;

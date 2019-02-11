@@ -1,0 +1,104 @@
+#pragma once
+
+#include "volk.h"
+#include "wsi.h"
+#include "context.h"
+
+namespace Vulkan
+{
+
+// TODO: Measure how many in-flight frames our good
+// for our application.
+const int MAX_FRAMES_IN_FLIGHT = 3;
+
+// A FrameResources struct manages the lifetime of
+// a single frame of animation.
+struct FrameResources
+{
+	// Command buffer handle used to record operations
+	// of a single, indipendent frame of animation.
+	// NOTE: In real-life application there will be
+	// multiple command buffers, recorded in multiple
+	// threads.
+	VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+
+	// Semaphore passed to the presentation engine
+	// when we acquire an image from the swapchain.
+	// This semaphore must then be provided as one
+	// of the wait semaphores when we submit the
+	// command buffer to a queue.
+	VkSemaphore	image_acquired_semaphore = VK_NULL_HANDLE;
+
+	// Semaphore that gets signaled when a queue
+	// stops processing our command buffer. We use
+	// it during the image presentation, so the 
+	// presentation engine knows when the image is
+	// ready.
+	VkSemaphore	ready_to_present_semaphore = VK_NULL_HANDLE;
+
+	// We provide this fence during the command buffer
+	// submission. It gets signaled when the command
+	// buffer is no longer executed on a queue.
+	// This is necessary to synchronize operations on
+	// the CPU side (the operations our application
+	// performs), not the GPU (and the presentation
+	// engine). When this fence is signaled we know
+	// that we can both re-record the command buffer
+	// and destroy a framebuffer.
+	VkFence	drawing_finished_fence = VK_NULL_HANDLE;
+
+	// Image view for an image serving as depth
+	// attachment inside a sub-pass.
+	VkImageView	depth_attachment = VK_NULL_HANDLE;
+
+	// Temporary framebuffer handle created for the
+	// lifetime of a single frame of animation.
+	VkFramebuffer framebuffer = VK_NULL_HANDLE;
+
+	uint32_t image_index;
+};
+
+struct Device
+{
+	Device(WSI* wsi, Context* context);
+
+	void init();
+	void cleanup();
+
+	FrameResources& begin_draw_frame();
+	void end_draw_frame(FrameResources& frame_resources);
+
+	WSI* wsi;
+	Context* context;
+
+	// Render Pass
+	VkRenderPass render_pass = VK_NULL_HANDLE;
+	// Command Pool
+	VkCommandPool command_pool = VK_NULL_HANDLE;
+
+	FrameResources* frame_resources;
+
+private:
+
+	// Render pass helpers
+	void create_render_pass();
+	void destroy_render_pass();
+
+	// Framebuffer helpers
+	void destroy_framebuffers();
+
+	// Command Pool and command buffer helpers
+	void create_command_pool();
+	void destroy_command_pool();
+	void allocate_command_buffers();
+	void free_command_buffers();
+
+	// Synchronization Objects helpers
+	void create_sync_objects();
+	void destroy_sync_objects();
+
+	uint32_t frame_index = 0;
+
+}; // struct Device
+
+} // namespace Vulkan

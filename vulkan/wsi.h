@@ -45,6 +45,8 @@ struct WSI
 	bool window_resized();
 	bool framebuffer_resized = false;
 
+	Vulkan::Context* context;
+
 private:
 	int width;
 	int height;
@@ -52,7 +54,6 @@ private:
 
 	bool is_resizing = false;
 
-	Vulkan::Context* context;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 
