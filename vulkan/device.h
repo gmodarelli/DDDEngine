@@ -56,6 +56,9 @@ struct FrameResources
 	VkFramebuffer framebuffer = VK_NULL_HANDLE;
 
 	uint32_t image_index;
+
+	uint32_t timestamp_query_pool_count = 0;
+	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
 };
 
 struct Device
@@ -78,6 +81,9 @@ struct Device
 
 	FrameResources* frame_resources;
 
+	// Query pool
+	VkQueryPool timestamp_query_pool;
+
 private:
 
 	// Render pass helpers
@@ -96,6 +102,10 @@ private:
 	// Synchronization Objects helpers
 	void create_sync_objects();
 	void destroy_sync_objects();
+
+	// Query pool helpers
+	void create_query_pool();
+	void destroy_query_pool();
 
 	uint32_t frame_index = 0;
 

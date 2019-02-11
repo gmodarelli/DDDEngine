@@ -32,6 +32,11 @@ VkPhysicalDevice Context::get_gpu() const
 	return gpu;
 }
 
+VkPhysicalDeviceProperties Context::get_gpu_properties() const
+{
+	return gpu_properties;
+}
+
 VkDevice Context::get_device() const
 {
 	assert(device != VK_NULL_HANDLE);

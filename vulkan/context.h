@@ -45,6 +45,8 @@ struct Context
 	VkQueue get_graphics_queue() const;
 	VkQueue get_transfer_queue() const;
 
+	VkPhysicalDeviceProperties get_gpu_properties() const;
+
 private:
 
 	bool init_vulkan();

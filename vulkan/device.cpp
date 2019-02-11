@@ -1,5 +1,6 @@
 #include "device.h"
 #include <cassert>
+#include <stdio.h>
 
 namespace Vulkan
 {
@@ -15,6 +16,7 @@ void Device::init()
 	create_command_pool();
 	allocate_command_buffers();
 	create_sync_objects();
+	create_query_pool();
 }
 
 void Device::cleanup()
@@ -25,6 +27,7 @@ void Device::cleanup()
 	// execution, so we wait.
 	vkQueueWaitIdle(wsi->get_graphics_queue());
 
+	destroy_query_pool();
 	destroy_sync_objects();
 	free_command_buffers();
 	destroy_command_pool();
@@ -82,6 +85,9 @@ FrameResources& Device::begin_draw_frame()
 	result = vkBeginCommandBuffer(current_frame.command_buffer, &command_buffer_bi);
 	assert(result == VK_SUCCESS);
 
+	vkCmdResetQueryPool(current_frame.command_buffer, current_frame.timestamp_query_pool, 0, current_frame.timestamp_query_pool_count);
+	vkCmdWriteTimestamp(current_frame.command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, current_frame.timestamp_query_pool, 0);
+
 	VkRenderPassBeginInfo render_pass_bi = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	render_pass_bi.renderPass = render_pass;
 	render_pass_bi.framebuffer = current_frame.framebuffer;
@@ -102,9 +108,21 @@ FrameResources& Device::begin_draw_frame()
 
 void Device::end_draw_frame(FrameResources& current_frame)
 {
+	static double frame_gpu_avg = 0;
+
 	vkCmdEndRenderPass(current_frame.command_buffer);
 
-	VkResult result = vkEndCommandBuffer(current_frame.command_buffer);
+	vkCmdWriteTimestamp(current_frame.command_buffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, current_frame.timestamp_query_pool, 1);
+	uint64_t timestamp_results[2] = {};
+	VkResult result = vkGetQueryPoolResults(wsi->get_device(), current_frame.timestamp_query_pool, 0, ARRAYSIZE(timestamp_results), sizeof(timestamp_results), timestamp_results, sizeof(timestamp_results[0]), VK_QUERY_RESULT_64_BIT);
+
+	double frame_gpu_begin = double(timestamp_results[0]) * context->get_gpu_properties().limits.timestampPeriod * 1e-6;
+	double frame_gpu_end = double(timestamp_results[1]) * context->get_gpu_properties().limits.timestampPeriod * 1e-6;
+	frame_gpu_avg = frame_gpu_avg * 0.95 + (frame_gpu_end - frame_gpu_begin) * 0.05;
+
+	printf("\n: GPU: %.4fms\n", frame_gpu_avg);
+
+	result = vkEndCommandBuffer(current_frame.command_buffer);
 	assert(result == VK_SUCCESS);
 
 	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
@@ -322,6 +340,32 @@ void Device::destroy_sync_objects()
 		vkDestroySemaphore(wsi->get_device(), frame_resources[i].image_acquired_semaphore, nullptr);
 		vkDestroySemaphore(wsi->get_device(), frame_resources[i].ready_to_present_semaphore, nullptr);
 		vkDestroyFence(wsi->get_device(), frame_resources[i].drawing_finished_fence, nullptr);
+	}
+}
+
+// Query Pool helpers
+
+void Device::create_query_pool()
+{
+	uint32_t query_count = 16;
+
+	VkQueryPoolCreateInfo create_info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
+	create_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
+	create_info.queryCount = query_count;
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		VkResult result = vkCreateQueryPool(wsi->get_device(), &create_info, nullptr, &frame_resources[i].timestamp_query_pool);
+		assert(result == VK_SUCCESS);
+		frame_resources[i].timestamp_query_pool_count = query_count;
+	}
+}
+
+void Device::destroy_query_pool()
+{
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		vkDestroyQueryPool(wsi->get_device(), frame_resources[i].timestamp_query_pool, nullptr);
 	}
 }
 
