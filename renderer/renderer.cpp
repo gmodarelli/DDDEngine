@@ -15,25 +15,49 @@ void Renderer::init()
 {
 	create_graphics_pipeline();
 
-	vertex_count = 3;
+	vertex_count = 4;
 	vertices = new Vertex[vertex_count];
-	vertices[0] = { {0.0f, -0.5f}, {1.0f, 1.0f, 0.0f} };
-	vertices[1] = { {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} };
-	vertices[2] = { {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
+	vertices[0] = { {-0.5f, -0.5f}, {1.0f, 1.0f, 0.0f} };
+	vertices[1] = { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f} };
+	vertices[2] = { {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
+	vertices[3] = { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f} };
 
-	VkDeviceSize  size = sizeof(vertices[0]) * vertex_count;
+	index_count = 6;
+	indices = new uint16_t[index_count];
+	indices[0] = 0;
+	indices[1] = 1;
+	indices[2] = 2;
+	indices[3] = 2;
+	indices[4] = 3;
+	indices[5] = 0;
 
-	Vulkan::Buffer* staging_buffer = new Vulkan::Buffer(
+	VkDeviceSize vertices_size = sizeof(vertices[0]) * vertex_count;
+
+	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
 		device->context->device,
 		device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		size);
+		vertices_size);
 
-	void* data;
-	vkMapMemory(device->context->device, staging_buffer->device_memory, 0, staging_buffer->size, 0, &data);
-	memcpy(data, vertices, (size_t)staging_buffer->size);
-	vkUnmapMemory(device->context->device, staging_buffer->device_memory);
+	void* vertex_data;
+	vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertex_data);
+	memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
+	vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
+
+	VkDeviceSize indices_size = sizeof(indices[0]) * index_count;
+
+	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
+		device->context->device,
+		device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		indices_size);
+
+	void* index_data;
+	vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &index_data);
+	memcpy(index_data, indices, (size_t)index_staging_buffer->size);
+	vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
 
 	// TODO: This should be created by the Device struct
 	// and given a bigger size. We'll transfer staging buffers data into it
@@ -44,17 +68,32 @@ void Renderer::init()
 		device->context->gpu,
 		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		size);
+		vertices_size);
 
-	VkCommandBuffer copy_cmd = device->create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-	VkBufferCopy copy_region = {};
-	copy_region.size = size;
+	index_buffer = new Vulkan::Buffer(
+		device->context->device,
+		device->context->gpu,
+		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		indices_size);
 
-	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, vertex_buffer->buffer, 1, &copy_region);
+	{
+		VkCommandBuffer copy_cmd = device->create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-	device->flush_transfer_command_buffer(copy_cmd);
+		VkBufferCopy copy_region = {};
+		copy_region.size = vertices_size;
 
-	staging_buffer->destroy(device->context->device);
+		vkCmdCopyBuffer(copy_cmd, vertex_staging_buffer->buffer, vertex_buffer->buffer, 1, &copy_region);
+
+		copy_region.size = indices_size;
+
+		vkCmdCopyBuffer(copy_cmd, index_staging_buffer->buffer, index_buffer->buffer, 1, &copy_region);
+
+		device->flush_transfer_command_buffer(copy_cmd);
+	}
+
+	vertex_staging_buffer->destroy(device->context->device);
+	index_staging_buffer->destroy(device->context->device);
 }
 
 void Renderer::render_frame()
@@ -75,9 +114,11 @@ void Renderer::render_frame()
 
 	VkBuffer vertex_buffers[] = { vertex_buffer->buffer };
 	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 
-	vkCmdDraw(frame_resources.command_buffer, vertex_count, 1, 0, 0);
+	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
+	vkCmdBindIndexBuffer(frame_resources.command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+
+	vkCmdDrawIndexed(frame_resources.command_buffer, index_count, 1, 0, 0, 0);
 
 	device->end_draw_frame(frame_resources);
 
@@ -90,6 +131,7 @@ void Renderer::cleanup()
 	vkQueueWaitIdle(device->context->graphics_queue);
 
 	vertex_buffer->destroy(device->context->device);
+	index_buffer->destroy(device->context->device);
 
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{

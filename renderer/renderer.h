@@ -33,10 +33,15 @@ struct Renderer
 
 	double frame_cpu_avg = 0;
 
+	// TODO: Merge these two buffers and move them to the Device struct
+	Vulkan::Buffer* vertex_buffer;
+	Vulkan::Buffer* index_buffer;
+
 	// Scene related stuff?
 	uint32_t vertex_count = 0;
-	Vulkan::Buffer* vertex_buffer;
+	uint32_t index_count = 0;
 	Vertex* vertices;
+	uint16_t* indices;
 
 }; // struct Renderer
 
