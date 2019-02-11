@@ -13,7 +13,7 @@ Device::Device(WSI* wsi, Context* context) : wsi(wsi), context(context)
 void Device::init()
 {
 	create_render_pass();
-	create_command_pool();
+	create_command_pools();
 	allocate_command_buffers();
 	create_sync_objects();
 	create_query_pool();
@@ -30,9 +30,58 @@ void Device::cleanup()
 	destroy_query_pool();
 	destroy_sync_objects();
 	free_command_buffers();
-	destroy_command_pool();
+	destroy_command_pools();
 	destroy_framebuffers();
 	destroy_render_pass();
+}
+
+VkCommandBuffer Device::create_transfer_command_buffer(VkCommandBufferLevel level, bool begin)
+{
+	VkCommandBufferAllocateInfo command_buffer_ai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+	command_buffer_ai.commandPool = transfer_command_pool;
+	command_buffer_ai.level = level;
+	command_buffer_ai.commandBufferCount = 1;
+
+	VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+	VkResult result = vkAllocateCommandBuffers(context->device, &command_buffer_ai, &command_buffer);
+	assert(result == VK_SUCCESS);
+
+	if (begin)
+	{
+		VkCommandBufferBeginInfo command_buffer_bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+		vkBeginCommandBuffer(command_buffer, &command_buffer_bi);
+	}
+
+	return command_buffer;
+}
+
+void Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free)
+{
+	VkResult result = vkEndCommandBuffer(command_buffer);
+	assert(result == VK_SUCCESS);
+
+	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &command_buffer;
+
+	VkFenceCreateInfo fence_ci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+	VkFence fence = VK_NULL_HANDLE;
+	result = vkCreateFence(context->device, &fence_ci, nullptr, &fence);
+	assert(result == VK_SUCCESS);
+
+	result = vkQueueSubmit(context->transfer_queue, 1, &submit_info, fence);
+	assert(result == VK_SUCCESS);
+
+	result = vkWaitForFences(context->device, 1, &fence, VK_TRUE, UINT64_MAX);
+	assert(result == VK_SUCCESS);
+
+	vkDestroyFence(context->device, fence, nullptr);
+
+	if (free)
+	{
+		vkFreeCommandBuffers(context->device, transfer_command_pool, 1, &command_buffer);
+		command_buffer = VK_NULL_HANDLE;
+	}
 }
 
 FrameResources& Device::begin_draw_frame()
@@ -255,7 +304,7 @@ void Device::destroy_framebuffers()
 }
 
 // Command pool and command buffer helpers
-void Device::create_command_pool()
+void Device::create_command_pools()
 {
 	VkCommandPoolCreateInfo command_pool_ci = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
 	command_pool_ci.queueFamilyIndex = context->graphics_family_index;
@@ -266,14 +315,25 @@ void Device::create_command_pool()
 
 	VkResult result = vkCreateCommandPool(context->device, &command_pool_ci, nullptr, &command_pool);
 	assert(result == VK_SUCCESS);
+
+	command_pool_ci.queueFamilyIndex = context->transfer_family_index;
+
+	result = vkCreateCommandPool(context->device, &command_pool_ci, nullptr, &transfer_command_pool);
+	assert(result == VK_SUCCESS);
 }
 
-void Device::destroy_command_pool()
+void Device::destroy_command_pools()
 {
 	if (command_pool != VK_NULL_HANDLE)
 	{
 		vkDestroyCommandPool(context->device, command_pool, nullptr);
 		command_pool = VK_NULL_HANDLE;
+	}
+
+	if (transfer_command_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(context->device, transfer_command_pool, nullptr);
+		transfer_command_pool = VK_NULL_HANDLE;
 	}
 }
 

@@ -76,8 +76,9 @@ struct Device
 
 	// Render Pass
 	VkRenderPass render_pass = VK_NULL_HANDLE;
-	// Command Pool
+	// Command Pools
 	VkCommandPool command_pool = VK_NULL_HANDLE;
+	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
 
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
@@ -86,6 +87,9 @@ struct Device
 	VkQueryPool timestamp_query_pool;
 
 	double frame_gpu_avg = 0;
+
+	VkCommandBuffer create_transfer_command_buffer(VkCommandBufferLevel level, bool begin = true);
+	void flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free = true);
 
 private:
 
@@ -97,8 +101,8 @@ private:
 	void destroy_framebuffers();
 
 	// Command Pool and command buffer helpers
-	void create_command_pool();
-	void destroy_command_pool();
+	void create_command_pools();
+	void destroy_command_pools();
 	void allocate_command_buffers();
 	void free_command_buffers();
 

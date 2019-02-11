@@ -21,17 +21,40 @@ void Renderer::init()
 	vertices[1] = { {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f} };
 	vertices[2] = { {-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
 
+	VkDeviceSize  size = sizeof(vertices[0]) * vertex_count;
+
+	Vulkan::Buffer* staging_buffer = new Vulkan::Buffer(
+		device->context->device,
+		device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		size);
+
+	void* data;
+	vkMapMemory(device->context->device, staging_buffer->device_memory, 0, staging_buffer->size, 0, &data);
+	memcpy(data, vertices, (size_t)staging_buffer->size);
+	vkUnmapMemory(device->context->device, staging_buffer->device_memory);
+
+	// TODO: This should be created by the Device struct
+	// and given a bigger size. We'll transfer staging buffers data into it
+	// using offsets and alignments.
+	// https://developer.nvidia.com/vulkan-memory-management
 	vertex_buffer = new Vulkan::Buffer(
 		device->context->device,
 		device->context->gpu,
-		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		sizeof(vertices[0]) * vertex_count);
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		size);
 
-	void* data;
-	vkMapMemory(device->context->device, vertex_buffer->device_memory, 0, vertex_buffer->size, 0, &data);
-	memcpy(data, vertices, (size_t)vertex_buffer->size);
-	vkUnmapMemory(device->context->device, vertex_buffer->device_memory);
+	VkCommandBuffer copy_cmd = device->create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	VkBufferCopy copy_region = {};
+	copy_region.size = size;
+
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, vertex_buffer->buffer, 1, &copy_region);
+
+	device->flush_transfer_command_buffer(copy_cmd);
+
+	staging_buffer->destroy(device->context->device);
 }
 
 void Renderer::render_frame()
