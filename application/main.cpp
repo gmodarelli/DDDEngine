@@ -785,6 +785,7 @@ int main()
 #else
 
 #include <inttypes.h>
+#include <stdio.h>
 #include "../vulkan/wsi.h"
 #include "../vulkan/device.h"
 #include "../renderer/renderer.h"
@@ -807,9 +808,13 @@ int main()
 	renderer = new Renderer::Renderer(device);
 	renderer->init();
 
+	char stats[256];
+
 	while (wsi->alive())
 	{
 		renderer->render_frame();
+		sprintf(stats, "73 Games - CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, device->frame_gpu_avg);
+		wsi->set_window_title(stats);
 	}
 
 	renderer->cleanup();

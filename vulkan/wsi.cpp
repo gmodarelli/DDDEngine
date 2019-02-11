@@ -57,6 +57,11 @@ bool WSI::init()
 	return true;
 }
 
+void WSI::set_window_title(const char* title)
+{
+	glfwSetWindowTitle(window, title);
+}
+
 void WSI::cleanup()
 {
 	if (swapchain != VK_NULL_HANDLE)

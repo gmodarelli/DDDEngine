@@ -47,6 +47,8 @@ struct WSI
 	GLFWwindow* window = NULL;
 	bool is_resizing = false;
 
+	void set_window_title(const char* title);
+
 private:
 
 	// Surface
