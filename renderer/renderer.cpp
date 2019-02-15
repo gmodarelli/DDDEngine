@@ -301,6 +301,7 @@ void Renderer::create_graphics_pipeline()
 	viewport_ci.pViewports = &viewport;
 	viewport_ci.scissorCount = 1;
 	viewport_ci.pScissors = &scissor;
+
 	// Rasterizer
 	VkPipelineRasterizationStateCreateInfo rasterizer_ci = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
 	// If depthClampEnable is set to VK_TRUE, then fragments that are beyond the near and far planes are clamped to them 
@@ -318,6 +319,15 @@ void Renderer::create_graphics_pipeline()
 	// are drawn
 	rasterizer_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer_ci.depthBiasEnable = VK_FALSE;
+
+	// Depth Buffer
+	VkPipelineDepthStencilStateCreateInfo depth_stencil_ci = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	depth_stencil_ci.depthTestEnable = VK_TRUE;
+	depth_stencil_ci.depthWriteEnable = VK_TRUE;
+	depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS;
+	depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
+	depth_stencil_ci.stencilTestEnable = VK_FALSE;
+
 	// Multisampling
 	VkPipelineMultisampleStateCreateInfo multisampling_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
 	multisampling_ci.sampleShadingEnable = VK_FALSE;
@@ -359,6 +369,7 @@ void Renderer::create_graphics_pipeline()
 	pipeline_ci.pInputAssemblyState = &input_assembly_ci;
 	pipeline_ci.pViewportState = &viewport_ci;
 	pipeline_ci.pRasterizationState = &rasterizer_ci;
+	pipeline_ci.pDepthStencilState = &depth_stencil_ci;
 	pipeline_ci.pMultisampleState = &multisampling_ci;
 	pipeline_ci.pColorBlendState = &color_blend_ci;
 	pipeline_ci.pDynamicState = &dynamic_state_ci;

@@ -12,11 +12,12 @@ Device::Device(WSI* wsi, Context* context) : wsi(wsi), context(context)
 
 void Device::init()
 {
-	create_render_pass();
 	create_command_pools();
 	create_vertex_index_buffers();
 	create_depth_buffer();
 	allocate_command_buffers();
+
+	create_render_pass();
 	create_sync_objects();
 	create_descriptor_pool();
 	create_ubo_buffers();
@@ -35,12 +36,13 @@ void Device::cleanup()
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
 	destroy_sync_objects();
+	destroy_render_pass();
+
 	free_command_buffers();
 	destroy_depth_buffer();
 	free_vertex_index_buffers();
 	destroy_command_pools();
 	destroy_framebuffers();
-	destroy_render_pass();
 }
 
 VkDeviceSize Device::upload_vertex_buffer(Vulkan::Buffer* staging_buffer)
@@ -246,7 +248,10 @@ FrameResources& Device::begin_draw_frame()
 	VkResult result = vkAcquireNextImageKHR(context->device, wsi->swapchain, UINT64_MAX, current_frame.image_acquired_semaphore, VK_NULL_HANDLE, &image_index);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || wsi->window_resized())
 	{
+		// TODO: Move the resize logic to its own function
 		wsi->recreate_swapchain();
+		destroy_depth_buffer();
+		create_depth_buffer();
 		// TODO: Should we recreate the render pass as well?
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -257,7 +262,7 @@ FrameResources& Device::begin_draw_frame()
 	current_frame.image_index = image_index;
 
 	// Prepare the framebuffer
-	VkImageView attachments[] = { wsi->swapchain_image_views[image_index] };
+	VkImageView attachments[] = { wsi->swapchain_image_views[image_index], depth_buffer->image_view };
 
 	VkFramebufferCreateInfo framebuffer_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebuffer_ci.renderPass = render_pass;
@@ -285,9 +290,11 @@ FrameResources& Device::begin_draw_frame()
 	render_pass_bi.renderArea.offset = { 0, 0 };
 	render_pass_bi.renderArea.extent = wsi->swapchain_extent;
 
-	VkClearValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	render_pass_bi.clearValueCount = 1;
-	render_pass_bi.pClearValues = &clear_color;
+	VkClearValue clear_values[2];
+	clear_values[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clear_values[1].depthStencil = { 1.0f, 0 };
+	render_pass_bi.clearValueCount = ARRAYSIZE(clear_values);
+	render_pass_bi.pClearValues = clear_values;
 
 	// VK_SUBPASS_CONTENTS_INLINE means that the render pass commands (like drawing comands)
 	// will be embedded in the primary command buffer and no secondary command buffers will
@@ -353,7 +360,10 @@ void Device::end_draw_frame(FrameResources& current_frame)
 	result = vkQueuePresentKHR(context->graphics_queue, &present_info);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || wsi->window_resized())
 	{
+		// TODO: Move the resize logic to its own function
 		wsi->recreate_swapchain();
+		destroy_depth_buffer();
+		create_depth_buffer();
 		// TODO: Should we recreate the render pass as well?
 	}
 	else if (result != VK_SUCCESS)
@@ -394,16 +404,26 @@ void Device::create_render_pass()
 	color_attachment_ref.attachment = 0;
 	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	// We have a depth buffer attachment
+	VkAttachmentDescription depth_buffer_attachment = {};
+	depth_buffer_attachment.format = depth_buffer->image_format;
+	depth_buffer_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_buffer_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_buffer_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_buffer_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depth_buffer_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_buffer_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_buffer_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depth_attachment_ref = {};
+	depth_attachment_ref.attachment = 1;
+	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &color_attachment_ref;
-
-	VkRenderPassCreateInfo render_pass_ci = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-	render_pass_ci.attachmentCount = 1;
-	render_pass_ci.pAttachments = &color_attachment;
-	render_pass_ci.subpassCount = 1;
-	render_pass_ci.pSubpasses = &subpass;
+	subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
 	// Make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage
 	// We specify VK_SUBPASS_EXTERNAL to refer to the implicity subpass before the render pass
@@ -420,6 +440,13 @@ void Device::create_render_pass()
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+	VkAttachmentDescription attachments[] = { color_attachment, depth_buffer_attachment };
+
+	VkRenderPassCreateInfo render_pass_ci = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+	render_pass_ci.attachmentCount = ARRAYSIZE(attachments);
+	render_pass_ci.pAttachments = attachments;
+	render_pass_ci.subpassCount = 1;
+	render_pass_ci.pSubpasses = &subpass;
 	render_pass_ci.dependencyCount = 1;
 	render_pass_ci.pDependencies = &dependency;
 

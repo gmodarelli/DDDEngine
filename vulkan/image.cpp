@@ -5,6 +5,8 @@ namespace Vulkan
 
 Image::Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat format, VkImageAspectFlags aspect_flags, VkImageTiling tiling, VkImageUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkSharingMode sharing_mode)
 {
+	image_format = format;
+
 	// Create the depth image
 	VkImageCreateInfo image_ci = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
 	image_ci.imageType = VK_IMAGE_TYPE_2D;
