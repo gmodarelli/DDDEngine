@@ -93,6 +93,9 @@
     <ClCompile Include="..\vulkan\device.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\vulkan\image.cpp">
+      <Filter>vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\simple.frag">
@@ -161,6 +164,9 @@
       <Filter>vulkan</Filter>
     </ClInclude>
     <ClInclude Include="..\vulkan\device.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vulkan\image.h">
       <Filter>vulkan</Filter>
     </ClInclude>
   </ItemGroup>

@@ -12,9 +12,10 @@ Device::Device(WSI* wsi, Context* context) : wsi(wsi), context(context)
 
 void Device::init()
 {
-	create_vertex_index_buffers();
 	create_render_pass();
 	create_command_pools();
+	create_vertex_index_buffers();
+	create_depth_buffer();
 	allocate_command_buffers();
 	create_sync_objects();
 	create_descriptor_pool();
@@ -35,10 +36,11 @@ void Device::cleanup()
 	destroy_descriptor_pool();
 	destroy_sync_objects();
 	free_command_buffers();
+	destroy_depth_buffer();
+	free_vertex_index_buffers();
 	destroy_command_pools();
 	destroy_framebuffers();
 	destroy_render_pass();
-	free_vertex_index_buffers();
 }
 
 VkDeviceSize Device::upload_vertex_buffer(Vulkan::Buffer* staging_buffer)
@@ -112,6 +114,57 @@ void Device::free_vertex_index_buffers()
 {
 	vertex_buffer->destroy(context->device);
 	index_buffer->destroy(context->device);
+}
+
+void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout)
+{
+	VkCommandBuffer command_buffer = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	VkPipelineStageFlags source_stage;
+	VkPipelineStageFlags destination_stage;
+
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.oldLayout = src_layout;
+	barrier.newLayout = dst_layout;
+	barrier.srcQueueFamilyIndex = context->transfer_family_index;
+	barrier.dstQueueFamilyIndex = context->graphics_family_index;
+	barrier.image = image;
+
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	if (dst_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	{
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT)
+		{
+			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
+	}
+	else
+	{
+		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+
+	// TODO: Add more layout transition stages when we start working with textures
+	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED && dst_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	}
+	else
+	{
+		assert(!"unsupported layout transition");
+	}
+
+	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+	flush_transfer_command_buffer(command_buffer);
 }
 
 VkCommandBuffer Device::create_transfer_command_buffer(VkCommandBufferLevel level, bool begin)
@@ -382,6 +435,50 @@ void Device::destroy_render_pass()
 		render_pass = VK_NULL_HANDLE;
 	}
 }
+
+void Device::create_depth_buffer()
+{
+	VkFormat depth_format = find_supported_format(VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+	depth_buffer = new Vulkan::Image(context->device, context->gpu, wsi->swapchain_extent, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	transition_image_layout(depth_buffer->image, depth_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
+
+VkFormat Device::find_supported_format(VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	VkFormat candidates[] =
+	{
+		VK_FORMAT_D32_SFLOAT,
+		VK_FORMAT_D32_SFLOAT_S8_UINT,
+		VK_FORMAT_D24_UNORM_S8_UINT,
+	};
+
+	for (uint32_t i = 0; i < ARRAYSIZE(candidates); ++i)
+	{
+		VkFormatProperties properties;
+		vkGetPhysicalDeviceFormatProperties(context->gpu, candidates[i], &properties);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
+		{
+			return candidates[i];
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
+		{
+			return candidates[i];
+		}
+	}
+
+	assert(!"Failed to find supported format");
+}
+
+
+void Device::destroy_depth_buffer()
+{
+	if (depth_buffer != nullptr)
+	{
+		depth_buffer->destroy(context->device);
+	}
+}
+
 
 void Device::destroy_framebuffers()
 {

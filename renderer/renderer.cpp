@@ -5,6 +5,7 @@
 #include <chrono>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -24,10 +25,10 @@ void Renderer::init()
 
 	{
 		Vertex vertices[4];
-		vertices[0] = { {-0.5f, -0.5f, 1.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
-		vertices[1] = { {0.5f, -0.5f, 1.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
-		vertices[2] = { {0.5f, 0.5f, 1.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} };
-		vertices[3] = { {-0.5f, 0.5f, 1.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
+		vertices[0] = { {-0.5f, -0.5f, 0.5f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
+		vertices[1] = { {0.5f, -0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
+		vertices[2] = { {0.5f, 0.5f, 0.5f},    {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
+		vertices[3] = { {-0.5f, 0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
 
 		uint16_t indices[6];
 		indices[0] = 0;
@@ -78,10 +79,10 @@ void Renderer::init()
 
 	{
 		Vertex vertices[4];
-		vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
-		vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f} };
-		vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 1.0f} };
-		vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
+		vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+		vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+		vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+		vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
 
 		uint16_t indices[6];
 		indices[0] = 0;

@@ -4,6 +4,7 @@
 #include "wsi.h"
 #include "context.h"
 #include "buffer.h"
+#include "image.h"
 
 namespace Vulkan
 {
@@ -82,6 +83,9 @@ struct Device
 	// Render Pass
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 
+	// Depth Buffer
+	Vulkan::Image* depth_buffer;
+
 	// Command Pools
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
@@ -90,15 +94,6 @@ struct Device
 	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);
 
-	// TODO: Merge these two buffers
-	Vulkan::Buffer* vertex_buffer;
-	Vulkan::Buffer* index_buffer;
-	VkDeviceSize vertex_head_cursor = 0;
-	VkDeviceSize index_head_cursor = 0;
-
-	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
-	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
-
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
 
@@ -106,6 +101,18 @@ struct Device
 	VkQueryPool timestamp_query_pool;
 
 	double frame_gpu_avg = 0;
+
+	// TODO: Merge these two buffers
+	Vulkan::Buffer* vertex_buffer;
+	Vulkan::Buffer* index_buffer;
+	VkDeviceSize vertex_head_cursor = 0;
+	VkDeviceSize index_head_cursor = 0;
+
+
+	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
+	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
+
+	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);
 
 	VkCommandBuffer create_transfer_command_buffer(VkCommandBufferLevel level, bool begin = true);
 	void flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free = true);
@@ -119,6 +126,11 @@ private:
 	// Render pass helpers
 	void create_render_pass();
 	void destroy_render_pass();
+
+	// Depth buffer helpers
+	void create_depth_buffer();
+	void destroy_depth_buffer();
+	VkFormat find_supported_format(VkImageTiling tiling, VkFormatFeatureFlags features);
 
 	// Framebuffer helpers
 	void destroy_framebuffers();

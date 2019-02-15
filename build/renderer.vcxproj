@@ -168,6 +168,7 @@
     <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
     <ClCompile Include="..\vulkan\device.cpp" />
+    <ClCompile Include="..\vulkan\image.cpp" />
     <ClCompile Include="..\vulkan\shader.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />
     <None Include="..\data\shaders\glft.vert">
@@ -211,6 +212,7 @@
     <ClInclude Include="..\vulkan\context.h" />
     <ClInclude Include="..\vulkan\device.h" />
     <ClInclude Include="..\vulkan\gltf.h" />
+    <ClInclude Include="..\vulkan\image.h" />
     <ClInclude Include="..\vulkan\shaders.h" />
     <ClInclude Include="..\vulkan\swapchain.h" />
     <ClInclude Include="..\vulkan\utils.h" />
