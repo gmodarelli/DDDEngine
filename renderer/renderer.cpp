@@ -19,15 +19,13 @@ void Renderer::init()
 {
 	create_graphics_pipeline();
 
-	vertex_count = 4;
-	vertices = new Vertex[vertex_count];
-	vertices[0] = { {-0.5f, -0.5f}, {1.0f, 1.0f, 0.0f} };
-	vertices[1] = { {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f} };
-	vertices[2] = { {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} };
-	vertices[3] = { {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f} };
+	Vertex vertices[4];
+	vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
+	vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+	vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} };
+	vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
 
-	index_count = 6;
-	indices = new uint16_t[index_count];
+	uint16_t indices[6];
 	indices[0] = 0;
 	indices[1] = 1;
 	indices[2] = 2;
@@ -35,7 +33,7 @@ void Renderer::init()
 	indices[4] = 3;
 	indices[5] = 0;
 
-	VkDeviceSize vertices_size = sizeof(vertices[0]) * vertex_count;
+	VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
 
 	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
 		device->context->device,
@@ -49,7 +47,7 @@ void Renderer::init()
 	memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
 	vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
 
-	VkDeviceSize indices_size = sizeof(indices[0]) * index_count;
+	VkDeviceSize indices_size = sizeof(indices[0]) * 6;
 
 	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
 		device->context->device,
@@ -63,38 +61,26 @@ void Renderer::init()
 	memcpy(index_data, indices, (size_t)index_staging_buffer->size);
 	vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
 
-	// TODO: This should be created by the Device struct
-	// and given a bigger size. We'll transfer staging buffers data into it
-	// using offsets and alignments.
-	// https://developer.nvidia.com/vulkan-memory-management
-	vertex_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
-		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		vertices_size);
-
-	index_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
-		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		indices_size);
-
 	{
 		VkCommandBuffer copy_cmd = device->create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 		VkBufferCopy copy_region = {};
 		copy_region.size = vertices_size;
 
-		vkCmdCopyBuffer(copy_cmd, vertex_staging_buffer->buffer, vertex_buffer->buffer, 1, &copy_region);
+		vkCmdCopyBuffer(copy_cmd, vertex_staging_buffer->buffer, device->vertex_buffer->buffer, 1, &copy_region);
 
 		copy_region.size = indices_size;
 
-		vkCmdCopyBuffer(copy_cmd, index_staging_buffer->buffer, index_buffer->buffer, 1, &copy_region);
+		vkCmdCopyBuffer(copy_cmd, index_staging_buffer->buffer, device->index_buffer->buffer, 1, &copy_region);
 
 		device->flush_transfer_command_buffer(copy_cmd);
 	}
+
+	meshes_count = 1;
+	meshes = new Mesh[meshes_count];
+	meshes[0].index_offset = 0;
+	meshes[0].index_count = 6;
+	meshes[0].vertex_offset = 0;
 
 	vertex_staging_buffer->destroy(device->context->device);
 	index_staging_buffer->destroy(device->context->device);
@@ -140,13 +126,16 @@ void Renderer::render_frame()
 	update_uniform_buffer(frame_resources);
 	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame_resources.descriptor_set, 0, nullptr);
 
-	VkBuffer vertex_buffers[] = { vertex_buffer->buffer };
+	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
 	VkDeviceSize offsets[] = { 0 };
 
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
-	vkCmdBindIndexBuffer(frame_resources.command_buffer, index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	vkCmdDrawIndexed(frame_resources.command_buffer, index_count, 1, 0, 0, 0);
+	for (uint32_t i = 0; i < meshes_count; ++i)
+	{
+		vkCmdDrawIndexed(frame_resources.command_buffer, meshes[0].index_count, 1, meshes[0].index_offset, meshes[0].vertex_offset, 0);
+	}
 
 	device->end_draw_frame(frame_resources);
 
@@ -175,9 +164,6 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
-
-	vertex_buffer->destroy(device->context->device);
-	index_buffer->destroy(device->context->device);
 
 	if (descriptor_set_layout != VK_NULL_HANDLE)
 	{
@@ -218,19 +204,24 @@ void Renderer::create_graphics_pipeline()
 	vertex_input_ci.pVertexBindingDescriptions = &vertex_binding_description;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
-	// originating from a binding description. We have two attributes, position and color,
-	// so we need two attribute description structs
-	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[2];
+	// originating from a binding description. We have 3 attributes, position, normal and color,
+	// so we need 3 attribute description structs
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[3];
 	// Position
 	vertex_input_attribute_descriptions[0].binding = 0;
 	vertex_input_attribute_descriptions[0].location = 0;
-	vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
-	// Color
+	// Normal
 	vertex_input_attribute_descriptions[1].binding = 0;
 	vertex_input_attribute_descriptions[1].location = 1;
 	vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, color);
+	vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
+	// Color
+	vertex_input_attribute_descriptions[2].binding = 0;
+	vertex_input_attribute_descriptions[2].location = 2;
+	vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
 
 	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
 	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;

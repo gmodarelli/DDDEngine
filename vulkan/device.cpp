@@ -12,6 +12,7 @@ Device::Device(WSI* wsi, Context* context) : wsi(wsi), context(context)
 
 void Device::init()
 {
+	create_vertex_index_buffers();
 	create_render_pass();
 	create_command_pools();
 	allocate_command_buffers();
@@ -37,6 +38,36 @@ void Device::cleanup()
 	destroy_command_pools();
 	destroy_framebuffers();
 	destroy_render_pass();
+	free_vertex_index_buffers();
+}
+
+void Device::create_vertex_index_buffers()
+{
+	// TODO: Figure out the needed size
+	// NOTE: 10 MB
+	uint64_t size = 10 * 1024 * 1024;
+	// We'll transfer staging buffers data into it
+	// using offsets and alignments.
+	// https://developer.nvidia.com/vulkan-memory-management
+	vertex_buffer = new Vulkan::Buffer(
+		context->device,
+		context->gpu,
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		size);
+
+	index_buffer = new Vulkan::Buffer(
+		context->device,
+		context->gpu,
+		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		size);
+}
+
+void Device::free_vertex_index_buffers()
+{
+	vertex_buffer->destroy(context->device);
+	index_buffer->destroy(context->device);
 }
 
 VkCommandBuffer Device::create_transfer_command_buffer(VkCommandBufferLevel level, bool begin)

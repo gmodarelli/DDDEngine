@@ -7,11 +7,17 @@
 namespace Renderer
 {
 
-// const int MAX_FRAMES_IN_FLIGHT = 2;
+struct Mesh
+{
+	uint32_t index_offset;
+	uint32_t index_count;
+	uint32_t vertex_offset;
+};
 
 struct Vertex
 {
-	glm::vec2 position;
+	glm::vec3 position;
+	glm::vec3 normal;
 	glm::vec3 color;
 };
 
@@ -42,16 +48,8 @@ struct Renderer
 
 	double frame_cpu_avg = 0;
 
-	// TODO: Merge these two buffers and move them to the Device struct
-	Vulkan::Buffer* vertex_buffer;
-	Vulkan::Buffer* index_buffer;
-
-	// Scene related stuff?
-	uint32_t vertex_count = 0;
-	uint32_t index_count = 0;
-	Vertex* vertices;
-	uint16_t* indices;
-
+	uint32_t meshes_count = 0;
+	Mesh* meshes;
 }; // struct Renderer
 
 } // namespace Renderer

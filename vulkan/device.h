@@ -81,6 +81,7 @@ struct Device
 
 	// Render Pass
 	VkRenderPass render_pass = VK_NULL_HANDLE;
+
 	// Command Pools
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
@@ -88,6 +89,10 @@ struct Device
 	// Descriptor Pool
 	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);
+
+	// TODO: Merge these two buffers
+	Vulkan::Buffer* vertex_buffer;
+	Vulkan::Buffer* index_buffer;
 
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
@@ -101,6 +106,10 @@ struct Device
 	void flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free = true);
 
 private:
+
+	// Vertex Index buffers helpers
+	void create_vertex_index_buffers();
+	void free_vertex_index_buffers();
 
 	// Render pass helpers
 	void create_render_pass();
