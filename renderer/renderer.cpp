@@ -19,71 +19,116 @@ void Renderer::init()
 {
 	create_graphics_pipeline();
 
-	Vertex vertices[4];
-	vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
-	vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
-	vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} };
-	vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
-
-	uint16_t indices[6];
-	indices[0] = 0;
-	indices[1] = 1;
-	indices[2] = 2;
-	indices[3] = 2;
-	indices[4] = 3;
-	indices[5] = 0;
-
-	VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
-
-	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		vertices_size);
-
-	void* vertex_data;
-	vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertex_data);
-	memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
-	vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
-
-	VkDeviceSize indices_size = sizeof(indices[0]) * 6;
-
-	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		indices_size);
-
-	void* index_data;
-	vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &index_data);
-	memcpy(index_data, indices, (size_t)index_staging_buffer->size);
-	vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
+	meshes_count = 2;
+	meshes = new Mesh[meshes_count];
 
 	{
-		VkCommandBuffer copy_cmd = device->create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		Vertex vertices[4];
+		vertices[0] = { {-0.5f, -0.5f, 1.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
+		vertices[1] = { {0.5f, -0.5f, 1.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+		vertices[2] = { {0.5f, 0.5f, 1.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f} };
+		vertices[3] = { {-0.5f, 0.5f, 1.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
 
-		VkBufferCopy copy_region = {};
-		copy_region.size = vertices_size;
+		uint16_t indices[6];
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+		indices[3] = 2;
+		indices[4] = 3;
+		indices[5] = 0;
 
-		vkCmdCopyBuffer(copy_cmd, vertex_staging_buffer->buffer, device->vertex_buffer->buffer, 1, &copy_region);
+		VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
 
-		copy_region.size = indices_size;
+		Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			vertices_size);
 
-		vkCmdCopyBuffer(copy_cmd, index_staging_buffer->buffer, device->index_buffer->buffer, 1, &copy_region);
+		void* vertex_data;
+		vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertex_data);
+		memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
+		vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
 
-		device->flush_transfer_command_buffer(copy_cmd);
+		VkDeviceSize indices_size = sizeof(indices[0]) * 6;
+
+		Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			indices_size);
+
+		void* index_data;
+		vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &index_data);
+		memcpy(index_data, indices, (size_t)index_staging_buffer->size);
+		vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
+
+		uint32_t vertex_offset = device->upload_vertex_buffer(vertex_staging_buffer);
+		uint32_t index_offset = device->upload_index_buffer(index_staging_buffer);
+
+		meshes[0].index_offset = index_offset;
+		meshes[0].index_count = 6;
+		meshes[0].vertex_offset = vertex_offset;
+
+		vertex_staging_buffer->destroy(device->context->device);
+		index_staging_buffer->destroy(device->context->device);
 	}
 
-	meshes_count = 1;
-	meshes = new Mesh[meshes_count];
-	meshes[0].index_offset = 0;
-	meshes[0].index_count = 6;
-	meshes[0].vertex_offset = 0;
+	{
+		Vertex vertices[4];
+		vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 0.0f} };
+		vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 1.0f} };
+		vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 1.0f} };
+		vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f} };
 
-	vertex_staging_buffer->destroy(device->context->device);
-	index_staging_buffer->destroy(device->context->device);
+		uint16_t indices[6];
+		indices[0] = 0;
+		indices[1] = 1;
+		indices[2] = 2;
+		indices[3] = 2;
+		indices[4] = 3;
+		indices[5] = 0;
+
+		VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
+
+		Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			vertices_size);
+
+		void* vertex_data;
+		vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertex_data);
+		memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
+		vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
+
+		VkDeviceSize indices_size = sizeof(indices[0]) * 6;
+
+		Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			indices_size);
+
+		void* index_data;
+		vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &index_data);
+		memcpy(index_data, indices, (size_t)index_staging_buffer->size);
+		vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
+
+		uint32_t vertex_offset = device->upload_vertex_buffer(vertex_staging_buffer);
+		uint32_t index_offset = device->upload_index_buffer(index_staging_buffer);
+
+		meshes[1].index_offset = index_offset / sizeof(uint16_t);
+		meshes[1].index_count = 6;
+		meshes[1].vertex_offset = vertex_offset / sizeof(Vertex);
+
+		vertex_staging_buffer->destroy(device->context->device);
+		index_staging_buffer->destroy(device->context->device);
+	}
 }
 
 void Renderer::render_frame()
@@ -134,7 +179,7 @@ void Renderer::render_frame()
 
 	for (uint32_t i = 0; i < meshes_count; ++i)
 	{
-		vkCmdDrawIndexed(frame_resources.command_buffer, meshes[0].index_count, 1, meshes[0].index_offset, meshes[0].vertex_offset, 0);
+		vkCmdDrawIndexed(frame_resources.command_buffer, meshes[i].index_count, 1, meshes[i].index_offset, meshes[i].vertex_offset, 0);
 	}
 
 	device->end_draw_frame(frame_resources);

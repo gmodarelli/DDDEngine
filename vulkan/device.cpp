@@ -41,6 +41,50 @@ void Device::cleanup()
 	free_vertex_index_buffers();
 }
 
+VkDeviceSize Device::upload_vertex_buffer(Vulkan::Buffer* staging_buffer)
+{
+	VkDeviceSize vertex_offset = vertex_head_cursor;
+	// NOTE: For now we're copying the whole content of the buffer (staging_buffer->size)
+	// from its start offset (0). In the future we might want to take both information
+	// as input
+	VkCommandBuffer copy_cmd = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = vertex_head_cursor;
+	copy_region.size = staging_buffer->size;
+
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, vertex_buffer->buffer, 1, &copy_region);
+
+	flush_transfer_command_buffer(copy_cmd);
+
+	vertex_head_cursor += staging_buffer->size;
+
+	return vertex_offset;
+}
+
+VkDeviceSize Device::upload_index_buffer(Vulkan::Buffer* staging_buffer)
+{
+	VkDeviceSize index_offset = index_head_cursor;
+	// NOTE: For now we're copying the whole content of the buffer (staging_buffer->size)
+	// from its start offset (0). In the future we might want to take both information
+	// as input
+	VkCommandBuffer copy_cmd = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = index_head_cursor;
+	copy_region.size = staging_buffer->size;
+
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, index_buffer->buffer, 1, &copy_region);
+
+	flush_transfer_command_buffer(copy_cmd);
+
+	index_head_cursor += staging_buffer->size;
+
+	return index_offset;
+}
+
 void Device::create_vertex_index_buffers()
 {
 	// TODO: Figure out the needed size

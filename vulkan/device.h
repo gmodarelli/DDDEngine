@@ -93,6 +93,11 @@ struct Device
 	// TODO: Merge these two buffers
 	Vulkan::Buffer* vertex_buffer;
 	Vulkan::Buffer* index_buffer;
+	VkDeviceSize vertex_head_cursor = 0;
+	VkDeviceSize index_head_cursor = 0;
+
+	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
+	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
 
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
