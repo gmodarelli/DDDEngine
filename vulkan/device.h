@@ -3,6 +3,7 @@
 #include "volk.h"
 #include "wsi.h"
 #include "context.h"
+#include "buffer.h"
 
 namespace Vulkan
 {
@@ -57,6 +58,10 @@ struct FrameResources
 
 	uint32_t image_index;
 
+	// UBO Buffers
+	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+	Vulkan::Buffer* ubo_buffer = nullptr;
+
 	uint32_t timestamp_query_pool_count = 0;
 	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
 };
@@ -79,6 +84,10 @@ struct Device
 	// Command Pools
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
+
+	// Descriptor Pool
+	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);
 
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
@@ -113,6 +122,14 @@ private:
 	// Query pool helpers
 	void create_query_pool();
 	void destroy_query_pool();
+
+	// Descriptor Pool helpers
+	void create_descriptor_pool();
+	void destroy_descriptor_pool();
+
+	// UBO Buffer helpers
+	void create_ubo_buffers();
+	void destroy_ubo_buffers();
 
 }; // struct Device
 

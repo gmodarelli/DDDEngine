@@ -15,6 +15,13 @@ struct Vertex
 	glm::vec3 color;
 };
 
+struct UniformBufferObject
+{
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 projection;
+};
+
 struct Renderer
 {
 	Renderer(Vulkan::Device* device);
@@ -24,11 +31,13 @@ struct Renderer
 
 	void create_graphics_pipeline();
 	void render_frame();
+	void update_uniform_buffer(Vulkan::FrameResources& frame_resources);
 
 	// Device
 	Vulkan::Device* device;
 
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
+	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
 	double frame_cpu_avg = 0;

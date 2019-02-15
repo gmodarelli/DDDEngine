@@ -16,6 +16,8 @@ void Device::init()
 	create_command_pools();
 	allocate_command_buffers();
 	create_sync_objects();
+	create_descriptor_pool();
+	create_ubo_buffers();
 	create_query_pool();
 }
 
@@ -28,6 +30,8 @@ void Device::cleanup()
 	vkQueueWaitIdle(context->graphics_queue);
 
 	destroy_query_pool();
+	destroy_ubo_buffers();
+	destroy_descriptor_pool();
 	destroy_sync_objects();
 	free_command_buffers();
 	destroy_command_pools();
@@ -82,6 +86,16 @@ void Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool
 		vkFreeCommandBuffers(context->device, transfer_command_pool, 1, &command_buffer);
 		command_buffer = VK_NULL_HANDLE;
 	}
+}
+
+VkResult Device::allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set)
+{
+	VkDescriptorSetAllocateInfo descriptor_set_ai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	descriptor_set_ai.descriptorPool = descriptor_pool;
+	descriptor_set_ai.descriptorSetCount = 1;
+	descriptor_set_ai.pSetLayouts = &descriptor_set_layout;
+
+	return vkAllocateDescriptorSets(context->device, &descriptor_set_ai, &descriptor_set);
 }
 
 FrameResources& Device::begin_draw_frame()
@@ -422,6 +436,54 @@ void Device::destroy_query_pool()
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
 		vkDestroyQueryPool(context->device, frame_resources[i].timestamp_query_pool, nullptr);
+	}
+}
+
+// Descriptor Pool helpers
+void Device::create_descriptor_pool()
+{
+	VkDescriptorPoolSize pool_size = {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+	VkDescriptorPoolCreateInfo pool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	pool_ci.poolSizeCount = 1;
+	pool_ci.pPoolSizes = &pool_size;
+	pool_ci.maxSets = MAX_FRAMES_IN_FLIGHT;
+
+	VkResult result = vkCreateDescriptorPool(context->device, &pool_ci, nullptr, &descriptor_pool);
+	assert(result == VK_SUCCESS);
+}
+
+void Device::destroy_descriptor_pool()
+{
+	if (descriptor_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool(context->device, descriptor_pool, nullptr);
+		descriptor_pool = VK_NULL_HANDLE;
+	}
+}
+
+// UBO Buffers Helpers
+void Device::create_ubo_buffers()
+{
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		frame_resources[i].ubo_buffer = new Vulkan::Buffer(
+			context->device,
+			context->gpu,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			sizeof(float) * 16 * 3);
+	}
+}
+
+void Device::destroy_ubo_buffers()
+{
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		frame_resources[i].ubo_buffer->destroy(context->device);
 	}
 }
 

@@ -4,6 +4,10 @@
 #include <stdio.h>
 #include <chrono>
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace Renderer
 {
 
@@ -102,6 +106,27 @@ void Renderer::render_frame()
 
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
 
+	if (frame_resources.descriptor_set == VK_NULL_HANDLE)
+	{
+		VkResult result = device->allocate_descriptor_set(descriptor_set_layout, frame_resources.descriptor_set);
+		assert(result == VK_SUCCESS);
+
+		VkDescriptorBufferInfo buffer_info = {};
+		buffer_info.buffer = frame_resources.ubo_buffer->buffer;
+		buffer_info.offset = 0;
+		buffer_info.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet descriptor_write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		descriptor_write.dstSet = frame_resources.descriptor_set;
+		descriptor_write.dstBinding = 0;
+		descriptor_write.dstArrayElement = 0;
+		descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptor_write.descriptorCount = 1;
+		descriptor_write.pBufferInfo = &buffer_info;
+
+		vkUpdateDescriptorSets(device->context->device, 1, &descriptor_write, 0, nullptr);
+	}
+
 	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
 
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
@@ -111,6 +136,9 @@ void Renderer::render_frame()
 
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
+
+	update_uniform_buffer(frame_resources);
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame_resources.descriptor_set, 0, nullptr);
 
 	VkBuffer vertex_buffers[] = { vertex_buffer->buffer };
 	VkDeviceSize offsets[] = { 0 };
@@ -126,12 +154,35 @@ void Renderer::render_frame()
 	frame_cpu_avg = frame_cpu_avg * 0.95 + (frame_cpu_end - frame_cpu_start).count() * 1e-6 * 0.05;
 }
 
+void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
+{
+	static auto start_time = std::chrono::high_resolution_clock::now();
+	auto current_time = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.1f, 10.0f);
+	ubo.projection[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(device->context->device, frame_resources.ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device->context->device, frame_resources.ubo_buffer->device_memory);
+}
+
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
 
 	vertex_buffer->destroy(device->context->device);
 	index_buffer->destroy(device->context->device);
+
+	if (descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout(device->context->device, descriptor_set_layout, nullptr);
+	}
 
 	if (graphics_pipeline != VK_NULL_HANDLE)
 	{
@@ -149,8 +200,8 @@ void Renderer::cleanup()
 void Renderer::create_graphics_pipeline()
 {
 	VkPipelineShaderStageCreateInfo shader_stages[2];
-	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple_triangle.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple_triangle.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	// Pipeline Fixed Functions
 	// Vertex Input
@@ -188,6 +239,21 @@ void Renderer::create_graphics_pipeline()
 	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
+
+	// Uniform Buffers
+	VkDescriptorSetLayoutBinding ubo_layout_binding = {};
+	ubo_layout_binding.binding = 0;
+	ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	ubo_layout_binding.descriptorCount = 1;
+	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	descriptor_layout_ci.bindingCount = 1;
+	descriptor_layout_ci.pBindings = &ubo_layout_binding;
+
+	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &descriptor_set_layout);
+	assert(result == VK_SUCCESS);
+
 	// Viewport and Scissor
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
@@ -210,7 +276,10 @@ void Renderer::create_graphics_pipeline()
 	rasterizer_ci.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer_ci.lineWidth = 1.0f;
 	rasterizer_ci.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer_ci.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	// NOTE: We had to change this from CLOCKWISE to COUNTER_CLOCKWISE after the introduction
+	// of the projection matrix. Since we have to flip the Y-axis (ie multiply by -1) the vertices
+	// are drawn
+	rasterizer_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer_ci.depthBiasEnable = VK_FALSE;
 	// Multisampling
 	VkPipelineMultisampleStateCreateInfo multisampling_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
@@ -240,8 +309,10 @@ void Renderer::create_graphics_pipeline()
 	dynamic_state_ci.pDynamicStates = dynamic_states;
 	// Pipeline Layout
 	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	// NOTE: Fill the CI when we have actual uniform data to send to shaders
-	VkResult result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &pipeline_layout);
+	pipeline_layout_ci.setLayoutCount = 1;
+	pipeline_layout_ci.pSetLayouts = &descriptor_set_layout;
+
+	result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &pipeline_layout);
 	assert(result == VK_SUCCESS);
 
 	VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
