@@ -89,6 +89,28 @@ VkDeviceSize Device::upload_index_buffer(Vulkan::Buffer* staging_buffer)
 	return index_offset;
 }
 
+VkDeviceSize Device::upload_instance_buffer(Vulkan::Buffer* staging_buffer)
+{
+	VkDeviceSize instance_offset = instance_head_cursor;
+	// NOTE: For now we're copying the whole content of the buffer (staging_buffer->size)
+	// from its start offset (0). In the future we might want to take both information
+	// as input
+	VkCommandBuffer copy_cmd = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	VkBufferCopy copy_region = {};
+	copy_region.srcOffset = 0;
+	copy_region.dstOffset = instance_head_cursor;
+	copy_region.size = staging_buffer->size;
+
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, instance_buffer->buffer, 1, &copy_region);
+
+	flush_transfer_command_buffer(copy_cmd);
+
+	instance_head_cursor += staging_buffer->size;
+
+	return instance_offset;
+}
+
 void Device::create_vertex_index_buffers()
 {
 	// TODO: Figure out the needed size
@@ -110,12 +132,20 @@ void Device::create_vertex_index_buffers()
 		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		size);
+
+	instance_buffer = new Vulkan::Buffer(
+		context->device,
+		context->gpu,
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		size);
 }
 
 void Device::free_vertex_index_buffers()
 {
 	vertex_buffer->destroy(context->device);
 	index_buffer->destroy(context->device);
+	instance_buffer->destroy(context->device);
 }
 
 void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout)
@@ -643,12 +673,12 @@ void Device::create_descriptor_pool()
 {
 	VkDescriptorPoolSize pool_size = {};
 	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_size.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+	pool_size.descriptorCount = 2 * MAX_FRAMES_IN_FLIGHT;
 
 	VkDescriptorPoolCreateInfo pool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 	pool_ci.poolSizeCount = 1;
 	pool_ci.pPoolSizes = &pool_size;
-	pool_ci.maxSets = MAX_FRAMES_IN_FLIGHT;
+	pool_ci.maxSets = 2 * MAX_FRAMES_IN_FLIGHT;
 
 	VkResult result = vkCreateDescriptorPool(context->device, &pool_ci, nullptr, &descriptor_pool);
 	assert(result == VK_SUCCESS);

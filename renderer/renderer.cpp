@@ -20,31 +20,51 @@ void Renderer::init()
 {
 	create_graphics_pipeline();
 
-	meshes_count = 2;
+	meshes_count = 1;
 	meshes = new Mesh[meshes_count];
 
 	{
-		Vertex vertices[4];
-		vertices[0] = { {-0.5f, -0.5f, 0.5f,}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
-		vertices[1] = { {0.5f, -0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
-		vertices[2] = { {0.5f, 0.5f, 0.5f},    {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
-		vertices[3] = { {-0.5f, 0.5f, 0.5f},   {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f} };
+		Vertex vertices[] = {
+			// front
+			{ { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
+			{ { 1.0f, -1.0f, 1.0f, }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
+			{ {	1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
+			{ {	-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
+			// back
+			{ {	-1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
+			{ {	 1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
+			{ { 1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
+			{ {	-1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} }
+		};
 
-		uint16_t indices[6];
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-		indices[3] = 2;
-		indices[4] = 3;
-		indices[5] = 0;
+		uint16_t indices[] = {
+			// front
+			0, 1, 2,
+			2, 3, 0,
+			// right
+			1, 5, 6,
+			6, 2, 1,
+			// back
+			7, 6, 5,
+			5, 4, 7,
+			// left
+			4, 0, 3,
+			3, 7, 4,
+			// bottom
+			4, 5, 1,
+			1, 0, 4,
+			// top
+			3, 2, 6,
+			6, 7, 3
+		};
 
-		VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
+		VkDeviceSize vertices_size = sizeof(vertices[0]) * ARRAYSIZE(vertices);
 
 		Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
 			device->context->device,
 			device->context->gpu,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 			vertices_size);
 
 		void* vertex_data;
@@ -52,13 +72,13 @@ void Renderer::init()
 		memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
 		vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
 
-		VkDeviceSize indices_size = sizeof(indices[0]) * 6;
+		VkDeviceSize indices_size = sizeof(indices[0]) * ARRAYSIZE(indices);
 
 		Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
 			device->context->device,
 			device->context->gpu,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 			indices_size);
 
 		void* index_data;
@@ -69,66 +89,41 @@ void Renderer::init()
 		uint32_t vertex_offset = device->upload_vertex_buffer(vertex_staging_buffer);
 		uint32_t index_offset = device->upload_index_buffer(index_staging_buffer);
 
-		meshes[0].index_offset = index_offset;
-		meshes[0].index_count = 6;
-		meshes[0].vertex_offset = vertex_offset;
+		meshes[0].index_offset = index_offset / sizeof(uint16_t);
+		meshes[0].index_count = ARRAYSIZE(indices);
+		meshes[0].vertex_offset = vertex_offset / sizeof(Vertex);
 
 		vertex_staging_buffer->destroy(device->context->device);
 		index_staging_buffer->destroy(device->context->device);
-	}
 
-	{
-		Vertex vertices[4];
-		vertices[0] = { {-0.5f, -0.5f, 0.0f,}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
-		vertices[1] = { {0.5f, -0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
-		vertices[2] = { {0.5f, 0.5f, 0.0f},    {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
-		vertices[3] = { {-0.5f, 0.5f, 0.0f},   {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f} };
+		// Instances
+		entity_count = 10;
+		entities = new Entity[entity_count];
+		transforms = new Transform[entity_count];
 
-		uint16_t indices[6];
-		indices[0] = 0;
-		indices[1] = 1;
-		indices[2] = 2;
-		indices[3] = 2;
-		indices[4] = 3;
-		indices[5] = 0;
+		for (uint32_t i = 0; i < entity_count; ++i)
+		{
+			entities[i].index = i;
+			entities[i].mesh_id = 0;
+			transforms[i].position = glm::vec3((i + 1) * 1.5f, 0.0f, (i + 1) * 1.5f);
+		}
 
-		VkDeviceSize vertices_size = sizeof(vertices[0]) * 4;
+		VkDeviceSize instances_size = sizeof(transforms[0]) * entity_count;
 
-		Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
+		Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
 			device->context->device,
 			device->context->gpu,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			vertices_size);
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			instances_size);
 
-		void* vertex_data;
-		vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertex_data);
-		memcpy(vertex_data, vertices, (size_t)vertex_staging_buffer->size);
-		vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
+		void* instance_data;
+		vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &instance_data);
+		memcpy(instance_data, transforms, (size_t)instance_staging_buffer->size);
+		vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
 
-		VkDeviceSize indices_size = sizeof(indices[0]) * 6;
-
-		Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
-			device->context->device,
-			device->context->gpu,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			indices_size);
-
-		void* index_data;
-		vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &index_data);
-		memcpy(index_data, indices, (size_t)index_staging_buffer->size);
-		vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
-
-		uint32_t vertex_offset = device->upload_vertex_buffer(vertex_staging_buffer);
-		uint32_t index_offset = device->upload_index_buffer(index_staging_buffer);
-
-		meshes[1].index_offset = index_offset / sizeof(uint16_t);
-		meshes[1].index_count = 6;
-		meshes[1].vertex_offset = vertex_offset / sizeof(Vertex);
-
-		vertex_staging_buffer->destroy(device->context->device);
-		index_staging_buffer->destroy(device->context->device);
+		uint32_t instance_offset = device->upload_instance_buffer(instance_staging_buffer);
+		instance_staging_buffer->destroy(device->context->device);
 	}
 }
 
@@ -140,7 +135,7 @@ void Renderer::render_frame()
 
 	if (frame_resources.descriptor_set == VK_NULL_HANDLE)
 	{
-		VkResult result = device->allocate_descriptor_set(descriptor_set_layout, frame_resources.descriptor_set);
+		VkResult result = device->allocate_descriptor_set(view_descriptor_set_layout, frame_resources.descriptor_set);
 		assert(result == VK_SUCCESS);
 
 		VkDescriptorBufferInfo buffer_info = {};
@@ -170,18 +165,21 @@ void Renderer::render_frame()
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	update_uniform_buffer(frame_resources);
+
 	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame_resources.descriptor_set, 0, nullptr);
 
 	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
+	VkBuffer instance_buffers[] = { device->instance_buffer->buffer };
 	VkDeviceSize offsets[] = { 0 };
 
+	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
+	// Bind point 1: Instance data buffer
+	vkCmdBindVertexBuffers(frame_resources.command_buffer, 1, 1, instance_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	for (uint32_t i = 0; i < meshes_count; ++i)
-	{
-		vkCmdDrawIndexed(frame_resources.command_buffer, meshes[i].index_count, 1, meshes[i].index_offset, meshes[i].vertex_offset, 0);
-	}
+	// Draw all instances at once
+	vkCmdDrawIndexed(frame_resources.command_buffer, meshes[0].index_count, entity_count, meshes[0].index_offset, meshes[0].vertex_offset, 0);
 
 	device->end_draw_frame(frame_resources);
 
@@ -195,10 +193,13 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
+	glm::vec3 camera_position = { 0.0f, 10.0f, 4.0f };
+
 	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.1f, 10.0f);
+	// ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::mat4(1.0f);
+	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
 
 	void* data;
@@ -211,9 +212,14 @@ void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
 
-	if (descriptor_set_layout != VK_NULL_HANDLE)
+	if (view_descriptor_set_layout != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorSetLayout(device->context->device, descriptor_set_layout, nullptr);
+		vkDestroyDescriptorSetLayout(device->context->device, view_descriptor_set_layout, nullptr);
+	}
+
+	if (instance_descriptor_set_layout != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorSetLayout(device->context->device, instance_descriptor_set_layout, nullptr);
 	}
 
 	if (graphics_pipeline != VK_NULL_HANDLE)
@@ -241,18 +247,27 @@ void Renderer::create_graphics_pipeline()
 	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
 	// It specifies the number of bytes between data entries and whether to move to the next 
 	// data entry after each vertex or after each instance.
-	VkVertexInputBindingDescription vertex_binding_description = {};
-	vertex_binding_description.binding = 0;
-	vertex_binding_description.stride = sizeof(Vertex);
-	vertex_binding_description.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	VkVertexInputBindingDescription vertex_binding_descriptions[2];
+	// Mesh vertex bindings
+	vertex_binding_descriptions[0] = {};
+	vertex_binding_descriptions[0].binding = 0;
+	vertex_binding_descriptions[0].stride = sizeof(Vertex);
+	vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	// Instance transform bindings (per instance position, scale and rotation)
+	vertex_binding_descriptions[1] = {};
+	vertex_binding_descriptions[1].binding = 1;
+	vertex_binding_descriptions[1].stride = sizeof(Transform);
+	vertex_binding_descriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-	vertex_input_ci.vertexBindingDescriptionCount = 1;
-	vertex_input_ci.pVertexBindingDescriptions = &vertex_binding_description;
+	vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(vertex_binding_descriptions);
+	vertex_input_ci.pVertexBindingDescriptions = vertex_binding_descriptions;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
 	// originating from a binding description. We have 3 attributes, position, normal and color,
 	// so we need 3 attribute description structs
-	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[3];
+	// We also have 1 additional attribute, instance position
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[4];
+	// Per-vertex attributes
 	// Position
 	vertex_input_attribute_descriptions[0].binding = 0;
 	vertex_input_attribute_descriptions[0].location = 0;
@@ -269,6 +284,13 @@ void Renderer::create_graphics_pipeline()
 	vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
 
+	// Per-instance attributes
+	// TODO: Add scale and rotation
+	vertex_input_attribute_descriptions[3].binding = 1;
+	vertex_input_attribute_descriptions[3].location = 3;
+	vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[3].offset = offsetof(Transform, position);
+
 	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
 	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;
 
@@ -277,18 +299,31 @@ void Renderer::create_graphics_pipeline()
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 
-	// Uniform Buffers
-	VkDescriptorSetLayoutBinding ubo_layout_binding = {};
-	ubo_layout_binding.binding = 0;
-	ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	ubo_layout_binding.descriptorCount = 1;
-	ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	// View Uniform Buffer
+	VkDescriptorSetLayoutBinding view_ubo_layout_binding = {};
+	view_ubo_layout_binding.binding = 0;
+	view_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	view_ubo_layout_binding.descriptorCount = 1;
+	view_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	VkDescriptorSetLayoutCreateInfo descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 	descriptor_layout_ci.bindingCount = 1;
-	descriptor_layout_ci.pBindings = &ubo_layout_binding;
+	descriptor_layout_ci.pBindings = &view_ubo_layout_binding;
 
-	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &descriptor_set_layout);
+	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &view_descriptor_set_layout);
+	assert(result == VK_SUCCESS);
+
+	// Instance Dynamic Uniform Buffer
+	VkDescriptorSetLayoutBinding instance_ubo_layout_binding = {};
+	instance_ubo_layout_binding.binding = 0;
+	instance_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	instance_ubo_layout_binding.descriptorCount = 1;
+	instance_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	descriptor_layout_ci.bindingCount = 1;
+	descriptor_layout_ci.pBindings = &instance_ubo_layout_binding;
+
+	result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &instance_descriptor_set_layout);
 	assert(result == VK_SUCCESS);
 
 	// Viewport and Scissor
@@ -355,9 +390,10 @@ void Renderer::create_graphics_pipeline()
 	dynamic_state_ci.dynamicStateCount = ARRAYSIZE(dynamic_states);
 	dynamic_state_ci.pDynamicStates = dynamic_states;
 	// Pipeline Layout
+	VkDescriptorSetLayout descriptor_set_layouts[] = { view_descriptor_set_layout, instance_descriptor_set_layout };
 	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	pipeline_layout_ci.setLayoutCount = 1;
-	pipeline_layout_ci.pSetLayouts = &descriptor_set_layout;
+	pipeline_layout_ci.setLayoutCount = ARRAYSIZE(descriptor_set_layouts);
+	pipeline_layout_ci.pSetLayouts = descriptor_set_layouts;
 
 	result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &pipeline_layout);
 	assert(result == VK_SUCCESS);
@@ -384,6 +420,36 @@ void Renderer::create_graphics_pipeline()
 	{
 		vkDestroyShaderModule(device->context->device, shader_stages[i].module, nullptr);
 	}
+}
+
+// Helper functions
+// Wrapper functions for aligned memory allocation
+// There is currently no standard for this in C++ that works across all platforms and vendors, so we abstract this
+// Sascha Willems
+void* Renderer::aligned_alloc(size_t size, size_t alignment)
+{
+	void* data = nullptr;
+
+#if defined(_MSC_VER) || defined(__MINGW32__)
+	data = _aligned_malloc(size, alignment);
+#else
+	int res = posix_memalign(&data, alignment, size);
+	if (res != 0)
+	{
+		data = nullptr;
+	}
+#endif
+
+	return data;
+}
+
+void Renderer::aligned_free(void* data)
+{
+#if defined(_MSC_VER) || defined(__MINGW32__)
+	_aligned_free(data);
+#else
+	free(data);
+#endif
 }
 
 } // namespace Renderer

@@ -59,12 +59,19 @@ struct FrameResources
 
 	uint32_t image_index;
 
-	// UBO Buffers
-	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-	Vulkan::Buffer* ubo_buffer = nullptr;
-
 	uint32_t timestamp_query_pool_count = 0;
 	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
+
+	// TODO: The data below is scene specific and should
+	// be moved outside of this frame resource.
+	// An alternative would be to a `void* next` pointing
+	// to extra data that the renderer could extend.
+	//
+	// UBO Buffers
+	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+
+	Vulkan::Buffer* ubo_buffer = nullptr;
+
 };
 
 struct Device
@@ -102,15 +109,17 @@ struct Device
 
 	double frame_gpu_avg = 0;
 
-	// TODO: Merge these two buffers
+	// TODO: Merge these buffers into one
 	Vulkan::Buffer* vertex_buffer;
 	Vulkan::Buffer* index_buffer;
+	Vulkan::Buffer* instance_buffer;
 	VkDeviceSize vertex_head_cursor = 0;
 	VkDeviceSize index_head_cursor = 0;
-
+	VkDeviceSize instance_head_cursor = 0;
 
 	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
+	VkDeviceSize upload_instance_buffer(Vulkan::Buffer* staging_buffer);
 
 	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);
 
