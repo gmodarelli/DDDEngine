@@ -12,7 +12,7 @@ namespace Vulkan
 
 struct Image
 {
-	Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat format, VkImageAspectFlags aspect_flags,
+	Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat format, VkSampleCountFlagBits samples, VkImageAspectFlags aspect_flags,
 		  VkImageTiling tiling, VkImageUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE);
 
 	void destroy(VkDevice device);

@@ -1,6 +1,7 @@
 #include "context.h"
 #include <cassert>
 #include <stdio.h>
+#include <algorithm>
 
 namespace Vulkan
 {
@@ -295,6 +296,7 @@ bool Context::pick_suitable_gpu(VkSurfaceKHR surface, const char** gpu_required_
 				gpu = available_gpus[i];
 				gpu_properties = available_gpu_properties[i];
 				gpu_features = available_gpu_features[i];
+				msaa_samples = get_max_usable_sample_count(gpu_properties);
 
 				graphics_family_index = queue_family_indices.graphics_index;
 				transfer_family_index = queue_family_indices.transfer_index;
@@ -303,6 +305,19 @@ bool Context::pick_suitable_gpu(VkSurfaceKHR surface, const char** gpu_required_
 	}
 
 	return (gpu != VK_NULL_HANDLE && graphics_family_index != VK_QUEUE_FAMILY_IGNORED && transfer_family_index != VK_QUEUE_FAMILY_IGNORED);
+}
+
+VkSampleCountFlagBits Context::get_max_usable_sample_count(const VkPhysicalDeviceProperties& properties)
+{
+	VkSampleCountFlags counts = std::min(properties.limits.framebufferColorSampleCounts, properties.limits.framebufferDepthSampleCounts);
+	if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+	if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+	if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+	if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+	if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+	if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+	return VK_SAMPLE_COUNT_1_BIT;
 }
 
 QueueFamilyIndices Context::find_queue_families(VkPhysicalDevice gpu, VkSurfaceKHR surface)

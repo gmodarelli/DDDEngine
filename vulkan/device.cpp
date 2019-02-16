@@ -14,6 +14,7 @@ void Device::init()
 {
 	create_command_pools();
 	create_vertex_index_buffers();
+	create_color_buffer();
 	create_depth_buffer();
 	allocate_command_buffers();
 
@@ -36,6 +37,7 @@ void Device::cleanup()
 
 	free_command_buffers();
 	destroy_depth_buffer();
+	destroy_color_buffer();
 	free_vertex_index_buffers();
 	destroy_command_pools();
 	destroy_framebuffers();
@@ -185,6 +187,14 @@ void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayo
 		source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	}
+	else if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED && dst_layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destination_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
 	else
 	{
 		assert(!"unsupported layout transition");
@@ -268,6 +278,8 @@ FrameResources& Device::begin_draw_frame()
 		wsi->recreate_swapchain();
 		destroy_depth_buffer();
 		create_depth_buffer();
+		destroy_color_buffer();
+		create_color_buffer();
 		// TODO: Should we recreate the render pass as well?
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
@@ -278,7 +290,7 @@ FrameResources& Device::begin_draw_frame()
 	current_frame.image_index = image_index;
 
 	// Prepare the framebuffer
-	VkImageView attachments[] = { wsi->swapchain_image_views[image_index], depth_buffer->image_view };
+	VkImageView attachments[] = { color_buffer->image_view, depth_buffer->image_view, wsi->swapchain_image_views[image_index] };
 
 	VkFramebufferCreateInfo framebuffer_ci = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebuffer_ci.renderPass = render_pass;
@@ -380,6 +392,8 @@ void Device::end_draw_frame(FrameResources& current_frame)
 		wsi->recreate_swapchain();
 		destroy_depth_buffer();
 		create_depth_buffer();
+		destroy_color_buffer();
+		create_color_buffer();
 		// TODO: Should we recreate the render pass as well?
 	}
 	else if (result != VK_SUCCESS)
@@ -400,9 +414,7 @@ void Device::create_render_pass()
 	// Its format should match the format of the swapchain images (that we
 	// get from the surface).
 	color_attachment.format = wsi->surface_format.format;
-	// Since we're not doing any multisampling, we'll only have 1 sample
-	// per pixel for now
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachment.samples = context->msaa_samples;
 	// Specify what to do with the data in the attachment before and after
 	// rendering.
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // Clear the attachment when loading it
@@ -410,20 +422,33 @@ void Device::create_render_pass()
 	// For now we don't have a depth/stencil buffer so we don't care
 	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	// For now we're just presenting the color attachment to the framebuffer,
-	// so we are not expecting a specify initial layout and we're gonna transition
-	// to present source as final layout
 	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference color_attachment_ref = {};
 	color_attachment_ref.attachment = 0;
 	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription color_attachment_resolve = {};
+	color_attachment_resolve.format = wsi->surface_format.format;
+	color_attachment_resolve.samples = VK_SAMPLE_COUNT_1_BIT;
+	// Specify what to do with the data in the attachment before and after
+	// rendering.
+	color_attachment_resolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment_resolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment_resolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment_resolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	color_attachment_resolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment_resolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference color_attachment_resolve_ref = {};
+	color_attachment_resolve_ref.attachment = 2;
+	color_attachment_resolve_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 	// We have a depth buffer attachment
 	VkAttachmentDescription depth_buffer_attachment = {};
 	depth_buffer_attachment.format = depth_buffer->image_format;
-	depth_buffer_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_buffer_attachment.samples = context->msaa_samples;
 	depth_buffer_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depth_buffer_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depth_buffer_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -439,6 +464,7 @@ void Device::create_render_pass()
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &color_attachment_ref;
+	subpass.pResolveAttachments = &color_attachment_resolve_ref;
 	subpass.pDepthStencilAttachment = &depth_attachment_ref;
 
 	// Make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage
@@ -456,7 +482,7 @@ void Device::create_render_pass()
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	VkAttachmentDescription attachments[] = { color_attachment, depth_buffer_attachment };
+	VkAttachmentDescription attachments[] = { color_attachment, depth_buffer_attachment, color_attachment_resolve };
 
 	VkRenderPassCreateInfo render_pass_ci = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
 	render_pass_ci.attachmentCount = ARRAYSIZE(attachments);
@@ -479,10 +505,33 @@ void Device::destroy_render_pass()
 	}
 }
 
+// Color buffer helpers
+void Device::create_color_buffer()
+{
+	VkFormat color_format = wsi->surface_format.format;
+	color_buffer = new Vulkan::Image(context->device, context->gpu, wsi->swapchain_extent, color_format, context->msaa_samples,
+									 VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_TILING_OPTIMAL,
+								 	 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+									 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	transition_image_layout(color_buffer->image, color_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+}
+
+void Device::destroy_color_buffer()
+{
+	if (color_buffer != nullptr)
+	{
+		color_buffer->destroy(context->device);
+	}
+}
+
 void Device::create_depth_buffer()
 {
 	VkFormat depth_format = find_supported_format(VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-	depth_buffer = new Vulkan::Image(context->device, context->gpu, wsi->swapchain_extent, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	depth_buffer = new Vulkan::Image(context->device, context->gpu, wsi->swapchain_extent, depth_format, context->msaa_samples,
+									 VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+									 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
 	transition_image_layout(depth_buffer->image, depth_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 

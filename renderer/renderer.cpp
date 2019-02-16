@@ -225,7 +225,6 @@ VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descript
 	return vkAllocateDescriptorSets(device->context->device, &descriptor_set_ai, &descriptor_set);
 }
 
-
 void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 {
 	Frame* frame = (Frame*) frame_resources.next;
@@ -238,8 +237,8 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 	glm::vec3 camera_position = { 0.0f, 10.0f, 4.0f };
 
 	UniformBufferObject ubo = {};
-	// ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.model = glm::mat4(1.0f);
+	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f) * 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
+	// ubo.model = glm::mat4(1.0f);
 	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
@@ -416,7 +415,7 @@ void Renderer::create_graphics_pipeline()
 	// Multisampling
 	VkPipelineMultisampleStateCreateInfo multisampling_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
 	multisampling_ci.sampleShadingEnable = VK_FALSE;
-	multisampling_ci.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling_ci.rasterizationSamples = device->context->msaa_samples;
 	// Color Blend
 	VkPipelineColorBlendAttachmentState color_blend_attachment_ci = {};
 	color_blend_attachment_ci.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;

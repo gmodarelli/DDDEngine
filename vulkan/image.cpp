@@ -3,7 +3,7 @@
 namespace Vulkan
 {
 
-Image::Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat format, VkImageAspectFlags aspect_flags, VkImageTiling tiling, VkImageUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkSharingMode sharing_mode)
+Image::Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat format, VkSampleCountFlagBits samples, VkImageAspectFlags aspect_flags, VkImageTiling tiling, VkImageUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkSharingMode sharing_mode)
 {
 	image_format = format;
 
@@ -19,7 +19,7 @@ Image::Image(VkDevice device, VkPhysicalDevice gpu, VkExtent2D extent, VkFormat 
 	image_ci.tiling = tiling;
 	image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	image_ci.usage = usage_flags;
-	image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+	image_ci.samples = samples;
 	image_ci.sharingMode = sharing_mode;
 
 	VkResult result = vkCreateImage(device, &image_ci, nullptr, &image);

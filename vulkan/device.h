@@ -82,6 +82,8 @@ struct Device
 	// Render Pass
 	VkRenderPass render_pass = VK_NULL_HANDLE;
 
+	// Color Buffer
+	Vulkan::Image* color_buffer;
 	// Depth Buffer
 	Vulkan::Image* depth_buffer;
 
@@ -123,6 +125,10 @@ private:
 	// Render pass helpers
 	void create_render_pass();
 	void destroy_render_pass();
+
+	// Color buffer helpers
+	void create_color_buffer();
+	void destroy_color_buffer();
 
 	// Depth buffer helpers
 	void create_depth_buffer();

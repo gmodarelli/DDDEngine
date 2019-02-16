@@ -33,6 +33,7 @@ struct Context
 	VkPhysicalDeviceProperties gpu_properties = {};
 	VkPhysicalDeviceFeatures gpu_features = {};
 	VkPhysicalDeviceFeatures gpu_enabled_features = {};
+	VkSampleCountFlagBits msaa_samples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkQueue graphics_queue = VK_NULL_HANDLE;
 	VkQueue transfer_queue = VK_NULL_HANDLE;
@@ -81,6 +82,7 @@ private:
 	VkPhysicalDevice* available_gpus = nullptr;
 	VkPhysicalDeviceProperties* available_gpu_properties = nullptr;
 	VkPhysicalDeviceFeatures* available_gpu_features = nullptr;
+	VkSampleCountFlagBits get_max_usable_sample_count(const VkPhysicalDeviceProperties& properties);
 	// Vulkan Queues
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice gpu, VkSurfaceKHR surface);
 };
