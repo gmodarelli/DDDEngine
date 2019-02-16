@@ -45,6 +45,13 @@ struct UniformBufferObject
 	glm::mat4 projection;
 };
 
+struct Frame
+{
+	// UBO Buffers
+	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+	Vulkan::Buffer* ubo_buffer = nullptr;
+};
+
 struct Renderer
 {
 	Renderer(Vulkan::Device* device);
@@ -64,6 +71,8 @@ struct Renderer
 	VkDescriptorSetLayout instance_descriptor_set_layout = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
+	Frame frames[Vulkan::MAX_FRAMES_IN_FLIGHT];
+
 	double frame_cpu_avg = 0;
 
 	uint32_t meshes_count = 0;
@@ -72,9 +81,15 @@ struct Renderer
 	Entity* entities;
 	Transform* transforms;
 
-	// Helper functions
-	void* aligned_alloc(size_t size, size_t alignment);
-	void aligned_free(void* data);
+	// Descriptor Pool helpers
+	VkDescriptorPool descriptor_pool;
+	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);
+	void create_descriptor_pool();
+	void destroy_descriptor_pool();
+
+	// UBO Buffer helpers
+	void create_ubo_buffers();
+	void destroy_ubo_buffers();
 }; // struct Renderer
 
 } // namespace Renderer

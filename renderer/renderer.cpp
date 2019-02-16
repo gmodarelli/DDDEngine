@@ -18,6 +18,8 @@ Renderer::Renderer(Vulkan::Device* device) : device(device)
 
 void Renderer::init()
 {
+	create_descriptor_pool();
+	create_ubo_buffers();
 	create_graphics_pipeline();
 
 	meshes_count = 1;
@@ -151,19 +153,26 @@ void Renderer::render_frame()
 	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
 
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
+	Frame* frame = (Frame*) frame_resources.next;
 
-	if (frame_resources.descriptor_set == VK_NULL_HANDLE)
+	if (frame == nullptr)
 	{
-		VkResult result = device->allocate_descriptor_set(view_descriptor_set_layout, frame_resources.descriptor_set);
+		frame = &frames[device->frame_index];
+		frame_resources.next = frame;
+	}
+
+	if (frame->descriptor_set == VK_NULL_HANDLE)
+	{
+		VkResult result = allocate_descriptor_set(view_descriptor_set_layout, frame->descriptor_set);
 		assert(result == VK_SUCCESS);
 
 		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = frame_resources.ubo_buffer->buffer;
+		buffer_info.buffer = frame->ubo_buffer->buffer;
 		buffer_info.offset = 0;
 		buffer_info.range = VK_WHOLE_SIZE;
 
 		VkWriteDescriptorSet descriptor_write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		descriptor_write.dstSet = frame_resources.descriptor_set;
+		descriptor_write.dstSet = frame->descriptor_set;
 		descriptor_write.dstBinding = 0;
 		descriptor_write.dstArrayElement = 0;
 		descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -185,7 +194,7 @@ void Renderer::render_frame()
 
 	update_uniform_buffer(frame_resources);
 
-	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame_resources.descriptor_set, 0, nullptr);
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame->descriptor_set, 0, nullptr);
 
 	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
 	VkBuffer instance_buffers[] = { device->instance_buffer->buffer };
@@ -206,8 +215,22 @@ void Renderer::render_frame()
 	frame_cpu_avg = frame_cpu_avg * 0.95 + (frame_cpu_end - frame_cpu_start).count() * 1e-6 * 0.05;
 }
 
+VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set)
+{
+	VkDescriptorSetAllocateInfo descriptor_set_ai = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+	descriptor_set_ai.descriptorPool = descriptor_pool;
+	descriptor_set_ai.descriptorSetCount = 1;
+	descriptor_set_ai.pSetLayouts = &descriptor_set_layout;
+
+	return vkAllocateDescriptorSets(device->context->device, &descriptor_set_ai, &descriptor_set);
+}
+
+
 void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 {
+	Frame* frame = (Frame*) frame_resources.next;
+	assert(frame != nullptr);
+
 	static auto start_time = std::chrono::high_resolution_clock::now();
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
@@ -222,14 +245,16 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 	ubo.projection[1][1] *= -1;
 
 	void* data;
-	vkMapMemory(device->context->device, frame_resources.ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+	vkMapMemory(device->context->device, frame->ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device->context->device, frame_resources.ubo_buffer->device_memory);
+	vkUnmapMemory(device->context->device, frame->ubo_buffer->device_memory);
 }
 
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
+	destroy_ubo_buffers();
+	destroy_descriptor_pool();
 
 	if (view_descriptor_set_layout != VK_NULL_HANDLE)
 	{
@@ -447,34 +472,52 @@ void Renderer::create_graphics_pipeline()
 	}
 }
 
-// Helper functions
-// Wrapper functions for aligned memory allocation
-// There is currently no standard for this in C++ that works across all platforms and vendors, so we abstract this
-// Sascha Willems
-void* Renderer::aligned_alloc(size_t size, size_t alignment)
+// Descriptor Pool helpers
+void Renderer::create_descriptor_pool()
 {
-	void* data = nullptr;
+	VkDescriptorPoolSize pool_size = {};
+	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_size.descriptorCount = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-	data = _aligned_malloc(size, alignment);
-#else
-	int res = posix_memalign(&data, alignment, size);
-	if (res != 0)
-	{
-		data = nullptr;
-	}
-#endif
+	VkDescriptorPoolCreateInfo pool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+	pool_ci.poolSizeCount = 1;
+	pool_ci.pPoolSizes = &pool_size;
+	pool_ci.maxSets = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
 
-	return data;
+	VkResult result = vkCreateDescriptorPool(device->context->device, &pool_ci, nullptr, &descriptor_pool);
+	assert(result == VK_SUCCESS);
 }
 
-void Renderer::aligned_free(void* data)
+void Renderer::destroy_descriptor_pool()
 {
-#if defined(_MSC_VER) || defined(__MINGW32__)
-	_aligned_free(data);
-#else
-	free(data);
-#endif
+	if (descriptor_pool != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool(device->context->device, descriptor_pool, nullptr);
+		descriptor_pool = VK_NULL_HANDLE;
+	}
+}
+
+// UBO Buffers Helpers
+void Renderer::create_ubo_buffers()
+{
+	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		frames[i].ubo_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			sizeof(UniformBufferObject));
+	}
+}
+
+void Renderer::destroy_ubo_buffers()
+{
+
+	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		frames[i].ubo_buffer->destroy(device->context->device);
+	}
 }
 
 } // namespace Renderer

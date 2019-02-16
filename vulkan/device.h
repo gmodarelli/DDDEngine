@@ -62,16 +62,8 @@ struct FrameResources
 	uint32_t timestamp_query_pool_count = 0;
 	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
 
-	// TODO: The data below is scene specific and should
-	// be moved outside of this frame resource.
-	// An alternative would be to a `void* next` pointing
-	// to extra data that the renderer could extend.
-	//
-	// UBO Buffers
-	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-
-	Vulkan::Buffer* ubo_buffer = nullptr;
-
+	// Render-specific data
+	void* next = nullptr;
 };
 
 struct Device
@@ -96,10 +88,6 @@ struct Device
 	// Command Pools
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkCommandPool transfer_command_pool = VK_NULL_HANDLE;
-
-	// Descriptor Pool
-	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
-	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);
 
 	uint32_t frame_index = 0;
 	FrameResources* frame_resources;
@@ -157,14 +145,6 @@ private:
 	// Query pool helpers
 	void create_query_pool();
 	void destroy_query_pool();
-
-	// Descriptor Pool helpers
-	void create_descriptor_pool();
-	void destroy_descriptor_pool();
-
-	// UBO Buffer helpers
-	void create_ubo_buffers();
-	void destroy_ubo_buffers();
 
 }; // struct Device
 
