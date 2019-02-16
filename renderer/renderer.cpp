@@ -26,15 +26,15 @@ void Renderer::init()
 	{
 		Vertex vertices[] = {
 			// front
-			{ { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
-			{ { 1.0f, -1.0f, 1.0f, }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
-			{ {	1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
-			{ {	-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.0f, 1.0f, 0.0f} },
+			{ { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+			{ { 1.0f, -1.0f, 1.0f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+			{ {	1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+			{ {	-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
 			// back
-			{ {	-1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
-			{ {	 1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
-			{ { 1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} },
-			{ {	-1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {1.0f, 1.0f, 0.0f} }
+			{ {	-1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+			{ {	 1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+			{ { 1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+			{ {	-1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} }
 		};
 
 		uint16_t indices[] = {
@@ -97,16 +97,35 @@ void Renderer::init()
 		index_staging_buffer->destroy(device->context->device);
 
 		// Instances
-		entity_count = 10;
-		entities = new Entity[entity_count];
+		// A makeshift board for the game
+		glm::vec3 scale(0.2f, 0.2f, 0.2f);
+		float distance = 0.4f;
+		float offset_x = -9.0f * distance;
+		float offset_z = -11.0f * distance;
+
+		uint32_t board_width = 20;
+		uint32_t board_height = 20;
+
+		entity_count = (board_width * 2) + ((board_height - 2) * 2);
 		transforms = new Transform[entity_count];
 
-		for (uint32_t i = 0; i < entity_count; ++i)
+		uint32_t transform_index = 0;
+		for (uint32_t c = 0; c < board_height; ++c)
 		{
-			entities[i].index = i;
-			entities[i].mesh_id = 0;
-			transforms[i].position = glm::vec3((i + 1) * 1.5f, 0.0f, (i + 1) * 1.5f);
+			for (uint32_t r = 0; r < board_width; ++r)
+			{
+				if (c == 0 || c == board_height - 1)
+				{
+					transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.0f, c * distance + offset_z), scale };
+				}
+				else if (r == 0 || r == board_width - 1)
+				{
+					transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.0f, c * distance + offset_z), scale };
+				}
+			}
 		}
+
+		assert(transform_index == entity_count);
 
 		VkDeviceSize instances_size = sizeof(transforms[0]) * entity_count;
 
@@ -266,7 +285,7 @@ void Renderer::create_graphics_pipeline()
 	// originating from a binding description. We have 3 attributes, position, normal and color,
 	// so we need 3 attribute description structs
 	// We also have 1 additional attribute, instance position
-	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[4];
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[5];
 	// Per-vertex attributes
 	// Position
 	vertex_input_attribute_descriptions[0].binding = 0;
@@ -285,11 +304,17 @@ void Renderer::create_graphics_pipeline()
 	vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
 
 	// Per-instance attributes
-	// TODO: Add scale and rotation
+	// Instance position
 	vertex_input_attribute_descriptions[3].binding = 1;
 	vertex_input_attribute_descriptions[3].location = 3;
 	vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertex_input_attribute_descriptions[3].offset = offsetof(Transform, position);
+	// Instance scale
+	vertex_input_attribute_descriptions[4].binding = 1;
+	vertex_input_attribute_descriptions[4].location = 4;
+	vertex_input_attribute_descriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[4].offset = offsetof(Transform, scale);
+	// TODO: Add rotation
 
 	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
 	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;

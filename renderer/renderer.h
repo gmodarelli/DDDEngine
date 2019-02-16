@@ -28,6 +28,7 @@ struct Entity
 struct Transform
 {
 	glm::vec3 position;
+	glm::vec3 scale;
 };
 
 struct Vertex
