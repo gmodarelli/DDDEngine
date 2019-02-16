@@ -414,8 +414,17 @@ void Renderer::create_graphics_pipeline()
 
 	// Multisampling
 	VkPipelineMultisampleStateCreateInfo multisampling_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	multisampling_ci.sampleShadingEnable = VK_FALSE;
 	multisampling_ci.rasterizationSamples = device->context->msaa_samples;
+	if (device->context->gpu_enabled_features.sampleRateShading == VK_TRUE)
+	{
+		multisampling_ci.sampleShadingEnable = VK_TRUE;
+		// min fraction for sample shading; closer to one is smooth
+		multisampling_ci.minSampleShading = 0.2f;
+	}
+	else
+	{
+		multisampling_ci.sampleShadingEnable = VK_FALSE;
+	}
 	// Color Blend
 	VkPipelineColorBlendAttachmentState color_blend_attachment_ci = {};
 	color_blend_attachment_ci.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;

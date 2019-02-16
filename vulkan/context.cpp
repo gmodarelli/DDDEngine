@@ -73,6 +73,8 @@ bool Context::create_device(const char** device_required_extensions, uint32_t de
 	// Device Features to enable
 	// For now we don't need any features
 	gpu_enabled_features = {};
+	// Enable sample shading to improve the quality of the image
+	gpu_enabled_features.sampleRateShading = VK_TRUE;
 
 	// Device create info
 	VkDeviceCreateInfo device_create_info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
