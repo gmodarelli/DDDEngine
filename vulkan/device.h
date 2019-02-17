@@ -110,6 +110,7 @@ struct Device
 	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_instance_buffer(Vulkan::Buffer* staging_buffer);
+	void upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
 
 	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);
 

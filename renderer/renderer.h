@@ -116,6 +116,8 @@ struct Renderer
 	uint32_t static_transform_count = 1024;
 	Transform* static_transforms;
 
+	Vulkan::Image* texture_image;
+
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;
 	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set);

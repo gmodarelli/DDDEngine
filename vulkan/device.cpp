@@ -109,6 +109,68 @@ VkDeviceSize Device::upload_instance_buffer(Vulkan::Buffer* staging_buffer)
 	return instance_offset;
 }
 
+void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout)
+{
+	VkCommandBuffer command_buffer = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	// Transition 1
+	VkPipelineStageFlags source_stage;
+	VkPipelineStageFlags destination_stage;
+
+	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+	barrier.image = image;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+	barrier.oldLayout = old_layout;
+	barrier.newLayout = new_old_layout;
+	barrier.srcQueueFamilyIndex = context->transfer_family_index;
+	barrier.dstQueueFamilyIndex = context->transfer_family_index;
+
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+	source_stage = VK_PIPELINE_STAGE_HOST_BIT;
+	destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+	// Copy
+
+	VkBufferImageCopy region = {};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = { width, height, 1 };
+
+	vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	// Transition 2
+	barrier.oldLayout = new_old_layout;
+	barrier.newLayout = new_layout;
+	barrier.srcQueueFamilyIndex = context->transfer_family_index;
+	barrier.dstQueueFamilyIndex = context->graphics_family_index;
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+	source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+	flush_transfer_command_buffer(command_buffer);
+}
+
 void Device::create_vertex_index_buffers()
 {
 	// TODO: Figure out the needed size
@@ -178,7 +240,6 @@ void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayo
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
-	// TODO: Add more layout transition stages when we start working with textures
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED && dst_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
 		barrier.srcAccessMask = 0;

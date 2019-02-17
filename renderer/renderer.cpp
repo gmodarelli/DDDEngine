@@ -9,6 +9,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "../application/stb_image.h"
+
 namespace Renderer
 {
 
@@ -261,6 +263,43 @@ void Renderer::init()
 
 	dynamic_entities[0].mesh_id = 0;
 	player_transform = { glm::vec3(0.0f, 0.6f, 0.0f), glm::vec3(1.0f) };
+
+	// Load chequered texture
+	int tex_width;
+	int tex_height;
+	int tex_channels;
+	stbi_uc* pixels = stbi_load("../data/textures/debug.png", &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+	VkDeviceSize texture_size = tex_width * tex_height * 4;
+
+	if (!pixels)
+		assert(!"Failed to load texture");
+
+	Vulkan::Buffer* texture_staging_buffer = new Vulkan::Buffer(
+		device->context->device,
+		device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		texture_size);
+
+	void* texture_data;
+	vkMapMemory(device->context->device, texture_staging_buffer->device_memory, 0, texture_staging_buffer->size, 0, &texture_data);
+	memcpy(texture_data, pixels, (size_t)texture_staging_buffer->size);
+	vkUnmapMemory(device->context->device, texture_staging_buffer->device_memory);
+
+	stbi_image_free(pixels);
+
+	VkExtent2D texture_extent = { (uint32_t)tex_width, (uint32_t)tex_height };
+	VkFormat color_format = device->wsi->surface_format.format;
+	texture_image = new Vulkan::Image(device->context->device, device->context->gpu, texture_extent, color_format, VK_SAMPLE_COUNT_1_BIT,
+									 VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_TILING_OPTIMAL,
+								 	 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+									 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	// NOTE: The upload_buffer_to_image function takes care of the necessary transitions between
+	// image layouts and queues
+	device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	texture_staging_buffer->destroy(device->context->device);
 }
 
 void Renderer::render_frame(float delta_time)
@@ -437,6 +476,8 @@ void Renderer::cleanup()
 
 	vkDestroyPipelineLayout(device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
 	dynamic_pipeline.pipeline_layout = VK_NULL_HANDLE;
+
+	texture_image->destroy(device->context->device);
 }
 
 void Renderer::create_pipelines()

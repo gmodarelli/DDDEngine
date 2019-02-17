@@ -164,6 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\application\stb_image.cpp" />
     <ClCompile Include="..\renderer\renderer.cpp" />
     <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
@@ -200,6 +201,7 @@
     <None Include="..\data\shaders\static_entity.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\application\stb_image.h" />
     <ClInclude Include="..\extern\glfw\src\egl_context.h" />
     <ClInclude Include="..\extern\glfw\src\osmesa_context.h" />
     <ClInclude Include="..\extern\glfw\src\wgl_context.h" />
