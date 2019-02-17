@@ -182,11 +182,11 @@ void Renderer::init()
 		{
 			if (c == 0 || c == board_height - 1)
 			{
-				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.0f, c * distance + offset_z), scale };
+				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.6f, c * distance + offset_z), scale };
 			}
 			else if (r == 0 || r == board_width - 1)
 			{
-				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.0f, c * distance + offset_z), scale };
+				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.6f, c * distance + offset_z), scale };
 			}
 		}
 	}
@@ -214,7 +214,7 @@ void Renderer::init()
 	instance_staging_buffer->destroy(device->context->device);
 
 	// Generate the transforms for the ground
-	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, -1.0f, distance * -1.5f), glm::vec3(board_width, 1.0f, board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
+	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, 0.0f, distance * -1.5f), glm::vec3(board_width, 1.0f, board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
 
 	// Upload the transforms for the grounnd
 	instances_size = sizeof(static_transforms[0]) * 1;
