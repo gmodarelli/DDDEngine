@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -191,8 +191,6 @@
     <ClCompile Include="..\extern\glfw\src\win32_window.c" />
     <ClCompile Include="..\extern\glfw\src\window.c" />
     <ClCompile Include="..\extern\volk\volk.c" />
-    <None Include="..\data\shaders\simple_triangle.frag" />
-    <None Include="..\data\shaders\simple_triangle.vert" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag" />

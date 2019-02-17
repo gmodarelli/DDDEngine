@@ -153,12 +153,12 @@ void Renderer::render_frame()
 	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
 
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
-	Frame* frame = (Frame*) frame_resources.next;
+	Frame* frame = (Frame*) frame_resources.custom;
 
 	if (frame == nullptr)
 	{
 		frame = &frames[device->frame_index];
-		frame_resources.next = frame;
+		frame_resources.custom = frame;
 	}
 
 	if (frame->descriptor_set == VK_NULL_HANDLE)
@@ -227,7 +227,7 @@ VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descript
 
 void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 {
-	Frame* frame = (Frame*) frame_resources.next;
+	Frame* frame = (Frame*) frame_resources.custom;
 	assert(frame != nullptr);
 
 	static auto start_time = std::chrono::high_resolution_clock::now();

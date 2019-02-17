@@ -63,7 +63,7 @@ struct FrameResources
 	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
 
 	// Render-specific data
-	void* next = nullptr;
+	void* custom = nullptr;
 };
 
 struct Device

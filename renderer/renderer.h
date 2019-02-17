@@ -14,11 +14,6 @@ struct Mesh
 	uint32_t vertex_offset;
 };
 
-struct UboDataDynamic
-{
-	glm::mat4* model;
-};
-
 struct Entity
 {
 	uint32_t index;
@@ -47,7 +42,6 @@ struct UniformBufferObject
 
 struct Frame
 {
-	// UBO Buffers
 	VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
 	Vulkan::Buffer* ubo_buffer = nullptr;
 };
