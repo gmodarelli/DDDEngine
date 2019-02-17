@@ -16,7 +16,13 @@ struct Mesh
 
 struct Entity
 {
-	uint32_t index;
+	uint32_t mesh_id;
+};
+
+struct Instance
+{
+	uint32_t count;
+	VkDeviceSize transform_offset;
 	uint32_t mesh_id;
 };
 
@@ -70,8 +76,14 @@ struct Renderer
 
 	uint32_t meshes_count = 0;
 	Mesh* meshes;
+
 	uint32_t entity_count = 0;
 	Entity* entities;
+
+	uint32_t instance_count = 0;
+	Instance* instances;
+
+	uint32_t transform_count = 0;
 	Transform* transforms;
 
 	// Descriptor Pool helpers

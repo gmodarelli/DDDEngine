@@ -22,7 +22,7 @@ void Renderer::init()
 	create_ubo_buffers();
 	create_graphics_pipeline();
 
-	meshes_count = 1;
+	meshes_count = 2;
 	meshes = new Mesh[meshes_count];
 
 	{
@@ -91,9 +91,10 @@ void Renderer::init()
 		uint32_t vertex_offset = (uint32_t) device->upload_vertex_buffer(vertex_staging_buffer);
 		uint32_t index_offset = (uint32_t) device->upload_index_buffer(index_staging_buffer);
 
-		meshes[0].index_offset = index_offset / sizeof(uint16_t);
-		meshes[0].index_count = ARRAYSIZE(indices);
-		meshes[0].vertex_offset = vertex_offset / sizeof(Vertex);
+		uint32_t mesh_id = 0;
+		meshes[mesh_id].index_offset = index_offset / sizeof(uint16_t);
+		meshes[mesh_id].index_count = ARRAYSIZE(indices);
+		meshes[mesh_id].vertex_offset = vertex_offset / sizeof(Vertex);
 
 		vertex_staging_buffer->destroy(device->context->device);
 		index_staging_buffer->destroy(device->context->device);
@@ -108,8 +109,12 @@ void Renderer::init()
 		uint32_t board_width = 20;
 		uint32_t board_height = 20;
 
-		entity_count = (board_width * 2) + ((board_height - 2) * 2);
-		transforms = new Transform[entity_count];
+		// TODO: Increase this limit if necessary
+		transform_count = 1024;
+		transforms = new Transform[transform_count];
+
+		instance_count = 2;
+		instances = new Instance[instance_count];
 
 		uint32_t transform_index = 0;
 		for (uint32_t c = 0; c < board_height; ++c)
@@ -127,24 +132,77 @@ void Renderer::init()
 			}
 		}
 
-		assert(transform_index == entity_count);
+		{
+			VkDeviceSize instances_size = sizeof(transforms[0]) * transform_index;
 
-		VkDeviceSize instances_size = sizeof(transforms[0]) * entity_count;
+			Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
+				device->context->device,
+				device->context->gpu,
+				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+				instances_size);
 
-		Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
-			device->context->device,
-			device->context->gpu,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			instances_size);
+			void* instance_data;
+			vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &instance_data);
+			memcpy(instance_data, transforms, (size_t)instance_staging_buffer->size);
+			vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
 
-		void* instance_data;
-		vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &instance_data);
-		memcpy(instance_data, transforms, (size_t)instance_staging_buffer->size);
-		vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
+			uint32_t instance_offset = (uint32_t)device->upload_instance_buffer(instance_staging_buffer);
+			instance_staging_buffer->destroy(device->context->device);
 
-		uint32_t instance_offset = (uint32_t) device->upload_instance_buffer(instance_staging_buffer);
-		instance_staging_buffer->destroy(device->context->device);
+			instances[0] = {};
+			instances[0].count = transform_index;
+			instances[0].mesh_id = 0;
+			instances[0].transform_offset = instance_offset / sizeof(Transform);
+		}
+
+		transforms[transform_index]     = { glm::vec3(3 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 1] = { glm::vec3(4 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 2] = { glm::vec3(5 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 3] = { glm::vec3(6 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+
+		transforms[transform_index + 4] = { glm::vec3(13 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 5] = { glm::vec3(14 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 6] = { glm::vec3(15 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+		transforms[transform_index + 7] = { glm::vec3(16 * distance + offset_x, 0.0f, 5 * distance + offset_z), scale };
+
+		transforms[transform_index + 8] = { glm::vec3(5 * distance + offset_x, 0.0f, 14 * distance + offset_z), scale };
+		transforms[transform_index + 9] = { glm::vec3(14 * distance + offset_x, 0.0f, 14 * distance + offset_z), scale };
+		transforms[transform_index + 10] = { glm::vec3(6 * distance + offset_x, 0.0f, 15 * distance + offset_z), scale };
+		transforms[transform_index + 11] = { glm::vec3(13 * distance + offset_x, 0.0f, 15 * distance + offset_z), scale };
+
+		transforms[transform_index + 12] = { glm::vec3(7 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+		transforms[transform_index + 13] = { glm::vec3(8 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+		transforms[transform_index + 14] = { glm::vec3(9 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+		transforms[transform_index + 15] = { glm::vec3(10 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+		transforms[transform_index + 16] = { glm::vec3(11 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+		transforms[transform_index + 17] = { glm::vec3(12 * distance + offset_x, 0.0f, 16 * distance + offset_z), scale };
+
+		uint32_t count = 18;
+
+		{
+			VkDeviceSize instances_size = sizeof(transforms[transform_index]) * count;
+
+			Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
+				device->context->device,
+				device->context->gpu,
+				VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+				instances_size);
+
+			void* instance_data;
+			vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &instance_data);
+			memcpy(instance_data, &transforms[transform_index], (size_t)instance_staging_buffer->size);
+			vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
+
+			uint32_t instance_offset = (uint32_t)device->upload_instance_buffer(instance_staging_buffer);
+			instance_staging_buffer->destroy(device->context->device);
+
+			instances[1] = {};
+			instances[1].count = count;
+			instances[1].mesh_id = 0;
+			instances[1].transform_offset = instance_offset;
+		}
 	}
 }
 
@@ -202,12 +260,17 @@ void Renderer::render_frame()
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
-	// Bind point 1: Instance data buffer
-	vkCmdBindVertexBuffers(frame_resources.command_buffer, 1, 1, instance_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	// Draw all instances at once
-	vkCmdDrawIndexed(frame_resources.command_buffer, meshes[0].index_count, entity_count, meshes[0].index_offset, meshes[0].vertex_offset, 0);
+	for (uint32_t i = 0; i < instance_count; ++i)
+	{
+		VkDeviceSize offsets[] = { instances[i].transform_offset };
+		// Bind point 1: Instance data buffer
+		vkCmdBindVertexBuffers(frame_resources.command_buffer, 1, 1, instance_buffers, offsets);
+		// Draw all instances at once
+		Mesh& mesh = meshes[instances[i].mesh_id];
+		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, instances[i].count, mesh.index_offset, mesh.vertex_offset, 0);
+	}
 
 	device->end_draw_frame(frame_resources);
 
@@ -237,8 +300,8 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 	glm::vec3 camera_position = { 0.0f, 10.0f, 4.0f };
 
 	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f) * 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
-	// ubo.model = glm::mat4(1.0f);
+	// ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f) * 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::mat4(1.0f);
 	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
