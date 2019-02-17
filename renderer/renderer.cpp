@@ -37,15 +37,15 @@ void Renderer::init()
 	// Since obstacles don't move, we render them as static instances
 	Vertex cube_vertices[] = {
 		// front
-		{ { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ { 1.0f, -1.0f, 1.0f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ {	1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ {	-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
+		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
 		// back
-		{ {	-1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ {	 1.0, -1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ { 1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ {	-1.0,  1.0, -1.0 }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} }
+		{ {	-0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+		{ {	 0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+		{ { 0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+		{ {	-0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} }
 	};
 
 	uint16_t cube_indices[] = {
@@ -111,10 +111,10 @@ void Renderer::init()
 
 	// NOTE: A plane mesh
 	Vertex plane_vertices[] = {
-		{ { -1.0f, -1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ { 1.0f, -1.0f, 1.0f, }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ {	1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ {	-1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
+		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
+		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
+		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
+		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
 	};
 
 	uint16_t plane_indices[] = {
@@ -166,8 +166,8 @@ void Renderer::init()
 
 	// A makeshift board for the game
 	// Build a surrounding wall
-	glm::vec3 scale(0.2f, 0.2f, 0.2f);
-	float distance = 0.4f;
+	glm::vec3 scale(1.0f, 1.0f, 1.0f);
+	float distance = 0.6f;
 	float offset_x = -9.0f * distance;
 	float offset_z = -11.0f * distance;
 
@@ -214,7 +214,7 @@ void Renderer::init()
 	instance_staging_buffer->destroy(device->context->device);
 
 	// Generate the transforms for the ground
-	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, -1.0f, distance * -1.5f), glm::vec3(0.2 * board_width, 1.0f, 0.2 * board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
+	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, -1.0f, distance * -1.5f), glm::vec3(board_width, 1.0f, board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
 
 	// Upload the transforms for the grounnd
 	instances_size = sizeof(static_transforms[0]) * 1;
@@ -331,7 +331,7 @@ void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-	glm::vec3 camera_position = { 0.0f, 10.0f, 5.0f };
+	glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
 
 	UniformBufferObject ubo = {};
 	// ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f) * 0.5f, glm::vec3(1.0f, 0.0f, 0.0f));
