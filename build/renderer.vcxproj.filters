@@ -98,22 +98,22 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\data\shaders\simple.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="..\data\shaders\simple.vert">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="..\data\shaders\glft.frag">
       <Filter>shaders</Filter>
     </None>
     <None Include="..\data\shaders\glft.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\data\shaders\simple_triangle.vert">
+    <None Include="..\data\shaders\static_entity.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\data\shaders\simple_triangle.frag">
+    <None Include="..\data\shaders\static_entity.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\dynamic_entity.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\dynamic_entity.frag">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

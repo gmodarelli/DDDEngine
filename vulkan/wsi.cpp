@@ -37,6 +37,8 @@ bool WSI::init()
 	}
 	glfwSetWindowUserPointer(window, this);
 
+	glfwSetKeyCallback(window, key_callback);
+
 	context = new Vulkan::Context();
 	bool result = context->init();
 	assert(result);
@@ -61,6 +63,7 @@ void WSI::set_window_title(const char* title)
 {
 	glfwSetWindowTitle(window, title);
 }
+
 
 void WSI::cleanup()
 {
@@ -325,6 +328,59 @@ static void framebuffer_resize_callback(GLFWwindow* window, int width, int heigh
 {
 	WSI* wsi = (WSI*)glfwGetWindowUserPointer(window);
 	wsi->framebuffer_resized = true;
+}
+
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	WSI* wsi = (WSI*)glfwGetWindowUserPointer(window);
+
+	if ((key == GLFW_KEY_W || key == GLFW_KEY_UP))
+	{
+		if (action == GLFW_PRESS)
+		{
+			wsi->input_state.up_pressed = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			wsi->input_state.up_pressed = false;
+		}
+	}
+
+	if ((key == GLFW_KEY_S || key == GLFW_KEY_DOWN))
+	{
+		if (action == GLFW_PRESS)
+		{
+			wsi->input_state.down_pressed = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			wsi->input_state.down_pressed = false;
+		}
+	}
+
+	if ((key == GLFW_KEY_A || key == GLFW_KEY_LEFT))
+	{
+		if (action == GLFW_PRESS)
+		{
+			wsi->input_state.left_pressed = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			wsi->input_state.left_pressed = false;
+		}
+	}
+
+	if ((key == GLFW_KEY_D || key == GLFW_KEY_RIGHT))
+	{
+		if (action == GLFW_PRESS)
+		{
+			wsi->input_state.right_pressed = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			wsi->input_state.right_pressed = false;
+		}
+	}
 }
 
 } // namespace Vulkan

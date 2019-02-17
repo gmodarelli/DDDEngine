@@ -10,9 +10,18 @@ namespace Vulkan
 {
 
 static void framebuffer_resize_callback(GLFWwindow* window, int window_width, int window_height);
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 struct WSI
 {
+	struct InputState
+	{
+		bool up_pressed = false;
+		bool down_pressed = false;
+		bool left_pressed = false;
+		bool right_pressed = false;
+	} input_state;
+
 	WSI(int window_width, int window_height);
 	bool init();
 

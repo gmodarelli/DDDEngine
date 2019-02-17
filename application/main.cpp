@@ -786,6 +786,7 @@ int main()
 
 #include <inttypes.h>
 #include <stdio.h>
+#include <chrono>
 #include "../vulkan/wsi.h"
 #include "../vulkan/device.h"
 #include "../renderer/renderer.h"
@@ -810,11 +811,19 @@ int main()
 
 	char stats[256];
 
+	// TODO: Pass delta_time to the render_frame function
+	auto start_time = std::chrono::high_resolution_clock::now();
+
 	while (wsi->alive())
 	{
-		renderer->render_frame();
+		auto current_time = std::chrono::high_resolution_clock::now();
+		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+
+		renderer->render_frame(delta_time);
 		sprintf(stats, "73 Games - CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, device->frame_gpu_avg);
 		wsi->set_window_title(stats);
+
+		start_time = current_time;
 	}
 
 	renderer->cleanup();

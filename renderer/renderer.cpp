@@ -20,12 +20,32 @@ void Renderer::init()
 {
 	create_descriptor_pool();
 	create_ubo_buffers();
-	create_graphics_pipeline();
+	prepare_uniform_buffers();
+	create_pipelines();
+
+	// Init frame resources
+	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
+	{
+		for (uint32_t ds = 0; ds < ARRAYSIZE(frames[i].descriptor_sets); ++ds)
+		{
+			frames[i].descriptor_sets[ds] = VK_NULL_HANDLE;
+		}
+
+		frames[i].descriptor_set_count = 1;
+		frames[i].descriptor_set_cursor = 1;
+	}
+	
+	// NOTE: All the following code will be replaced with a scene loader.
+	// The hardcoded meshes will be loaded from asset files
 
 	// Static objects
 	static_transforms = new Transform[static_transform_count];
 	static_entity_count = 2;
 	static_entitites = new StaticEntity[static_entity_count];
+
+	// Dynamic objects
+	dynamic_entity_count = 1;
+	dynamic_entities = new Entity[dynamic_entity_count];
 
 	// Meshes
 	meshes_count = 2;
@@ -238,9 +258,12 @@ void Renderer::init()
 
 	instance_staging_buffer->destroy(device->context->device);
 	delete instance_staging_buffer;
+
+	dynamic_entities[0].mesh_id = 0;
+	player_transform = { glm::vec3(0.0f, 0.6f, 0.0f), glm::vec3(1.0f) };
 }
 
-void Renderer::render_frame()
+void Renderer::render_frame(float delta_time)
 {
 	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
 
@@ -253,28 +276,31 @@ void Renderer::render_frame()
 		frame_resources.custom = frame;
 	}
 
-	if (frame->descriptor_set == VK_NULL_HANDLE)
+	if (frame->descriptor_set_count > 0)
 	{
-		VkResult result = allocate_descriptor_set(descriptor_set_layout, frame->descriptor_set);
-		assert(result == VK_SUCCESS);
+		if (frame->descriptor_sets[0] == VK_NULL_HANDLE)
+		{
+			VkResult result = allocate_descriptor_set(static_pipeline.descriptor_set_layouts[0], frame->descriptor_sets[0]);
+			assert(result == VK_SUCCESS);
 
-		VkDescriptorBufferInfo buffer_info = {};
-		buffer_info.buffer = frame->ubo_buffer->buffer;
-		buffer_info.offset = 0;
-		buffer_info.range = VK_WHOLE_SIZE;
+			VkDescriptorBufferInfo buffer_info = {};
+			buffer_info.buffer = frame->view_ubo_buffer->buffer;
+			buffer_info.offset = 0;
+			buffer_info.range = VK_WHOLE_SIZE;
 
-		VkWriteDescriptorSet descriptor_write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-		descriptor_write.dstSet = frame->descriptor_set;
-		descriptor_write.dstBinding = 0;
-		descriptor_write.dstArrayElement = 0;
-		descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptor_write.descriptorCount = 1;
-		descriptor_write.pBufferInfo = &buffer_info;
+			VkWriteDescriptorSet descriptor_write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			descriptor_write.dstSet = frame->descriptor_sets[0];
+			descriptor_write.dstBinding = 0;
+			descriptor_write.dstArrayElement = 0;
+			descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptor_write.descriptorCount = 1;
+			descriptor_write.pBufferInfo = &buffer_info;
 
-		vkUpdateDescriptorSets(device->context->device, 1, &descriptor_write, 0, nullptr);
+			vkUpdateDescriptorSets(device->context->device, 1, &descriptor_write, 0, nullptr);
+		}
 	}
 
-	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline);
 
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
@@ -284,9 +310,9 @@ void Renderer::render_frame()
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
-	update_uniform_buffer(frame_resources);
+	update_uniform_buffers(frame_resources);
 
-	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &frame->descriptor_set, 0, nullptr);
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
 
 	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
 	VkBuffer instance_buffers[] = { device->instance_buffer->buffer };
@@ -306,6 +332,48 @@ void Renderer::render_frame()
 		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, static_entitites[i].count, mesh.index_offset, mesh.vertex_offset, 0);
 	}
 
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline);
+
+	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
+	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
+
+	// TODO: Move the following code to a "Simulation" struct that will deal
+	// with simulating stuff :)
+	if (device->wsi->input_state.up_pressed)
+	{
+		player_direction = glm::vec3(0.0f, 0.0f, -1.0f);
+	}
+
+	if (device->wsi->input_state.down_pressed)
+	{
+		player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	}
+
+	if (device->wsi->input_state.left_pressed)
+	{
+		player_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+	}
+
+	if (device->wsi->input_state.right_pressed)
+	{
+		player_direction = glm::vec3(1.0f, 0.0f, 0.0f);
+	}
+
+	player_transform.position += player_direction * delta_time * player_speed;
+	glm::mat4 model(1.0f);
+	model = glm::translate(model, player_transform.position);
+	vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+
+	// Bind point 0: Mesh vertex buffer
+	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
+	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+
+	for (uint32_t i = 0; i < dynamic_entity_count; ++i)
+	{
+		Mesh& mesh = meshes[dynamic_entities[i].mesh_id];
+		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
+	}
+
 	device->end_draw_frame(frame_resources);
 
 	auto frame_cpu_end = std::chrono::high_resolution_clock::now();
@@ -322,28 +390,28 @@ VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descript
 	return vkAllocateDescriptorSets(device->context->device, &descriptor_set_ai, &descriptor_set);
 }
 
-void Renderer::update_uniform_buffer(Vulkan::FrameResources& frame_resources)
+void Renderer::prepare_uniform_buffers()
+{
+	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
+	{
+		glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
+
+		ViewUniformBufferObject ubo = {};
+		ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+		ubo.projection[1][1] *= -1;
+
+		void* data;
+		vkMapMemory(device->context->device, frames[i].view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device->context->device, frames[i].view_ubo_buffer->device_memory);
+	}
+}
+
+void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 {
 	Frame* frame = (Frame*) frame_resources.custom;
 	assert(frame != nullptr);
-
-	static auto start_time = std::chrono::high_resolution_clock::now();
-	auto current_time = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
-
-	glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
-
-	UniformBufferObject ubo = {};
-	// ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f) * 0.5f, glm::vec3(1.0f, 0.0f, 0.0f));
-	ubo.model = glm::mat4(1.0f);
-	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
-	ubo.projection[1][1] *= -1;
-
-	void* data;
-	vkMapMemory(device->context->device, frame->ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device->context->device, frame->ubo_buffer->device_memory);
 }
 
 void Renderer::cleanup()
@@ -352,103 +420,30 @@ void Renderer::cleanup()
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
 
-	vkDestroyDescriptorSetLayout(device->context->device, descriptor_set_layout, nullptr);
-	descriptor_set_layout = VK_NULL_HANDLE;
+	vkDestroyDescriptorSetLayout(device->context->device, static_pipeline.descriptor_set_layouts[0], nullptr);
+	static_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(device->context->device, graphics_pipeline, nullptr);
-	graphics_pipeline = VK_NULL_HANDLE;
+	vkDestroyPipeline(device->context->device, static_pipeline.pipeline, nullptr);
+	static_pipeline.pipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(device->context->device, pipeline_layout, nullptr);
-	pipeline_layout = VK_NULL_HANDLE;
+	vkDestroyPipelineLayout(device->context->device, static_pipeline.pipeline_layout, nullptr);
+	static_pipeline.pipeline_layout = VK_NULL_HANDLE;
+
+	vkDestroyDescriptorSetLayout(device->context->device, dynamic_pipeline.descriptor_set_layouts[0], nullptr);
+	dynamic_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
+
+	vkDestroyPipeline(device->context->device, dynamic_pipeline.pipeline, nullptr);
+	dynamic_pipeline.pipeline = VK_NULL_HANDLE;
+
+	vkDestroyPipelineLayout(device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
+	dynamic_pipeline.pipeline_layout = VK_NULL_HANDLE;
 }
 
-void Renderer::create_graphics_pipeline()
+void Renderer::create_pipelines()
 {
-	VkPipelineShaderStageCreateInfo shader_stages[2];
-	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, "../data/shaders/simple.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-
-	// Pipeline Fixed Functions
-	// Vertex Input
-	VkPipelineVertexInputStateCreateInfo vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
-	// It specifies the number of bytes between data entries and whether to move to the next 
-	// data entry after each vertex or after each instance.
-	VkVertexInputBindingDescription vertex_binding_descriptions[2];
-	// Mesh vertex bindings
-	vertex_binding_descriptions[0] = {};
-	vertex_binding_descriptions[0].binding = 0;
-	vertex_binding_descriptions[0].stride = sizeof(Vertex);
-	vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	// Instance transform bindings (per instance position, scale and rotation)
-	vertex_binding_descriptions[1] = {};
-	vertex_binding_descriptions[1].binding = 1;
-	vertex_binding_descriptions[1].stride = sizeof(Transform);
-	vertex_binding_descriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-
-	vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(vertex_binding_descriptions);
-	vertex_input_ci.pVertexBindingDescriptions = vertex_binding_descriptions;
-
-	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
-	// originating from a binding description. We have 3 attributes, position, normal and color,
-	// so we need 3 attribute description structs
-	// We also have 1 additional attribute, instance position
-	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[6];
-	// Per-vertex attributes
-	// Position
-	vertex_input_attribute_descriptions[0].binding = 0;
-	vertex_input_attribute_descriptions[0].location = 0;
-	vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
-	// Normal
-	vertex_input_attribute_descriptions[1].binding = 0;
-	vertex_input_attribute_descriptions[1].location = 1;
-	vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
-	// Color
-	vertex_input_attribute_descriptions[2].binding = 0;
-	vertex_input_attribute_descriptions[2].location = 2;
-	vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
-
-	// Per-instance attributes
-	// Instance position
-	vertex_input_attribute_descriptions[3].binding = 1;
-	vertex_input_attribute_descriptions[3].location = 3;
-	vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[3].offset = offsetof(Transform, position);
-	// Instance scale
-	vertex_input_attribute_descriptions[4].binding = 1;
-	vertex_input_attribute_descriptions[4].location = 4;
-	vertex_input_attribute_descriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertex_input_attribute_descriptions[4].offset = offsetof(Transform, scale);
-	// Instance rotation
-	vertex_input_attribute_descriptions[5].binding = 1;
-	vertex_input_attribute_descriptions[5].location = 5;
-	vertex_input_attribute_descriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	vertex_input_attribute_descriptions[5].offset = offsetof(Transform, rotation);
-
-	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
-	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;
-
-	// Input Assembly
-	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
-
-	// View Uniform Buffer
-	VkDescriptorSetLayoutBinding view_ubo_layout_binding = {};
-	view_ubo_layout_binding.binding = 0;
-	view_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	view_ubo_layout_binding.descriptorCount = 1;
-	view_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-	VkDescriptorSetLayoutCreateInfo descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	descriptor_layout_ci.bindingCount = 1;
-	descriptor_layout_ci.pBindings = &view_ubo_layout_binding;
-
-	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &descriptor_set_layout);
-	assert(result == VK_SUCCESS);
+	// Shared resources.
+	// The static and dynamic pipelines share some of the resources (like the view uniform buffer)
+	// and some stages, so we create them upfront
 
 	// Viewport and Scissor
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
@@ -522,13 +517,188 @@ void Renderer::create_graphics_pipeline()
 	VkPipelineDynamicStateCreateInfo dynamic_state_ci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 	dynamic_state_ci.dynamicStateCount = ARRAYSIZE(dynamic_states);
 	dynamic_state_ci.pDynamicStates = dynamic_states;
-	// Pipeline Layout
-	VkDescriptorSetLayout descriptor_set_layouts[] = { descriptor_set_layout };
-	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-	pipeline_layout_ci.setLayoutCount = ARRAYSIZE(descriptor_set_layouts);
-	pipeline_layout_ci.pSetLayouts = descriptor_set_layouts;
 
-	result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &pipeline_layout);
+	// Pipelines creation
+	// Pipeline 1: Graphics pipeline for static entities
+	// Pipeline Fixed Functions
+	// Vertex Input
+	VkPipelineVertexInputStateCreateInfo static_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
+	// It specifies the number of bytes between data entries and whether to move to the next 
+	// data entry after each vertex or after each instance.
+	VkVertexInputBindingDescription static_vertex_binding_descriptions[2];
+	// Mesh vertex bindings
+	static_vertex_binding_descriptions[0] = {};
+	static_vertex_binding_descriptions[0].binding = 0;
+	static_vertex_binding_descriptions[0].stride = sizeof(Vertex);
+	static_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	// Instance transform bindings (per instance position, scale and rotation)
+	static_vertex_binding_descriptions[1] = {};
+	static_vertex_binding_descriptions[1].binding = 1;
+	static_vertex_binding_descriptions[1].stride = sizeof(Transform);
+	static_vertex_binding_descriptions[1].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+	static_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(static_vertex_binding_descriptions);
+	static_vertex_input_ci.pVertexBindingDescriptions = static_vertex_binding_descriptions;
+
+	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
+	// originating from a binding description. We have 3 attributes, position, normal and color,
+	// so we need 3 attribute description structs
+	// We also have 1 additional attribute, instance position
+	VkVertexInputAttributeDescription static_vertex_input_attribute_descriptions[6];
+	// Per-vertex attributes
+	// Position
+	static_vertex_input_attribute_descriptions[0].binding = 0;
+	static_vertex_input_attribute_descriptions[0].location = 0;
+	static_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
+	// Normal
+	static_vertex_input_attribute_descriptions[1].binding = 0;
+	static_vertex_input_attribute_descriptions[1].location = 1;
+	static_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
+	// Color
+	static_vertex_input_attribute_descriptions[2].binding = 0;
+	static_vertex_input_attribute_descriptions[2].location = 2;
+	static_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
+
+	// Per-instance attributes
+	// Instance position
+	static_vertex_input_attribute_descriptions[3].binding = 1;
+	static_vertex_input_attribute_descriptions[3].location = 3;
+	static_vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[3].offset = offsetof(Transform, position);
+	// Instance scale
+	static_vertex_input_attribute_descriptions[4].binding = 1;
+	static_vertex_input_attribute_descriptions[4].location = 4;
+	static_vertex_input_attribute_descriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[4].offset = offsetof(Transform, scale);
+	// Instance rotation
+	static_vertex_input_attribute_descriptions[5].binding = 1;
+	static_vertex_input_attribute_descriptions[5].location = 5;
+	static_vertex_input_attribute_descriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	static_vertex_input_attribute_descriptions[5].offset = offsetof(Transform, rotation);
+
+	static_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(static_vertex_input_attribute_descriptions);
+	static_vertex_input_ci.pVertexAttributeDescriptions = static_vertex_input_attribute_descriptions;
+
+	// View Uniform Buffer
+	VkDescriptorSetLayoutBinding view_ubo_layout_binding = {};
+	view_ubo_layout_binding.binding = 0;
+	view_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	view_ubo_layout_binding.descriptorCount = 1;
+	view_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	// Transform Uniform Buffer
+	// TODO: Mke this a UNIFORM_DYNAMIC buffer
+	VkDescriptorSetLayoutBinding transform_ubo_layout_binding = {};
+	transform_ubo_layout_binding.binding = 1;
+	transform_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	transform_ubo_layout_binding.descriptorCount = 1;
+	transform_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo static_descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	static_descriptor_layout_ci.bindingCount = 1;
+	static_descriptor_layout_ci.pBindings = &view_ubo_layout_binding;
+	VkDescriptorSetLayoutCreateInfo static_descriptor_layout_cis[] = { static_descriptor_layout_ci };
+
+	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", static_vertex_input_ci, ARRAYSIZE(static_descriptor_layout_cis), static_descriptor_layout_cis,
+		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, 0, nullptr);
+
+	// Pipeline 2: Graphics pipeline for dynamic entities
+	// Pipeline Fixed Functions
+	// Vertex Input
+	VkPipelineVertexInputStateCreateInfo dynamic_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
+	// It specifies the number of bytes between data entries and whether to move to the next 
+	// data entry after each vertex or after each instance.
+	VkVertexInputBindingDescription dynamic_vertex_binding_descriptions[1];
+	// Mesh vertex bindings
+	dynamic_vertex_binding_descriptions[0] = {};
+	dynamic_vertex_binding_descriptions[0].binding = 0;
+	dynamic_vertex_binding_descriptions[0].stride = sizeof(Vertex);
+	dynamic_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	dynamic_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(dynamic_vertex_binding_descriptions);
+	dynamic_vertex_input_ci.pVertexBindingDescriptions = dynamic_vertex_binding_descriptions;
+
+	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
+	// originating from a binding description. We have 3 attributes, position, normal and color,
+	// so we need 3 attribute description structs
+	VkVertexInputAttributeDescription dynamic_vertex_input_attribute_descriptions[3];
+	// Per-vertex attributes
+	// Position
+	dynamic_vertex_input_attribute_descriptions[0].binding = 0;
+	dynamic_vertex_input_attribute_descriptions[0].location = 0;
+	dynamic_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	dynamic_vertex_input_attribute_descriptions[0].offset = offsetof(Vertex, position);
+	// Normal
+	dynamic_vertex_input_attribute_descriptions[1].binding = 0;
+	dynamic_vertex_input_attribute_descriptions[1].location = 1;
+	dynamic_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	dynamic_vertex_input_attribute_descriptions[1].offset = offsetof(Vertex, normal);
+	// Color
+	dynamic_vertex_input_attribute_descriptions[2].binding = 0;
+	dynamic_vertex_input_attribute_descriptions[2].location = 2;
+	dynamic_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	dynamic_vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
+
+	dynamic_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(dynamic_vertex_input_attribute_descriptions);
+	dynamic_vertex_input_ci.pVertexAttributeDescriptions = dynamic_vertex_input_attribute_descriptions;
+
+	VkDescriptorSetLayoutBinding bindings[] = { view_ubo_layout_binding };
+
+	VkDescriptorSetLayoutCreateInfo dynamic_descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	dynamic_descriptor_layout_ci.bindingCount = ARRAYSIZE(bindings);
+	dynamic_descriptor_layout_ci.pBindings = bindings;
+	VkDescriptorSetLayoutCreateInfo dynamic_descriptor_layout_cis[] = { dynamic_descriptor_layout_ci };
+
+	VkPushConstantRange player_matrix;
+	player_matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	player_matrix.size = sizeof(glm::mat4);
+	player_matrix.offset = 0;
+
+	VkPushConstantRange push_constant_ranges[] = { player_matrix };
+
+	dynamic_pipeline = create_pipeline("../data/shaders/dynamic_entity.vert.spv", "../data/shaders/dynamic_entity.frag.spv", dynamic_vertex_input_ci, ARRAYSIZE(dynamic_descriptor_layout_cis), dynamic_descriptor_layout_cis,
+		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(push_constant_ranges), push_constant_ranges);
+}
+
+Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis,
+								   VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci, VkPipelineDepthStencilStateCreateInfo depth_stencil_ci, VkPipelineMultisampleStateCreateInfo multisampling_ci,
+								   VkPipelineColorBlendStateCreateInfo color_blend_ci, VkPipelineDynamicStateCreateInfo dynamic_state_ci, uint32_t push_constant_range_count, VkPushConstantRange* push_constant_ranges)
+{
+	Pipeline graphics_pipeline = {};
+
+	VkPipelineShaderStageCreateInfo shader_stages[2];
+	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, vertex_shader_path, VK_SHADER_STAGE_VERTEX_BIT);
+	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, fragment_shader_path, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	// Input Assembly
+	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
+
+	graphics_pipeline.descriptor_set_layout_count = descriptor_count;
+	for (uint32_t i = 0; i < descriptor_count; ++i)
+	{
+		VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_cis[i], nullptr, &graphics_pipeline.descriptor_set_layouts[i]);
+		assert(result == VK_SUCCESS);
+	}
+
+	// Pipeline Layout
+	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+	pipeline_layout_ci.setLayoutCount = graphics_pipeline.descriptor_set_layout_count;
+	pipeline_layout_ci.pSetLayouts = graphics_pipeline.descriptor_set_layouts;
+
+	if (push_constant_range_count > 0)
+	{
+		pipeline_layout_ci.pushConstantRangeCount = push_constant_range_count;
+		pipeline_layout_ci.pPushConstantRanges = push_constant_ranges;
+	}
+
+	VkResult result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &graphics_pipeline.pipeline_layout);
 	assert(result == VK_SUCCESS);
 
 	VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -542,17 +712,19 @@ void Renderer::create_graphics_pipeline()
 	pipeline_ci.pMultisampleState = &multisampling_ci;
 	pipeline_ci.pColorBlendState = &color_blend_ci;
 	pipeline_ci.pDynamicState = &dynamic_state_ci;
-	pipeline_ci.layout = pipeline_layout;
+	pipeline_ci.layout = graphics_pipeline.pipeline_layout;
 	pipeline_ci.renderPass = device->render_pass;
 	pipeline_ci.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(device->context->device, nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline);
+	result = vkCreateGraphicsPipelines(device->context->device, nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline.pipeline);
 	assert(result == VK_SUCCESS);
 
 	for (uint32_t i = 0; i < ARRAYSIZE(shader_stages); ++i)
 	{
 		vkDestroyShaderModule(device->context->device, shader_stages[i].module, nullptr);
 	}
+
+	return graphics_pipeline;
 }
 
 // Descriptor Pool helpers
@@ -585,12 +757,12 @@ void Renderer::create_ubo_buffers()
 {
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		frames[i].ubo_buffer = new Vulkan::Buffer(
+		frames[i].view_ubo_buffer = new Vulkan::Buffer(
 			device->context->device,
 			device->context->gpu,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			sizeof(UniformBufferObject));
+			sizeof(ViewUniformBufferObject));
 	}
 }
 
@@ -599,7 +771,7 @@ void Renderer::destroy_ubo_buffers()
 
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		frames[i].ubo_buffer->destroy(device->context->device);
+		frames[i].view_ubo_buffer->destroy(device->context->device);
 	}
 }
 

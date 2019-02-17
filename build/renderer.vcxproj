@@ -171,6 +171,8 @@
     <ClCompile Include="..\vulkan\image.cpp" />
     <ClCompile Include="..\vulkan\shader.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />
+    <None Include="..\data\shaders\dynamic_entity.frag" />
+    <None Include="..\data\shaders\dynamic_entity.vert" />
     <None Include="..\data\shaders\glft.vert">
       <FileType>Document</FileType>
     </None>
@@ -194,8 +196,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag" />
-    <None Include="..\data\shaders\simple.frag" />
-    <None Include="..\data\shaders\simple.vert" />
+    <None Include="..\data\shaders\static_entity.frag" />
+    <None Include="..\data\shaders\static_entity.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\extern\glfw\src\egl_context.h" />
