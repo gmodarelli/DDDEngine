@@ -2,7 +2,11 @@
 
 #include "../vulkan/device.h"
 #include "../vulkan/buffer.h"
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace Renderer
 {
@@ -19,17 +23,18 @@ struct Entity
 	uint32_t mesh_id;
 };
 
-struct Instance
+struct StaticEntity
 {
+	uint32_t mesh_id;
 	uint32_t count;
 	VkDeviceSize transform_offset;
-	uint32_t mesh_id;
 };
 
 struct Transform
 {
 	glm::vec3 position;
 	glm::vec3 scale;
+	glm::quat rotation = glm::identity<glm::quat>();
 };
 
 struct Vertex
@@ -77,14 +82,17 @@ struct Renderer
 	uint32_t meshes_count = 0;
 	Mesh* meshes;
 
-	uint32_t entity_count = 0;
-	Entity* entities;
+	// Dynamic Entities
+	uint32_t dynamic_entity_count = 0;
+	Entity* dynamic_entities;
 
-	uint32_t instance_count = 0;
-	Instance* instances;
-
-	uint32_t transform_count = 0;
-	Transform* transforms;
+	// Static Entities
+	// 
+	uint32_t static_entity_count = 0;
+	StaticEntity* static_entitites;
+	// TODO: Increase this limit if necessary
+	uint32_t static_transform_count = 1024;
+	Transform* static_transforms;
 
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;

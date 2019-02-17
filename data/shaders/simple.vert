@@ -13,12 +13,16 @@ layout (location = 2) in vec3 inColor;
 
 layout (location = 3) in vec3 instancePosition;
 layout (location = 4) in vec3 instanceScale;
+layout (location = 5) in vec4 instanceRotation;
 
 layout (location = 0) out vec4 fragColor;
 
 void main()
 {
-    vec4 pos = vec4((inPosition.xyz * instanceScale) + instancePosition, 1.0f);
+	vec3 b = instanceRotation.xyz;
+	float b2 = b.x * b.x + b.y * b.y + b.z * b.z;
+	vec3 rotatedPosition = (inPosition * (instanceRotation.w * instanceRotation.w - b2) + b * (dot(inPosition, b) * 2.0f) + cross(b, inPosition) * (instanceRotation.w * 2.0f));
+    vec4 pos = vec4((rotatedPosition.xyz * instanceScale) + instancePosition, 1.0f);
 	gl_Position = ubo.projection * ubo.view * ubo.model * pos;
 	fragColor = vec4(inColor, 1.0f);
 }
