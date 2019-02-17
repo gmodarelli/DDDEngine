@@ -67,8 +67,7 @@ struct Renderer
 	Vulkan::Device* device;
 
 	VkPipeline graphics_pipeline = VK_NULL_HANDLE;
-	VkDescriptorSetLayout view_descriptor_set_layout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout instance_descriptor_set_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
 	Frame frames[Vulkan::MAX_FRAMES_IN_FLIGHT];
@@ -77,7 +76,7 @@ struct Renderer
 
 	uint32_t meshes_count = 0;
 	Mesh* meshes;
-	uint32_t entity_count = 10;
+	uint32_t entity_count = 0;
 	Entity* entities;
 	Transform* transforms;
 

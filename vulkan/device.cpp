@@ -498,11 +498,9 @@ void Device::create_render_pass()
 
 void Device::destroy_render_pass()
 {
-	if (render_pass != VK_NULL_HANDLE)
-	{
-		vkDestroyRenderPass(context->device, render_pass, nullptr);
-		render_pass = VK_NULL_HANDLE;
-	}
+	assert(render_pass != VK_NULL_HANDLE);
+	vkDestroyRenderPass(context->device, render_pass, nullptr);
+	render_pass = VK_NULL_HANDLE;
 }
 
 // Color buffer helpers
@@ -519,10 +517,8 @@ void Device::create_color_buffer()
 
 void Device::destroy_color_buffer()
 {
-	if (color_buffer != nullptr)
-	{
-		color_buffer->destroy(context->device);
-	}
+	assert(color_buffer != nullptr);
+	color_buffer->destroy(context->device);
 }
 
 void Device::create_depth_buffer()
@@ -565,10 +561,8 @@ VkFormat Device::find_supported_format(VkImageTiling tiling, VkFormatFeatureFlag
 
 void Device::destroy_depth_buffer()
 {
-	if (depth_buffer != nullptr)
-	{
-		depth_buffer->destroy(context->device);
-	}
+	assert(depth_buffer != nullptr);
+	depth_buffer->destroy(context->device);
 }
 
 
@@ -576,8 +570,9 @@ void Device::destroy_framebuffers()
 {
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		if (frame_resources[i].framebuffer != VK_NULL_HANDLE)
-			vkDestroyFramebuffer(context->device, frame_resources[i].framebuffer, nullptr);
+		assert(frame_resources[i].framebuffer != VK_NULL_HANDLE);
+		vkDestroyFramebuffer(context->device, frame_resources[i].framebuffer, nullptr);
+		frame_resources[i].framebuffer = VK_NULL_HANDLE;
 	}
 }
 
@@ -602,17 +597,13 @@ void Device::create_command_pools()
 
 void Device::destroy_command_pools()
 {
-	if (command_pool != VK_NULL_HANDLE)
-	{
-		vkDestroyCommandPool(context->device, command_pool, nullptr);
-		command_pool = VK_NULL_HANDLE;
-	}
+	assert(command_pool != VK_NULL_HANDLE);
+	vkDestroyCommandPool(context->device, command_pool, nullptr);
+	command_pool = VK_NULL_HANDLE;
 
-	if (transfer_command_pool != VK_NULL_HANDLE)
-	{
-		vkDestroyCommandPool(context->device, transfer_command_pool, nullptr);
-		transfer_command_pool = VK_NULL_HANDLE;
-	}
+	assert(transfer_command_pool != VK_NULL_HANDLE);
+	vkDestroyCommandPool(context->device, transfer_command_pool, nullptr);
+	transfer_command_pool = VK_NULL_HANDLE;
 }
 
 void Device::allocate_command_buffers()

@@ -64,16 +64,11 @@ void WSI::set_window_title(const char* title)
 
 void WSI::cleanup()
 {
-	if (swapchain != VK_NULL_HANDLE)
-	{
-		destroy_swapchain();
-	}
+	destroy_swapchain();
 
-	if (surface != VK_NULL_HANDLE)
-	{
-		vkDestroySurfaceKHR(context->instance, surface, nullptr);
-		surface = VK_NULL_HANDLE;
-	}
+	assert(surface != VK_NULL_HANDLE);
+	vkDestroySurfaceKHR(context->instance, surface, nullptr);
+	surface = VK_NULL_HANDLE;
 
 	context->cleanup();
 
@@ -232,25 +227,19 @@ VkSwapchainKHR WSI::create_swapchain(VkSwapchainKHR old_swapchain)
 
 void WSI::destroy_swapchain()
 {
-	if (swapchain_images != nullptr)
+	assert(swapchain != VK_NULL_HANDLE);
+
+	delete[] swapchain_images;
+
+	for (uint32_t i = 0; i < swapchain_image_count; ++i)
 	{
-		delete[] swapchain_images;
+		vkDestroyImageView(context->device, swapchain_image_views[i], nullptr);
 	}
 
-	if (swapchain_image_views != nullptr)
-	{
-		for (uint32_t i = 0; i < swapchain_image_count; ++i)
-		{
-			vkDestroyImageView(context->device, swapchain_image_views[i], nullptr);
-		}
+	delete[] swapchain_image_views;
 
-		delete[] swapchain_image_views;
-	}
-
-	if (swapchain != VK_NULL_HANDLE)
-	{
-		vkDestroySwapchainKHR(context->device, swapchain, nullptr);
-	}
+	vkDestroySwapchainKHR(context->device, swapchain, nullptr);
+	swapchain = VK_NULL_HANDLE;
 }
 
 VkSurfaceFormatKHR WSI::find_best_surface_format(VkSurfaceFormatKHR preferred_format)
@@ -324,7 +313,7 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 			assert(!"Error acquiring the framebuffer size from GLFW");
 		}
 
-		VkExtent2D actual_extent = { window_width, window_height };
+		VkExtent2D actual_extent = { (uint32_t)window_width, (uint32_t)window_height };
 		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
 

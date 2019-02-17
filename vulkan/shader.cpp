@@ -22,7 +22,7 @@ VkPipelineShaderStageCreateInfo Shader::load_shader(VkDevice device, VkPhysicalD
 
 	// Allocate a buffer to hold the file content and read the file
 	char* buffer = new char[aligned_size];
-	uint32_t bytes_read = fread(buffer, sizeof(buffer[0]), aligned_size, fileHandle);
+	size_t bytes_read = fread(buffer, sizeof(buffer[0]), aligned_size, fileHandle);
 	assert(bytes_read == size);
 
 	VkShaderModuleCreateInfo shader_module_create_info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };

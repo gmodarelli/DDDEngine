@@ -88,8 +88,8 @@ void Renderer::init()
 		memcpy(index_data, indices, (size_t)index_staging_buffer->size);
 		vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
 
-		uint32_t vertex_offset = device->upload_vertex_buffer(vertex_staging_buffer);
-		uint32_t index_offset = device->upload_index_buffer(index_staging_buffer);
+		uint32_t vertex_offset = (uint32_t) device->upload_vertex_buffer(vertex_staging_buffer);
+		uint32_t index_offset = (uint32_t) device->upload_index_buffer(index_staging_buffer);
 
 		meshes[0].index_offset = index_offset / sizeof(uint16_t);
 		meshes[0].index_count = ARRAYSIZE(indices);
@@ -143,7 +143,7 @@ void Renderer::init()
 		memcpy(instance_data, transforms, (size_t)instance_staging_buffer->size);
 		vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
 
-		uint32_t instance_offset = device->upload_instance_buffer(instance_staging_buffer);
+		uint32_t instance_offset = (uint32_t) device->upload_instance_buffer(instance_staging_buffer);
 		instance_staging_buffer->destroy(device->context->device);
 	}
 }
@@ -163,7 +163,7 @@ void Renderer::render_frame()
 
 	if (frame->descriptor_set == VK_NULL_HANDLE)
 	{
-		VkResult result = allocate_descriptor_set(view_descriptor_set_layout, frame->descriptor_set);
+		VkResult result = allocate_descriptor_set(descriptor_set_layout, frame->descriptor_set);
 		assert(result == VK_SUCCESS);
 
 		VkDescriptorBufferInfo buffer_info = {};
@@ -255,27 +255,14 @@ void Renderer::cleanup()
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
 
-	if (view_descriptor_set_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout(device->context->device, view_descriptor_set_layout, nullptr);
-	}
+	vkDestroyDescriptorSetLayout(device->context->device, descriptor_set_layout, nullptr);
+	descriptor_set_layout = VK_NULL_HANDLE;
 
-	if (instance_descriptor_set_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout(device->context->device, instance_descriptor_set_layout, nullptr);
-	}
+	vkDestroyPipeline(device->context->device, graphics_pipeline, nullptr);
+	graphics_pipeline = VK_NULL_HANDLE;
 
-	if (graphics_pipeline != VK_NULL_HANDLE)
-	{
-		vkDestroyPipeline(device->context->device, graphics_pipeline, nullptr);
-		graphics_pipeline = VK_NULL_HANDLE;
-	}
-
-	if (pipeline_layout != VK_NULL_HANDLE)
-	{
-		vkDestroyPipelineLayout(device->context->device, pipeline_layout, nullptr);
-		pipeline_layout = VK_NULL_HANDLE;
-	}
+	vkDestroyPipelineLayout(device->context->device, pipeline_layout, nullptr);
+	pipeline_layout = VK_NULL_HANDLE;
 }
 
 void Renderer::create_graphics_pipeline()
@@ -359,20 +346,7 @@ void Renderer::create_graphics_pipeline()
 	descriptor_layout_ci.bindingCount = 1;
 	descriptor_layout_ci.pBindings = &view_ubo_layout_binding;
 
-	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &view_descriptor_set_layout);
-	assert(result == VK_SUCCESS);
-
-	// Instance Dynamic Uniform Buffer
-	VkDescriptorSetLayoutBinding instance_ubo_layout_binding = {};
-	instance_ubo_layout_binding.binding = 0;
-	instance_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	instance_ubo_layout_binding.descriptorCount = 1;
-	instance_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-	descriptor_layout_ci.bindingCount = 1;
-	descriptor_layout_ci.pBindings = &instance_ubo_layout_binding;
-
-	result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &instance_descriptor_set_layout);
+	VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_ci, nullptr, &descriptor_set_layout);
 	assert(result == VK_SUCCESS);
 
 	// Viewport and Scissor
@@ -448,7 +422,7 @@ void Renderer::create_graphics_pipeline()
 	dynamic_state_ci.dynamicStateCount = ARRAYSIZE(dynamic_states);
 	dynamic_state_ci.pDynamicStates = dynamic_states;
 	// Pipeline Layout
-	VkDescriptorSetLayout descriptor_set_layouts[] = { view_descriptor_set_layout, instance_descriptor_set_layout };
+	VkDescriptorSetLayout descriptor_set_layouts[] = { descriptor_set_layout };
 	VkPipelineLayoutCreateInfo pipeline_layout_ci = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 	pipeline_layout_ci.setLayoutCount = ARRAYSIZE(descriptor_set_layouts);
 	pipeline_layout_ci.pSetLayouts = descriptor_set_layouts;

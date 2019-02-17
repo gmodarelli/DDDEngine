@@ -190,17 +190,11 @@ void Context::cleanup()
 	destroy_debug_report_callback();
 	destroy_debug_utils_messenger();
 
-	if (device != VK_NULL_HANDLE)
-	{
-		vkDestroyDevice(device, nullptr);
-		device = VK_NULL_HANDLE;
-	}
+	vkDestroyDevice(device, nullptr);
+	device = VK_NULL_HANDLE;
 
-	if (instance != VK_NULL_HANDLE)
-	{
-		vkDestroyInstance(instance, nullptr);
-		instance = VK_NULL_HANDLE;
-	}
+	vkDestroyInstance(instance, nullptr);
+	instance = VK_NULL_HANDLE;
 }
 
 bool Context::has_extension(const char* extension_name)
