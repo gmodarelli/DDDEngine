@@ -327,10 +327,6 @@ VkSemaphore Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffe
 
 FrameResources& Device::begin_draw_frame()
 {
-	// TODO: Replace this with wait semaphores that get signalled
-	// when resources have been transitioned to the desired layout.
-	vkQueueWaitIdle(context->transfer_queue);
-
 	FrameResources& current_frame = frame_resources[frame_index];
 
 	// We wait on the current frame fence to be signalled (ie commands have finished execution on
@@ -426,8 +422,8 @@ void Device::end_draw_frame(FrameResources& current_frame)
 
 	// Which semaphores to wait on before execution begins and in which stages of the pipeline to wait.
 	// We want to wait with writing colors to the image until it's available.
-	VkSemaphore wait_semaphores[] = { current_frame.image_acquired_semaphore }; // , current_frame.wait_semaphore };
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT }; // , current_frame.wait_stage };
+	VkSemaphore wait_semaphores[] = { current_frame.image_acquired_semaphore, current_frame.wait_semaphore };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, current_frame.wait_stage };
 	submit_info.waitSemaphoreCount = ARRAYSIZE(wait_semaphores);
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
