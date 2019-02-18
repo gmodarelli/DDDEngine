@@ -109,7 +109,7 @@ VkDeviceSize Device::upload_instance_buffer(Vulkan::Buffer* staging_buffer)
 	return instance_offset;
 }
 
-void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout)
+VkSemaphore Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout)
 {
 	VkCommandBuffer command_buffer = create_transfer_command_buffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
@@ -168,7 +168,8 @@ void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat for
 
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	flush_transfer_command_buffer(command_buffer);
+	VkSemaphore signal_semaphore = flush_transfer_command_buffer(command_buffer);
+	return signal_semaphore;
 }
 
 void Device::create_vertex_index_buffers()
@@ -286,14 +287,21 @@ VkCommandBuffer Device::create_transfer_command_buffer(VkCommandBufferLevel leve
 	return command_buffer;
 }
 
-void Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free)
+VkSemaphore Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free)
 {
 	VkResult result = vkEndCommandBuffer(command_buffer);
+	assert(result == VK_SUCCESS);
+
+	VkSemaphore signal_semaphore;
+	VkSemaphoreCreateInfo semaphore_ci = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+	result = vkCreateSemaphore(context->device, &semaphore_ci, nullptr, &signal_semaphore);
 	assert(result == VK_SUCCESS);
 
 	VkSubmitInfo submit_info = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &command_buffer;
+	submit_info.signalSemaphoreCount = 1;
+	submit_info.pSignalSemaphores = &signal_semaphore;
 
 	VkFenceCreateInfo fence_ci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 	VkFence fence = VK_NULL_HANDLE;
@@ -313,6 +321,8 @@ void Device::flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool
 		vkFreeCommandBuffers(context->device, transfer_command_pool, 1, &command_buffer);
 		command_buffer = VK_NULL_HANDLE;
 	}
+
+	return signal_semaphore;
 }
 
 FrameResources& Device::begin_draw_frame()
@@ -412,8 +422,8 @@ void Device::end_draw_frame(FrameResources& current_frame)
 
 	// Which semaphores to wait on before execution begins and in which stages of the pipeline to wait.
 	// We want to wait with writing colors to the image until it's available.
-	VkSemaphore wait_semaphores[] = { current_frame.image_acquired_semaphore };
-	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	VkSemaphore wait_semaphores[] = { current_frame.image_acquired_semaphore, current_frame.wait_semaphore };
+	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, current_frame.wait_stage };
 	submit_info.waitSemaphoreCount = ARRAYSIZE(wait_semaphores);
 	submit_info.pWaitSemaphores = wait_semaphores;
 	submit_info.pWaitDstStageMask = wait_stages;

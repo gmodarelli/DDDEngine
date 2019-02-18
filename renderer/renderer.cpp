@@ -59,15 +59,15 @@ void Renderer::init()
 	// Since obstacles don't move, we render them as static instances
 	Vertex cube_vertices[] = {
 		// front
-		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f} },
-		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
+		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {1.0f, 0.0f} },
+		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 0.0f} },
+		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 1.0f} },
+		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 1.0f} },
 		// back
-		{ {	-0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ {	 0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ { 0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} },
-		{ {	-0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f} }
+		{ {	-0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 0.0f} },
+		{ {	 0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {0.0f, 0.0f} },
+		{ { 0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {0.0f, 1.0f} },
+		{ {	-0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 1.0f} }
 	};
 
 	uint16_t cube_indices[] = {
@@ -133,10 +133,10 @@ void Renderer::init()
 
 	// NOTE: A plane mesh
 	Vertex plane_vertices[] = {
-		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
-		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f } },
+		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 0.0f} },
+		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 0.0f}, },
+		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 1.0f} },
+		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 1.0f} },
 	};
 
 	uint16_t plane_indices[] = {
@@ -297,9 +297,37 @@ void Renderer::init()
 
 	// NOTE: The upload_buffer_to_image function takes care of the necessary transitions between
 	// image layouts and queues
-	device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	texture_uploaded_semaphore = device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	texture_staging_buffer->destroy(device->context->device);
+
+	VkSamplerCreateInfo sampler_info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	sampler_info.magFilter = VK_FILTER_LINEAR;
+	sampler_info.minFilter = VK_FILTER_LINEAR;
+	sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	if (device->context->gpu_enabled_features.samplerAnisotropy == VK_TRUE)
+	{
+		sampler_info.anisotropyEnable = VK_TRUE;
+		sampler_info.maxAnisotropy = 16;
+	}
+	else
+	{
+		sampler_info.anisotropyEnable = VK_FALSE;
+		sampler_info.maxAnisotropy = 1;
+	}
+	sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	sampler_info.unnormalizedCoordinates = VK_FALSE;
+	sampler_info.compareEnable = VK_FALSE;
+	sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+	sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_info.mipLodBias = 0.0f;
+	sampler_info.minLod = 0.0f;
+	sampler_info.maxLod = 0.0f;
+
+	VkResult result = vkCreateSampler(device->context->device, &sampler_info, nullptr, &texture_sampler);
+	assert(result == VK_SUCCESS);
 }
 
 void Renderer::render_frame(float delta_time)
@@ -308,6 +336,11 @@ void Renderer::render_frame(float delta_time)
 
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
 	Frame* frame = (Frame*) frame_resources.custom;
+	// Tell the graphics queue to wait of the texture to be uploaded
+	// and transitioned to the right layout before using it in the 
+	// fragment shader
+	frame_resources.wait_semaphore = texture_uploaded_semaphore;
+	frame_resources.wait_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
 	if (frame == nullptr)
 	{
@@ -327,15 +360,29 @@ void Renderer::render_frame(float delta_time)
 			buffer_info.offset = 0;
 			buffer_info.range = VK_WHOLE_SIZE;
 
-			VkWriteDescriptorSet descriptor_write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-			descriptor_write.dstSet = frame->descriptor_sets[0];
-			descriptor_write.dstBinding = 0;
-			descriptor_write.dstArrayElement = 0;
-			descriptor_write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptor_write.descriptorCount = 1;
-			descriptor_write.pBufferInfo = &buffer_info;
+			VkDescriptorImageInfo image_info = {};
+			image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			image_info.imageView = texture_image->image_view;
+			image_info.sampler = texture_sampler;
 
-			vkUpdateDescriptorSets(device->context->device, 1, &descriptor_write, 0, nullptr);
+			VkWriteDescriptorSet descriptor_writes[2];
+			descriptor_writes[0] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			descriptor_writes[0].dstSet = frame->descriptor_sets[0];
+			descriptor_writes[0].dstBinding = 0;
+			descriptor_writes[0].dstArrayElement = 0;
+			descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			descriptor_writes[0].descriptorCount = 1;
+			descriptor_writes[0].pBufferInfo = &buffer_info;
+
+			descriptor_writes[1] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+			descriptor_writes[1].dstSet = frame->descriptor_sets[0];
+			descriptor_writes[1].dstBinding = 1;
+			descriptor_writes[1].dstArrayElement = 0;
+			descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptor_writes[1].descriptorCount = 1;
+			descriptor_writes[1].pImageInfo = &image_info;
+
+			vkUpdateDescriptorSets(device->context->device, ARRAYSIZE(descriptor_writes), descriptor_writes, 0, nullptr);
 		}
 	}
 
@@ -456,6 +503,7 @@ void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
+	vkDestroySampler(device->context->device, texture_sampler, nullptr);
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
 
@@ -583,10 +631,10 @@ void Renderer::create_pipelines()
 	static_vertex_input_ci.pVertexBindingDescriptions = static_vertex_binding_descriptions;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
-	// originating from a binding description. We have 3 attributes, position, normal and color,
-	// so we need 3 attribute description structs
-	// We also have 1 additional attribute, instance position
-	VkVertexInputAttributeDescription static_vertex_input_attribute_descriptions[6];
+	// originating from a binding description. We have 4 attributes, position, normal, color, and tex_coord
+	// so we need 4 attribute description structs
+	// We also have 3 additional attribute, instance position, scale and rotation
+	VkVertexInputAttributeDescription static_vertex_input_attribute_descriptions[7];
 	// Per-vertex attributes
 	// Position
 	static_vertex_input_attribute_descriptions[0].binding = 0;
@@ -603,23 +651,28 @@ void Renderer::create_pipelines()
 	static_vertex_input_attribute_descriptions[2].location = 2;
 	static_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	static_vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
+	// Tex Coord
+	static_vertex_input_attribute_descriptions[3].binding = 0;
+	static_vertex_input_attribute_descriptions[3].location = 3;
+	static_vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+	static_vertex_input_attribute_descriptions[3].offset = offsetof(Vertex, tex_coord);
 
 	// Per-instance attributes
 	// Instance position
-	static_vertex_input_attribute_descriptions[3].binding = 1;
-	static_vertex_input_attribute_descriptions[3].location = 3;
-	static_vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-	static_vertex_input_attribute_descriptions[3].offset = offsetof(Transform, position);
-	// Instance scale
 	static_vertex_input_attribute_descriptions[4].binding = 1;
 	static_vertex_input_attribute_descriptions[4].location = 4;
 	static_vertex_input_attribute_descriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
-	static_vertex_input_attribute_descriptions[4].offset = offsetof(Transform, scale);
-	// Instance rotation
+	static_vertex_input_attribute_descriptions[4].offset = offsetof(Transform, position);
+	// Instance scale
 	static_vertex_input_attribute_descriptions[5].binding = 1;
 	static_vertex_input_attribute_descriptions[5].location = 5;
-	static_vertex_input_attribute_descriptions[5].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	static_vertex_input_attribute_descriptions[5].offset = offsetof(Transform, rotation);
+	static_vertex_input_attribute_descriptions[5].format = VK_FORMAT_R32G32B32_SFLOAT;
+	static_vertex_input_attribute_descriptions[5].offset = offsetof(Transform, scale);
+	// Instance rotation
+	static_vertex_input_attribute_descriptions[6].binding = 1;
+	static_vertex_input_attribute_descriptions[6].location = 6;
+	static_vertex_input_attribute_descriptions[6].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	static_vertex_input_attribute_descriptions[6].offset = offsetof(Transform, rotation);
 
 	static_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(static_vertex_input_attribute_descriptions);
 	static_vertex_input_ci.pVertexAttributeDescriptions = static_vertex_input_attribute_descriptions;
@@ -631,17 +684,19 @@ void Renderer::create_pipelines()
 	view_ubo_layout_binding.descriptorCount = 1;
 	view_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	// Transform Uniform Buffer
-	// TODO: Mke this a UNIFORM_DYNAMIC buffer
-	VkDescriptorSetLayoutBinding transform_ubo_layout_binding = {};
-	transform_ubo_layout_binding.binding = 1;
-	transform_ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	transform_ubo_layout_binding.descriptorCount = 1;
-	transform_ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	// Texture sampler
+	VkDescriptorSetLayoutBinding sampler_layout_binding = {};
+	sampler_layout_binding.binding = 1;
+	sampler_layout_binding.descriptorCount = 1;
+	sampler_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	sampler_layout_binding.pImmutableSamplers = nullptr;
+	sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutBinding bindings[] = { view_ubo_layout_binding, sampler_layout_binding };
 
 	VkDescriptorSetLayoutCreateInfo static_descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	static_descriptor_layout_ci.bindingCount = 1;
-	static_descriptor_layout_ci.pBindings = &view_ubo_layout_binding;
+	static_descriptor_layout_ci.bindingCount = ARRAYSIZE(bindings);
+	static_descriptor_layout_ci.pBindings = bindings;
 	VkDescriptorSetLayoutCreateInfo static_descriptor_layout_cis[] = { static_descriptor_layout_ci };
 
 	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", static_vertex_input_ci, ARRAYSIZE(static_descriptor_layout_cis), static_descriptor_layout_cis,
@@ -665,9 +720,9 @@ void Renderer::create_pipelines()
 	dynamic_vertex_input_ci.pVertexBindingDescriptions = dynamic_vertex_binding_descriptions;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
-	// originating from a binding description. We have 3 attributes, position, normal and color,
-	// so we need 3 attribute description structs
-	VkVertexInputAttributeDescription dynamic_vertex_input_attribute_descriptions[3];
+	// originating from a binding description. We have 4 attributes, position, normal, color and tex_coord
+	// so we need 4 attribute description structs
+	VkVertexInputAttributeDescription dynamic_vertex_input_attribute_descriptions[4];
 	// Per-vertex attributes
 	// Position
 	dynamic_vertex_input_attribute_descriptions[0].binding = 0;
@@ -684,15 +739,20 @@ void Renderer::create_pipelines()
 	dynamic_vertex_input_attribute_descriptions[2].location = 2;
 	dynamic_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
 	dynamic_vertex_input_attribute_descriptions[2].offset = offsetof(Vertex, color);
+	// Tex Coord
+	dynamic_vertex_input_attribute_descriptions[3].binding = 0;
+	dynamic_vertex_input_attribute_descriptions[3].location = 3;
+	dynamic_vertex_input_attribute_descriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+	dynamic_vertex_input_attribute_descriptions[3].offset = offsetof(Vertex, tex_coord);
 
 	dynamic_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(dynamic_vertex_input_attribute_descriptions);
 	dynamic_vertex_input_ci.pVertexAttributeDescriptions = dynamic_vertex_input_attribute_descriptions;
 
-	VkDescriptorSetLayoutBinding bindings[] = { view_ubo_layout_binding };
+	VkDescriptorSetLayoutBinding dynamic_bindings[] = { view_ubo_layout_binding, sampler_layout_binding };
 
 	VkDescriptorSetLayoutCreateInfo dynamic_descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	dynamic_descriptor_layout_ci.bindingCount = ARRAYSIZE(bindings);
-	dynamic_descriptor_layout_ci.pBindings = bindings;
+	dynamic_descriptor_layout_ci.bindingCount = ARRAYSIZE(dynamic_bindings);
+	dynamic_descriptor_layout_ci.pBindings = dynamic_bindings;
 	VkDescriptorSetLayoutCreateInfo dynamic_descriptor_layout_cis[] = { dynamic_descriptor_layout_ci };
 
 	VkPushConstantRange player_matrix;
@@ -771,13 +831,15 @@ Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* f
 // Descriptor Pool helpers
 void Renderer::create_descriptor_pool()
 {
-	VkDescriptorPoolSize pool_size = {};
-	pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	pool_size.descriptorCount = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
+	VkDescriptorPoolSize pool_sizes[2];
+	pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	pool_sizes[0].descriptorCount = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
+	pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	pool_sizes[1].descriptorCount = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
 
 	VkDescriptorPoolCreateInfo pool_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-	pool_ci.poolSizeCount = 1;
-	pool_ci.pPoolSizes = &pool_size;
+	pool_ci.poolSizeCount = ARRAYSIZE(pool_sizes);
+	pool_ci.pPoolSizes = pool_sizes;
 	pool_ci.maxSets = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
 
 	VkResult result = vkCreateDescriptorPool(device->context->device, &pool_ci, nullptr, &descriptor_pool);

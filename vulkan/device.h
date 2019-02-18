@@ -57,6 +57,9 @@ struct FrameResources
 	// lifetime of a single frame of animation.
 	VkFramebuffer framebuffer = VK_NULL_HANDLE;
 
+	VkSemaphore wait_semaphore = VK_NULL_HANDLE;
+	VkPipelineStageFlags wait_stage = VK_NULL_HANDLE;
+
 	uint32_t image_index;
 
 	uint32_t timestamp_query_pool_count = 0;
@@ -110,12 +113,12 @@ struct Device
 	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_instance_buffer(Vulkan::Buffer* staging_buffer);
-	void upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
+	VkSemaphore upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
 
 	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);
 
 	VkCommandBuffer create_transfer_command_buffer(VkCommandBufferLevel level, bool begin = true);
-	void flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free = true);
+	VkSemaphore flush_transfer_command_buffer(VkCommandBuffer& command_buffer, bool free = true);
 
 private:
 

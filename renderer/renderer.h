@@ -42,6 +42,7 @@ struct Vertex
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec3 color;
+	glm::vec2 tex_coord;
 };
 
 struct ViewUniformBufferObject
@@ -117,6 +118,8 @@ struct Renderer
 	Transform* static_transforms;
 
 	Vulkan::Image* texture_image;
+	VkSampler texture_sampler;
+	VkSemaphore texture_uploaded_semaphore;
 
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;
