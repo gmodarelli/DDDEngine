@@ -93,6 +93,7 @@ struct Renderer
 	Pipeline dynamic_pipeline = {};
 
 	Frame frames[Vulkan::MAX_FRAMES_IN_FLIGHT];
+	bool wait_on_semaphores = false;
 
 	double frame_cpu_avg = 0;
 
@@ -119,7 +120,6 @@ struct Renderer
 
 	Vulkan::Image* texture_image;
 	VkSampler texture_sampler;
-	VkSemaphore texture_uploaded_semaphore;
 
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;

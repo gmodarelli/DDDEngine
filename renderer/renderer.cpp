@@ -297,7 +297,7 @@ void Renderer::init()
 
 	// NOTE: The upload_buffer_to_image function takes care of the necessary transitions between
 	// image layouts and queues
-	texture_uploaded_semaphore = device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	texture_staging_buffer->destroy(device->context->device);
 
@@ -336,12 +336,7 @@ void Renderer::render_frame(float delta_time)
 
 	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
 	Frame* frame = (Frame*) frame_resources.custom;
-	// Tell the graphics queue to wait of the texture to be uploaded
-	// and transitioned to the right layout before using it in the 
-	// fragment shader
-	frame_resources.wait_semaphore = texture_uploaded_semaphore;
-	frame_resources.wait_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
+	
 	if (frame == nullptr)
 	{
 		frame = &frames[device->frame_index];
