@@ -57,12 +57,17 @@ struct FrameResources
 	// lifetime of a single frame of animation.
 	VkFramebuffer framebuffer = VK_NULL_HANDLE;
 
+	// The index of the Swapchain image we have
+	// aqcuired from the swapchain at the beginning
+	// of the current frame
 	uint32_t image_index;
 
+	// A Query Pool to measure the time it takes
+	// to draw a single frame on the GPU
 	uint32_t timestamp_query_pool_count = 0;
 	VkQueryPool timestamp_query_pool = VK_NULL_HANDLE;
 
-	// Render-specific data
+	// Renderer-specific data
 	void* custom = nullptr;
 };
 
