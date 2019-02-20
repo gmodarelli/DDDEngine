@@ -8,5 +8,6 @@ layout(binding = 1) uniform sampler2D texSampler;
 
 void main()
 {
-	outFragColor = texture(texSampler, inTexCoord); // inColor;
+	// outFragColor = texture(texSampler, inTexCoord); // inColor;
+	outFragColor = inColor;
 }

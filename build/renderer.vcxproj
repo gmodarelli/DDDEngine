@@ -172,6 +172,8 @@
     <ClCompile Include="..\vulkan\image.cpp" />
     <ClCompile Include="..\vulkan\shader.cpp" />
     <ClCompile Include="..\vulkan\wsi.cpp" />
+    <None Include="..\data\shaders\debug_draw.frag" />
+    <None Include="..\data\shaders\debug_draw.vert" />
     <None Include="..\data\shaders\dynamic_entity.frag" />
     <None Include="..\data\shaders\dynamic_entity.vert" />
     <None Include="..\data\shaders\glft.vert">

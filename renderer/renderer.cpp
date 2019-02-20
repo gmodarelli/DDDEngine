@@ -35,7 +35,17 @@ void Renderer::init()
 
 		frames[i].descriptor_set_count = 1;
 		frames[i].descriptor_set_cursor = 1;
+
+		VkDeviceSize size = 1 * 1024 * 1024;
+		frames[i].debug_vertex_buffer = new Vulkan::Buffer(
+			device->context->device,
+			device->context->gpu,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+			size);
 	}
+
+	prepare_debug_vertex_buffers();
 	
 	// NOTE: All the following code will be replaced with a scene loader.
 	// The hardcoded meshes will be loaded from asset files
@@ -60,7 +70,7 @@ void Renderer::init()
 	Vertex cube_vertices[] = {
 		// front
 		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {1.0f, 0.0f} },
-		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 0.0f} },
+		{ { 0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 0.0f} },
 		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 1.0f} },
 		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 1.0f} },
 		// back
@@ -134,7 +144,7 @@ void Renderer::init()
 	// NOTE: A plane mesh
 	Vertex plane_vertices[] = {
 		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 0.0f} },
-		{ { 0.3f, -0.3f, 0.3f, }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 0.0f}, },
+		{ { 0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 0.0f} },
 		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 1.0f} },
 		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 1.0f} },
 	};
@@ -381,23 +391,26 @@ void Renderer::render_frame(float delta_time)
 		}
 	}
 
-	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline);
-
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
 	scissor.extent = device->wsi->swapchain_extent;
 
+	VkDeviceSize offsets[] = { 0 };
+
+	update_uniform_buffers(frame_resources);
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
+
+	// Static Pipeline
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline);
+
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
-	update_uniform_buffers(frame_resources);
-
-	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
+	// vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
 
 	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
 	VkBuffer instance_buffers[] = { device->instance_buffer->buffer };
-	VkDeviceSize offsets[] = { 0 };
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
@@ -455,6 +468,15 @@ void Renderer::render_frame(float delta_time)
 		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
 	}
 
+	// Debug Draw
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debug_pipeline.pipeline);
+
+	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
+	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
+	vkCmdSetLineWidth(frame_resources.command_buffer, 1.0f);
+	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->debug_vertex_buffer->buffer, offsets);
+	vkCmdDraw(frame_resources.command_buffer, 12, 1, 0, 0);
+
 	device->end_draw_frame(frame_resources);
 
 	auto frame_cpu_end = std::chrono::high_resolution_clock::now();
@@ -495,12 +517,48 @@ void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 	assert(frame != nullptr);
 }
 
+void Renderer::prepare_debug_vertex_buffers()
+{
+	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
+	{
+		DebugLine debug_lines[] = {
+			glm::vec3(-10.0f, 0.0f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(10.0f, 0.0f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+
+			glm::vec3(-10.0f, 0.0f, 0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(10.0f, 0.0f, 0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+
+			glm::vec3(-10.0f, 0.0f, 0.9f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(10.0f, 0.0f, 0.9f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+
+			glm::vec3(-0.3f, 0.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(-0.3f, 0.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+
+			glm::vec3(0.3f, 0.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(0.3f, 0.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+
+			glm::vec3(0.9f, 0.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+			glm::vec3(0.9f, 0.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+		};
+
+		vkMapMemory(device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * ARRAYSIZE(debug_lines), 0, &frames[i].debug_vertex_buffer->data);
+		memcpy(frames[i].debug_vertex_buffer->data, &debug_lines, sizeof(DebugLine) * ARRAYSIZE(debug_lines));
+		vkUnmapMemory(device->context->device, frames[i].debug_vertex_buffer->device_memory);
+	}
+}
+
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(device->context->graphics_queue);
 	vkDestroySampler(device->context->device, texture_sampler, nullptr);
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
+
+	// TODO: Move this its onw cleanup function
+	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		frames[i].debug_vertex_buffer->destroy(device->context->device);
+	}
 
 	vkDestroyDescriptorSetLayout(device->context->device, static_pipeline.descriptor_set_layouts[0], nullptr);
 	static_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
@@ -520,6 +578,15 @@ void Renderer::cleanup()
 	vkDestroyPipelineLayout(device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
 	dynamic_pipeline.pipeline_layout = VK_NULL_HANDLE;
 
+	vkDestroyDescriptorSetLayout(device->context->device, debug_pipeline.descriptor_set_layouts[0], nullptr);
+	debug_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
+
+	vkDestroyPipeline(device->context->device, debug_pipeline.pipeline, nullptr);
+	debug_pipeline.pipeline = VK_NULL_HANDLE;
+
+	vkDestroyPipelineLayout(device->context->device, debug_pipeline.pipeline_layout, nullptr);
+	debug_pipeline.pipeline_layout = VK_NULL_HANDLE;
+
 	texture_image->destroy(device->context->device);
 }
 
@@ -528,6 +595,11 @@ void Renderer::create_pipelines()
 	// Shared resources.
 	// The static and dynamic pipelines share some of the resources (like the view uniform buffer)
 	// and some stages, so we create them upfront
+
+	// Input Assembly
+	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 
 	// Viewport and Scissor
 	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
@@ -579,23 +651,17 @@ void Renderer::create_pipelines()
 	{
 		multisampling_ci.sampleShadingEnable = VK_FALSE;
 	}
+
 	// Color Blend
 	VkPipelineColorBlendAttachmentState color_blend_attachment_ci = {};
 	color_blend_attachment_ci.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	color_blend_attachment_ci.blendEnable = VK_FALSE;
-	// NOTE: If we want to enable blend we have to set it up this way
-	// color_blend_attachment_ci.blendEnable = VK_TRUE;
-	// color_blend_attachment_ci.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	// color_blend_attachment_ci.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	// color_blend_attachment_ci.colorBlendOp = VK_BLEND_OP_ADD;
-	// color_blend_attachment_ci.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	// color_blend_attachment_ci.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	// color_blend_attachment_ci.alphaBlendOp = VK_BLEND_OP_ADD;
-	// 
+
 	VkPipelineColorBlendStateCreateInfo color_blend_ci = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
 	color_blend_ci.logicOpEnable = VK_FALSE;
 	color_blend_ci.attachmentCount = 1;
 	color_blend_ci.pAttachments = &color_blend_attachment_ci;
+
 	// Dynamic States (state that can be changed without having to recreate the pipeline)
 	VkDynamicState dynamic_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_LINE_WIDTH };
 	VkPipelineDynamicStateCreateInfo dynamic_state_ci = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
@@ -694,7 +760,7 @@ void Renderer::create_pipelines()
 	static_descriptor_layout_ci.pBindings = bindings;
 	VkDescriptorSetLayoutCreateInfo static_descriptor_layout_cis[] = { static_descriptor_layout_ci };
 
-	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", static_vertex_input_ci, ARRAYSIZE(static_descriptor_layout_cis), static_descriptor_layout_cis,
+	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", static_vertex_input_ci, input_assembly_ci, ARRAYSIZE(static_descriptor_layout_cis), static_descriptor_layout_cis,
 		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, 0, nullptr);
 
 	// Pipeline 2: Graphics pipeline for dynamic entities
@@ -757,24 +823,81 @@ void Renderer::create_pipelines()
 
 	VkPushConstantRange push_constant_ranges[] = { player_matrix };
 
-	dynamic_pipeline = create_pipeline("../data/shaders/dynamic_entity.vert.spv", "../data/shaders/dynamic_entity.frag.spv", dynamic_vertex_input_ci, ARRAYSIZE(dynamic_descriptor_layout_cis), dynamic_descriptor_layout_cis,
+	dynamic_pipeline = create_pipeline("../data/shaders/dynamic_entity.vert.spv", "../data/shaders/dynamic_entity.frag.spv", dynamic_vertex_input_ci, input_assembly_ci, ARRAYSIZE(dynamic_descriptor_layout_cis), dynamic_descriptor_layout_cis,
 		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(push_constant_ranges), push_constant_ranges);
+
+	// Pipeline 3: Debug Draw pipeline for debug gizmos
+	// Pipeline Fixed Functions
+	// Vertex Input
+	VkPipelineVertexInputStateCreateInfo debug_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
+	// It specifies the number of bytes between data entries and whether to move to the next 
+	// data entry after each vertex or after each instance.
+	VkVertexInputBindingDescription debug_vertex_binding_descriptions[1];
+	// Mesh vertex bindings
+	debug_vertex_binding_descriptions[0] = {};
+	debug_vertex_binding_descriptions[0].binding = 0;
+	debug_vertex_binding_descriptions[0].stride = sizeof(DebugLine);
+	debug_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	debug_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(debug_vertex_binding_descriptions);
+	debug_vertex_input_ci.pVertexBindingDescriptions = debug_vertex_binding_descriptions;
+
+	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
+	// originating from a binding description. We have 3 attributes, position, normal and color
+	// so we need 3 attribute description structs
+	VkVertexInputAttributeDescription debug_vertex_input_attribute_descriptions[3];
+	// Per-vertex attributes
+	// Position
+	debug_vertex_input_attribute_descriptions[0].binding = 0;
+	debug_vertex_input_attribute_descriptions[0].location = 0;
+	debug_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	debug_vertex_input_attribute_descriptions[0].offset = offsetof(DebugLine, position);
+	// Normal
+	debug_vertex_input_attribute_descriptions[1].binding = 0;
+	debug_vertex_input_attribute_descriptions[1].location = 1;
+	debug_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	debug_vertex_input_attribute_descriptions[1].offset = offsetof(DebugLine, normal);
+	// Color
+	debug_vertex_input_attribute_descriptions[2].binding = 0;
+	debug_vertex_input_attribute_descriptions[2].location = 2;
+	debug_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	debug_vertex_input_attribute_descriptions[2].offset = offsetof(DebugLine, color);
+
+	debug_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(debug_vertex_input_attribute_descriptions);
+	debug_vertex_input_ci.pVertexAttributeDescriptions = debug_vertex_input_attribute_descriptions;
+
+	VkDescriptorSetLayoutBinding debug_bindings[] = { view_ubo_layout_binding, sampler_layout_binding };
+
+	VkDescriptorSetLayoutCreateInfo debug_descriptor_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	debug_descriptor_layout_ci.bindingCount = ARRAYSIZE(debug_bindings);
+	debug_descriptor_layout_ci.pBindings = debug_bindings;
+	VkDescriptorSetLayoutCreateInfo debug_descriptor_layout_cis[] = { debug_descriptor_layout_ci };
+
+	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+
+	// Depth Buffer
+	VkPipelineDepthStencilStateCreateInfo debug_depth_stencil_ci = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	debug_depth_stencil_ci.depthTestEnable = VK_FALSE;
+	debug_depth_stencil_ci.depthWriteEnable = VK_TRUE;
+	debug_depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS;
+	debug_depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
+	debug_depth_stencil_ci.stencilTestEnable = VK_FALSE;
+
+	debug_pipeline = create_pipeline("../data/shaders/debug_draw.vert.spv", "../data/shaders/debug_draw.frag.spv", debug_vertex_input_ci, input_assembly_ci, ARRAYSIZE(debug_descriptor_layout_cis), debug_descriptor_layout_cis,
+		viewport_ci, rasterizer_ci, debug_depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, 0, nullptr);
 }
 
-Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis,
-								   VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci, VkPipelineDepthStencilStateCreateInfo depth_stencil_ci, VkPipelineMultisampleStateCreateInfo multisampling_ci,
-								   VkPipelineColorBlendStateCreateInfo color_blend_ci, VkPipelineDynamicStateCreateInfo dynamic_state_ci, uint32_t push_constant_range_count, VkPushConstantRange* push_constant_ranges)
+Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, VkPipelineInputAssemblyStateCreateInfo input_assembly_ci,
+								   uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis, VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci,
+								   VkPipelineDepthStencilStateCreateInfo depth_stencil_ci, VkPipelineMultisampleStateCreateInfo multisampling_ci, VkPipelineColorBlendStateCreateInfo color_blend_ci,
+								   VkPipelineDynamicStateCreateInfo dynamic_state_ci, uint32_t push_constant_range_count, VkPushConstantRange* push_constant_ranges)
 {
 	Pipeline graphics_pipeline = {};
 
 	VkPipelineShaderStageCreateInfo shader_stages[2];
 	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, vertex_shader_path, VK_SHADER_STAGE_VERTEX_BIT);
 	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, fragment_shader_path, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-	// Input Assembly
-	VkPipelineInputAssemblyStateCreateInfo input_assembly_ci = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 
 	graphics_pipeline.descriptor_set_layout_count = descriptor_count;
 	for (uint32_t i = 0; i < descriptor_count; ++i)
@@ -866,7 +989,6 @@ void Renderer::create_ubo_buffers()
 
 void Renderer::destroy_ubo_buffers()
 {
-
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
 		frames[i].view_ubo_buffer->destroy(device->context->device);

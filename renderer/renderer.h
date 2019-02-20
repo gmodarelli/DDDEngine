@@ -45,6 +45,13 @@ struct Vertex
 	glm::vec2 tex_coord;
 };
 
+struct DebugLine
+{
+	glm::vec3 position;
+	glm::vec3 normal;
+	glm::vec3 color;
+};
+
 struct ViewUniformBufferObject
 {
 	glm::mat4 view;
@@ -57,6 +64,7 @@ struct Frame
 	uint32_t descriptor_set_cursor = 0;
 	VkDescriptorSet descriptor_sets[256];
 	Vulkan::Buffer* view_ubo_buffer = nullptr;
+	Vulkan::Buffer* debug_vertex_buffer = nullptr;
 };
 
 struct Pipeline
@@ -78,19 +86,23 @@ struct Renderer
 	void cleanup();
 
 	void create_pipelines();
-	Pipeline create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis,
-		VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci, VkPipelineDepthStencilStateCreateInfo depth_stencil_ci, VkPipelineMultisampleStateCreateInfo multisampling_ci,
-		VkPipelineColorBlendStateCreateInfo color_blend_ci, VkPipelineDynamicStateCreateInfo dynamic_state_ci, uint32_t push_constant_range_count, VkPushConstantRange* push_constant_ranges);
+	Pipeline create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, VkPipelineInputAssemblyStateCreateInfo input_assembly_ci,
+		uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis, VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci,
+		VkPipelineDepthStencilStateCreateInfo depth_stencil_ci, VkPipelineMultisampleStateCreateInfo multisampling_ci, VkPipelineColorBlendStateCreateInfo color_blend_ci,
+		VkPipelineDynamicStateCreateInfo dynamic_state_ci, uint32_t push_constant_range_count, VkPushConstantRange* push_constant_ranges);
 
 	void render_frame(float delta_time);
 	void prepare_uniform_buffers();
 	void update_uniform_buffers(Vulkan::FrameResources& frame_resources);
+
+	void prepare_debug_vertex_buffers();
 
 	// Device
 	Vulkan::Device* device;
 
 	Pipeline static_pipeline = {};
 	Pipeline dynamic_pipeline = {};
+	Pipeline debug_pipeline = {};
 
 	Frame frames[Vulkan::MAX_FRAMES_IN_FLIGHT];
 	bool wait_on_semaphores = false;
