@@ -182,4 +182,7 @@
       <Filter>application</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\scratchpad.txt" />
+  </ItemGroup>
 </Project>

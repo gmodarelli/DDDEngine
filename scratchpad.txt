@@ -1,0 +1,38 @@
+- Move GLFWwindow outside of the Wsi struct. Introduce a Platform struct that handles:
+	- Window creation
+	- Keyboard Input
+	- Mouse Input
+
+- Add a Simulation struct that holds the GameState. The GameState struct could include things like:
+	- GameObjects related data
+		- Entities (static ones like walls, grounds. dynamic ones like players and enemies)
+		- Meshes 
+		- Transforms (vec3 position, vec3 scale, quat rotation)
+		- ...
+
+	- Renderer related data
+		- Uniform buffers...
+
+	- Input data
+		- Keyboard input states
+		- Mouse cursor position
+
+	- In general the game state should be split into "section" that are going to be read/written
+	  by separate "system", like Simulation, Renderer, Vulkan, Audio
+
+- Figure out what the Renderer API should look like. Some methods would be
+	- upload_mesh()
+	- upload_static_transforms()
+	- upload_dynamic_transforms()
+	- upload_uniforms()
+	- ect...
+	- DebugDraw
+		- We need to provide debug drawing functions to draw things like grids, lines, axis gizmos, camera frustums
+
+- Implement a Camera struct that can function as a:
+	- game camera (perspective), fixed in place that looks on the game board
+	- debug camera to freely move in the world (similar to the one offered by Blender)
+	- "cinematic" camera that can transition between source and target position and rotation, 
+	  with dedicated "animation curves"
+
+- Adapt the glTF asset importer to the new code
