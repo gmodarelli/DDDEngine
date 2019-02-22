@@ -1,5 +1,5 @@
-- Move GLFWwindow outside of the Wsi struct. Introduce a Platform struct that handles:
-	- Window creation
+- [DONE] Move GLFWwindow outside of the Wsi struct. Introduce a Platform struct that handles:
+	- [DONE] Window creation
 	- Keyboard Input
 	- Mouse Input
 
@@ -34,5 +34,7 @@
 	- debug camera to freely move in the world (similar to the one offered by Blender)
 	- "cinematic" camera that can transition between source and target position and rotation, 
 	  with dedicated "animation curves"
+
+- Implement a Clock struct (based on the one in Game Engine Architecture)
 
 - Adapt the glTF asset importer to the new code

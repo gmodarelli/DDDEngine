@@ -433,6 +433,7 @@ void Renderer::render_frame(float delta_time)
 
 	// TODO: Move the following code to a "Simulation" struct that will deal
 	// with simulating stuff :)
+	/*
 	if (device->wsi->input_state.up_pressed)
 	{
 		player_direction = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -452,6 +453,7 @@ void Renderer::render_frame(float delta_time)
 	{
 		player_direction = glm::vec3(1.0f, 0.0f, 0.0f);
 	}
+	*/
 
 	player_transform.position += player_direction * delta_time * player_speed;
 	glm::mat4 model(1.0f);
@@ -515,6 +517,21 @@ void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 {
 	Frame* frame = (Frame*) frame_resources.custom;
 	assert(frame != nullptr);
+
+	// TODO: Skip updating if nothing has changed.
+	// This is here now because on resize the aspect ration can change, and we need to
+	// recreate the projection matrix accordingly
+	glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
+
+	ViewUniformBufferObject ubo = {};
+	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+	ubo.projection[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(device->context->device, frame->view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device->context->device, frame->view_ubo_buffer->device_memory);
 }
 
 void Renderer::prepare_debug_vertex_buffers()

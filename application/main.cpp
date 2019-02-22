@@ -787,6 +787,8 @@ int main()
 #include <inttypes.h>
 #include <stdio.h>
 #include <chrono>
+
+#include "../application/platform.h"
 #include "../vulkan/wsi.h"
 #include "../vulkan/device.h"
 #include "../renderer/renderer.h"
@@ -794,41 +796,61 @@ int main()
 uint32_t width = 1600;
 uint32_t height = 1200;
 
-Vulkan::WSI* wsi;
-Vulkan::Device* device;
-Renderer::Renderer* renderer;
+struct State
+{
+	Platform* platform;
+	Vulkan::WSI* wsi;
+	Vulkan::Device* device;
+	Renderer::Renderer* renderer;
+
+	struct InputState
+	{
+		bool up_pressed = false;
+		bool down_pressed = false;
+		bool left_pressed = false;
+		bool right_pressed = false;
+	};
+	
+	InputState input_state;
+};
+
+State* state = new State();
 
 int main()
 {
-	wsi = new Vulkan::WSI(width, height);
-	wsi->init();
+	state->platform = new Platform();
+	state->platform->init("73 Games", width, height, state);
 
-	device = new Vulkan::Device(wsi, wsi->context);
-	device->init();
+	state->wsi = new Vulkan::WSI(state->platform);
+	state->wsi->init();
 
-	renderer = new Renderer::Renderer(device);
-	renderer->init();
+	state->device = new Vulkan::Device(state->wsi, state->wsi->context);
+	state->device->init();
+
+	state->renderer = new Renderer::Renderer(state->device);
+	state->renderer->init();
 
 	char stats[256];
 
 	// TODO: Pass delta_time to the render_frame function
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	while (wsi->alive())
+	while (state->platform->alive())
 	{
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-		renderer->render_frame(delta_time);
-		sprintf(stats, "73 Games - CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, device->frame_gpu_avg);
-		wsi->set_window_title(stats);
+		state->renderer->render_frame(delta_time);
+		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", state->renderer->frame_cpu_avg, state->device->frame_gpu_avg);
+		state->platform->set_window_title(stats);
 
 		start_time = current_time;
 	}
 
-	renderer->cleanup();
-	device->cleanup();
-	wsi->cleanup();
+	state->renderer->cleanup();
+	state->device->cleanup();
+	state->wsi->cleanup();
+	state->platform->cleanup();
 
 	return 0;
 }

@@ -2,30 +2,15 @@
 
 #include "volk.h"
 #include "context.h"
-
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+#include "../application/platform.h"
 
 namespace Vulkan
 {
 
-static void framebuffer_resize_callback(GLFWwindow* window, int window_width, int window_height);
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-
 struct WSI
 {
-	struct InputState
-	{
-		bool up_pressed = false;
-		bool down_pressed = false;
-		bool left_pressed = false;
-		bool right_pressed = false;
-	} input_state;
-
-	WSI(int window_width, int window_height);
+	WSI(Platform* platform);
 	bool init();
-
-	bool alive();
 	void cleanup();
 
 	bool resizing();
@@ -51,12 +36,8 @@ struct WSI
 	// so we set it as default present mode.
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-	int window_width;
-	int window_height;
-	GLFWwindow* window = NULL;
+	Platform* platform;
 	bool is_resizing = false;
-
-	void set_window_title(const char* title);
 
 private:
 

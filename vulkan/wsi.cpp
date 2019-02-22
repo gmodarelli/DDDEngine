@@ -6,39 +6,10 @@
 namespace Vulkan
 {
 
-WSI::WSI(int window_width, int window_height) : window_width(window_width), window_height(window_height) {}
+WSI::WSI(Platform* platform) : platform(platform) {}
 
 bool WSI::init()
 {
-	glfwInit();
-
-	// GLFW was designed to work with OpenGL so we need to tell it not to
-	// create an OpenGL context, otherwise we won't be able to create a 
-	// VkSwapchainKHR later.
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-	const char* error;
-	glfwGetError(&error);
-	if (error)
-	{
-		printf("[WSI]: %s\n", error);
-		assert(!"Failed to initialize GLFW");
-	}
-
-	window = glfwCreateWindow(window_width, window_height, "73 Games", nullptr, nullptr);
-	if (window == NULL)
-	{
-		glfwGetError(&error);
-		if (error)
-		{
-			printf("[WSI]: %s\n", error);
-			assert(false);
-		}
-	}
-	glfwSetWindowUserPointer(window, this);
-
-	glfwSetKeyCallback(window, key_callback);
-
 	context = new Vulkan::Context();
 	bool result = context->init();
 	assert(result);
@@ -59,12 +30,6 @@ bool WSI::init()
 	return true;
 }
 
-void WSI::set_window_title(const char* title)
-{
-	glfwSetWindowTitle(window, title);
-}
-
-
 void WSI::cleanup()
 {
 	destroy_swapchain();
@@ -74,29 +39,24 @@ void WSI::cleanup()
 	surface = VK_NULL_HANDLE;
 
 	context->cleanup();
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-}
-
-bool WSI::alive()
-{
-	glfwPollEvents();
-	return !glfwWindowShouldClose(window);
 }
 
 VkSurfaceKHR WSI::create_surface(VkInstance instance)
 {
+	VkSurfaceKHR surface;
+#ifdef VK_USE_PLATFORM_WIN32_KHR
 	PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR = (PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR");
 	assert(vkCreateWin32SurfaceKHR != nullptr);
 
 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-	surfaceCreateInfo.hwnd = glfwGetWin32Window(window);
+#ifdef SNAKE_USE_GLFW
+	surfaceCreateInfo.hwnd = glfwGetWin32Window(platform->window_parameters.window);
 	surfaceCreateInfo.hinstance = GetModuleHandle(nullptr);
+#endif
 
-	VkSurfaceKHR surface;
 	VkResult result = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
 	assert(result == VK_SUCCESS);
+#endif
 
 	return surface;
 }
@@ -307,7 +267,11 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 	}
 	else
 	{
-		glfwGetFramebufferSize(window, &window_width, &window_height);
+		int width = -1;
+		int height = -1;
+
+#ifdef SNAKE_USE_GLFW
+		glfwGetFramebufferSize(platform->window_parameters.window, &width, &height);
 		const char* error;
 		glfwGetError(&error);
 		if (error)
@@ -315,71 +279,16 @@ VkExtent2D WSI::choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& surface_
 			printf("[WSI]: %s\n", error);
 			assert(!"Error acquiring the framebuffer size from GLFW");
 		}
+#endif
 
-		VkExtent2D actual_extent = { (uint32_t)window_width, (uint32_t)window_height };
+		assert(width > 0);
+		assert(height > 0);
+
+		VkExtent2D actual_extent = { (uint32_t)width, (uint32_t)height };
 		actual_extent.width = std::max(surface_capabilities.minImageExtent.width, std::min(surface_capabilities.maxImageExtent.width, actual_extent.width));
 		actual_extent.height = std::max(surface_capabilities.minImageExtent.height, std::min(surface_capabilities.maxImageExtent.height, actual_extent.height));
 
 		return actual_extent;
-	}
-}
-
-static void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
-{
-	WSI* wsi = (WSI*)glfwGetWindowUserPointer(window);
-	wsi->framebuffer_resized = true;
-}
-
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-	WSI* wsi = (WSI*)glfwGetWindowUserPointer(window);
-
-	if ((key == GLFW_KEY_W || key == GLFW_KEY_UP))
-	{
-		if (action == GLFW_PRESS)
-		{
-			wsi->input_state.up_pressed = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			wsi->input_state.up_pressed = false;
-		}
-	}
-
-	if ((key == GLFW_KEY_S || key == GLFW_KEY_DOWN))
-	{
-		if (action == GLFW_PRESS)
-		{
-			wsi->input_state.down_pressed = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			wsi->input_state.down_pressed = false;
-		}
-	}
-
-	if ((key == GLFW_KEY_A || key == GLFW_KEY_LEFT))
-	{
-		if (action == GLFW_PRESS)
-		{
-			wsi->input_state.left_pressed = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			wsi->input_state.left_pressed = false;
-		}
-	}
-
-	if ((key == GLFW_KEY_D || key == GLFW_KEY_RIGHT))
-	{
-		if (action == GLFW_PRESS)
-		{
-			wsi->input_state.right_pressed = true;
-		}
-		else if (action == GLFW_RELEASE)
-		{
-			wsi->input_state.right_pressed = false;
-		}
 	}
 }
 

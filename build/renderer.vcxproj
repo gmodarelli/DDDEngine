@@ -106,7 +106,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>__DEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;_CRT_SECURE_NO_WARNINGS;_CONSOLE;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__DEBUG;SNAKE_USE_GLFW;WIN32_LEAN_AND_MEAN;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;_CRT_SECURE_NO_WARNINGS;_CONSOLE;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -149,7 +149,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;WIN32_LEAN_AND_MEAN;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;_CRT_SECURE_NO_WARNINGS;_CONSOLE;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;SNAKE_USE_GLFW;WIN32_LEAN_AND_MEAN;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;_CRT_SECURE_NO_WARNINGS;_CONSOLE;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
@@ -165,6 +165,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\application\platform.cpp" />
     <ClCompile Include="..\application\stb_image.cpp" />
     <ClCompile Include="..\renderer\renderer.cpp" />
     <ClCompile Include="..\vulkan\buffer.cpp" />
@@ -204,6 +205,7 @@
     <None Include="..\data\shaders\static_entity.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\application\platform.h" />
     <ClInclude Include="..\application\stb_image.h" />
     <ClInclude Include="..\extern\glfw\src\egl_context.h" />
     <ClInclude Include="..\extern\glfw\src\osmesa_context.h" />
