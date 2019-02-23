@@ -3,7 +3,7 @@
 namespace Game
 {
 
-Simulation::Simulation(Platform* platform) : platform(platform)
+Simulation::Simulation(Application::Platform* platform) : platform(platform)
 {
 }
 
@@ -15,7 +15,7 @@ void Simulation::init()
 
 void Simulation::update(float delta_time)
 {
-	InputState input_state = platform->get_input_state();
+	Application::InputState input_state = platform->get_input_state();
 
 	if (input_state.key_up_pressed)
 	{

@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <cassert>
 
+namespace Application
+{
+
 void Platform::init(const char* title, uint32_t width, uint32_t height)
 {
 #ifdef SNAKE_USE_GLFW
@@ -127,3 +130,5 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	}
 }
 #endif
+
+} // namespace Application

@@ -8,12 +8,12 @@ namespace Game
 
 struct Simulation
 {
-	Simulation(Platform* platform);
+	Simulation(Application::Platform* platform);
 	void init();
 
 	void update(float delta_time);
 
-	Platform* platform;
+	Application::Platform* platform;
 	State* game_state;
 };
 

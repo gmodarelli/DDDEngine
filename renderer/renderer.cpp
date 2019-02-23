@@ -14,7 +14,7 @@
 namespace Renderer
 {
 
-Renderer::Renderer(Platform* platform) : platform(platform)
+Renderer::Renderer(Application::Platform* platform) : platform(platform)
 {
 }
 

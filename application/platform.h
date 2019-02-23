@@ -5,10 +5,8 @@
 #include <GLFW/glfw3native.h>
 #endif
 
-#ifdef SNAKE_USE_GLFW
-static void framebuffer_resize_callback(GLFWwindow* window, int window_width, int window_height);
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-#endif
+namespace Application
+{
 
 struct InputState
 {
@@ -38,3 +36,11 @@ struct Platform
 	WindowParameters window_parameters;
 	InputState input_state;
 };
+
+#ifdef SNAKE_USE_GLFW
+static void framebuffer_resize_callback(GLFWwindow* window, int window_width, int window_height);
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+#endif
+
+}
+

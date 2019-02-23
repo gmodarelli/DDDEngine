@@ -32,7 +32,7 @@ struct Pipeline
 
 struct Renderer
 {
-	Renderer(Platform* platform);
+	Renderer(Application::Platform* platform);
 
 	void init();
 	void cleanup();
@@ -50,7 +50,7 @@ struct Renderer
 	void prepare_debug_vertex_buffers();
 
 	// Platform
-	Platform* platform;
+	Application::Platform* platform;
 	// Vulkan Backend
 	Vulkan::Backend* backend;
 

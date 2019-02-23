@@ -796,13 +796,13 @@ int main()
 uint32_t width = 1600;
 uint32_t height = 1200;
 
-Platform* platform;
+Application::Platform* platform;
 Renderer::Renderer* renderer;
 Game::Simulation* simulation;
 
 int main()
 {
-	platform = new Platform();
+	platform = new Application::Platform();
 	platform->init("73 Games", width, height);
 
 	renderer = new Renderer::Renderer(platform);

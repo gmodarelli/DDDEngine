@@ -9,7 +9,7 @@ namespace Vulkan
 
 struct WSI
 {
-	WSI(Platform* platform);
+	WSI(Application::Platform* platform);
 	bool init();
 	void cleanup();
 
@@ -36,7 +36,7 @@ struct WSI
 	// so we set it as default present mode.
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-	Platform* platform;
+	Application::Platform* platform;
 	bool is_resizing = false;
 
 private:

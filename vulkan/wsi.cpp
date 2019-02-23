@@ -6,7 +6,7 @@
 namespace Vulkan
 {
 
-WSI::WSI(Platform* platform) : platform(platform) {}
+WSI::WSI(Application::Platform* platform) : platform(platform) {}
 
 bool WSI::init()
 {
