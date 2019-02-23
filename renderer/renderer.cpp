@@ -280,7 +280,6 @@ void Renderer::init()
 	delete instance_staging_buffer;
 
 	dynamic_entities[0].mesh_id = 0;
-	player_transform = { glm::vec3(0.0f, 0.6f, 0.0f), glm::vec3(1.0f) };
 
 	// Load chequered texture
 	int tex_width;
@@ -348,7 +347,7 @@ void Renderer::init()
 	assert(result == VK_SUCCESS);
 }
 
-void Renderer::render_frame(float delta_time)
+void Renderer::render_frame(Game::State* game_state, float delta_time)
 {
 	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
 
@@ -439,33 +438,8 @@ void Renderer::render_frame(float delta_time)
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
-	// TODO: Move the following code to a "Simulation" struct that will deal
-	// with simulating stuff :)
-	/*
-	if (backend->device->wsi->input_state.up_pressed)
-	{
-		player_direction = glm::vec3(0.0f, 0.0f, -1.0f);
-	}
-
-	if (backend->device->wsi->input_state.down_pressed)
-	{
-		player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	}
-
-	if (backend->device->wsi->input_state.left_pressed)
-	{
-		player_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
-	}
-
-	if (backend->device->wsi->input_state.right_pressed)
-	{
-		player_direction = glm::vec3(1.0f, 0.0f, 0.0f);
-	}
-	*/
-
-	player_transform.position += player_direction * delta_time * player_speed;
 	glm::mat4 model(1.0f);
-	model = glm::translate(model, player_transform.position);
+	model = glm::translate(model, game_state->player_transform.position);
 	vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 
 	// Bind point 0: Mesh vertex buffer

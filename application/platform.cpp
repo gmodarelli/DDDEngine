@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <cassert>
 
-void Platform::init(const char* title, uint32_t width, uint32_t height, void* user_pointer)
+void Platform::init(const char* title, uint32_t width, uint32_t height)
 {
 #ifdef SNAKE_USE_GLFW
 	glfwInit();
@@ -33,7 +33,7 @@ void Platform::init(const char* title, uint32_t width, uint32_t height, void* us
 			assert(false);
 		}
 	}
-	glfwSetWindowUserPointer(window_parameters.window, user_pointer);
+	glfwSetWindowUserPointer(window_parameters.window, this);
 
 	glfwSetKeyCallback(window_parameters.window, key_callback);
 	glfwSetFramebufferSizeCallback(window_parameters.window, framebuffer_resize_callback);
@@ -63,28 +63,30 @@ void Platform::set_window_title(const char* title)
 #endif
 }
 
+InputState Platform::get_input_state() const
+{
+	return input_state;
+}
+
 #ifdef SNAKE_USE_GLFW
 static void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
 {
 	printf("\n Resize callback fired\n");
-	// State* state = (State*)glfwGetWindowUserPointer(window);
-	// state->wsi->framebuffer_resized = true;
 }
 
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	/*
-	State* state = (State*)glfwGetWindowUserPointer(window);
+	Platform* platform = (Platform*)glfwGetWindowUserPointer(window);
 
 	if ((key == GLFW_KEY_W || key == GLFW_KEY_UP))
 	{
 		if (action == GLFW_PRESS)
 		{
-			state->input_state.up_pressed = true;
+			platform->input_state.key_up_pressed = true;
 		}
 		else if (action == GLFW_RELEASE)
 		{
-			state->input_state.up_pressed = false;
+			platform->input_state.key_up_pressed = false;
 		}
 	}
 
@@ -92,11 +94,11 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	{
 		if (action == GLFW_PRESS)
 		{
-			state->input_state.down_pressed = true;
+			platform->input_state.key_down_pressed = true;
 		}
 		else if (action == GLFW_RELEASE)
 		{
-			state->input_state.down_pressed = false;
+			platform->input_state.key_down_pressed = false;
 		}
 	}
 
@@ -104,11 +106,11 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	{
 		if (action == GLFW_PRESS)
 		{
-			state->input_state.left_pressed = true;
+			platform->input_state.key_left_pressed = true;
 		}
 		else if (action == GLFW_RELEASE)
 		{
-			state->input_state.left_pressed = false;
+			platform->input_state.key_left_pressed = false;
 		}
 	}
 
@@ -116,13 +118,12 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	{
 		if (action == GLFW_PRESS)
 		{
-			state->input_state.right_pressed = true;
+			platform->input_state.key_right_pressed = true;
 		}
 		else if (action == GLFW_RELEASE)
 		{
-			state->input_state.right_pressed = false;
+			platform->input_state.key_right_pressed = false;
 		}
 	}
-	*/
 }
 #endif

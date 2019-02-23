@@ -167,6 +167,7 @@
   <ItemGroup>
     <ClCompile Include="..\application\platform.cpp" />
     <ClCompile Include="..\application\stb_image.cpp" />
+    <ClCompile Include="..\game\simulation.cpp" />
     <ClCompile Include="..\renderer\renderer.cpp" />
     <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
@@ -212,8 +213,11 @@
     <ClInclude Include="..\extern\glfw\src\wgl_context.h" />
     <ClInclude Include="..\extern\glfw\src\win32_joystick.h" />
     <ClInclude Include="..\extern\glfw\src\win32_platform.h" />
+    <ClInclude Include="..\game\simulation.h" />
+    <ClInclude Include="..\game\state.h" />
     <ClInclude Include="..\renderer\camera.h" />
     <ClInclude Include="..\renderer\renderer.h" />
+    <ClInclude Include="..\renderer\types.h" />
     <ClInclude Include="..\vulkan\app.h" />
     <ClInclude Include="..\vulkan\backend.h" />
     <ClInclude Include="..\vulkan\buffer.h" />

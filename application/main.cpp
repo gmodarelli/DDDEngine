@@ -789,58 +789,48 @@ int main()
 #include <chrono>
 
 #include "../application/platform.h"
-#include "../vulkan/wsi.h"
-#include "../vulkan/device.h"
+#include "../game/simulation.h"
+
 #include "../renderer/renderer.h"
 
 uint32_t width = 1600;
 uint32_t height = 1200;
 
-struct State
-{
-	Platform* platform;
-	Renderer::Renderer* renderer;
-
-	struct InputState
-	{
-		bool up_pressed = false;
-		bool down_pressed = false;
-		bool left_pressed = false;
-		bool right_pressed = false;
-	};
-	
-	InputState input_state;
-};
-
-State* state = new State();
+Platform* platform;
+Renderer::Renderer* renderer;
+Game::Simulation* simulation;
 
 int main()
 {
-	state->platform = new Platform();
-	state->platform->init("73 Games", width, height, state);
+	platform = new Platform();
+	platform->init("73 Games", width, height);
 
-	state->renderer = new Renderer::Renderer(state->platform);
-	state->renderer->init();
+	renderer = new Renderer::Renderer(platform);
+	renderer->init();
+
+	simulation = new Game::Simulation(platform);
+	simulation->init();
 
 	char stats[256];
 
 	auto start_time = std::chrono::high_resolution_clock::now();
 
-	while (state->platform->alive())
+	while (platform->alive())
 	{
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-		state->renderer->render_frame(delta_time);
+		simulation->update(delta_time);
+		renderer->render_frame(simulation->game_state, delta_time);
 
-		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", state->renderer->frame_cpu_avg, state->renderer->backend->device->frame_gpu_avg);
-		state->platform->set_window_title(stats);
+		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, renderer->backend->device->frame_gpu_avg);
+		platform->set_window_title(stats);
 
 		start_time = current_time;
 	}
 
-	state->renderer->cleanup();
-	state->platform->cleanup();
+	renderer->cleanup();
+	platform->cleanup();
 
 	return 0;
 }

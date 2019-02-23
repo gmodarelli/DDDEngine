@@ -10,6 +10,14 @@ static void framebuffer_resize_callback(GLFWwindow* window, int window_width, in
 static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 #endif
 
+struct InputState
+{
+	bool key_up_pressed = false;
+	bool key_down_pressed = false;
+	bool key_left_pressed = false;
+	bool key_right_pressed = false;
+};
+	
 struct Platform
 {
 	struct WindowParameters
@@ -20,11 +28,13 @@ struct Platform
 #endif
 	};
 
-	void init(const char* title, uint32_t width, uint32_t height, void* user_pointer);
+	void init(const char* title, uint32_t width, uint32_t height);
 	void cleanup();
 	bool alive();
 	void set_window_title(const char* title);
 
-	WindowParameters window_parameters;
+	InputState get_input_state() const;
 
+	WindowParameters window_parameters;
+	InputState input_state;
 };

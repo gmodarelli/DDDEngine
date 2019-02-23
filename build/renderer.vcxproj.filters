@@ -22,6 +22,9 @@
     <Filter Include="extern\glfw">
       <UniqueIdentifier>{80bf3a2f-a5ef-4122-901a-a1cb7d74bba0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="game">
+      <UniqueIdentifier>{5d397b67-c174-473e-85b9-d5a79c222761}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
@@ -101,6 +104,9 @@
     </ClCompile>
     <ClCompile Include="..\application\platform.cpp">
       <Filter>application</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\simulation.cpp">
+      <Filter>game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -189,6 +195,15 @@
     </ClInclude>
     <ClInclude Include="..\vulkan\backend.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\game\simulation.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="..\renderer\types.h">
+      <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\game\state.h">
+      <Filter>game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
