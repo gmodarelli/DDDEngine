@@ -1,11 +1,11 @@
 - [DONE] Move GLFWwindow outside of the Wsi struct. Introduce a Platform struct that handles:
 	- [DONE] Window creation
-	- Keyboard Input
+	- [DONE] Keyboard Input
 	- Mouse Input
 
 - Move the pipeline creation to a Shader/Pipeline struct outside the Renderer
 
-- Add a Simulation struct that holds the GameState. The GameState struct could include things like:
+- [WIP] Add a Simulation struct that holds the GameState. The GameState struct could include things like:
 	- GameObjects related data
 		- Entities (static ones like walls, grounds. dynamic ones like players and enemies)
 		- Meshes 
@@ -15,11 +15,11 @@
 	- Renderer related data
 		- Uniform buffers...
 
-	- Input data
-		- Keyboard input states
+	- [WIP] Input data
+		- [WIP] Keyboard input states
 		- Mouse cursor position
 
-	- In general the game state should be split into "section" that are going to be read/written
+	- [WIP] In general the game state should be split into "section" that are going to be read/written
 	  by separate "system", like Simulation, Renderer, Vulkan, Audio
 
 - Figure out what the Renderer API should look like. Some methods would be
