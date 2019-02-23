@@ -187,6 +187,9 @@
     <ClInclude Include="..\application\platform.h">
       <Filter>application</Filter>
     </ClInclude>
+    <ClInclude Include="..\vulkan\backend.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\scratchpad.txt" />

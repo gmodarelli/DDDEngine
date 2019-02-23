@@ -14,12 +14,20 @@
 namespace Renderer
 {
 
-Renderer::Renderer(Vulkan::Device* device) : device(device)
+Renderer::Renderer(Platform* platform) : platform(platform)
 {
 }
 
 void Renderer::init()
 {
+	// Initialize the Backend
+	backend = new Vulkan::Backend();
+	backend->wsi = new Vulkan::WSI(platform);
+	backend->wsi->init();
+
+	backend->device = new Vulkan::Device(backend->wsi, backend->wsi->context);
+	backend->device->init();
+
 	create_descriptor_pool();
 	create_ubo_buffers();
 	prepare_uniform_buffers();
@@ -38,8 +46,8 @@ void Renderer::init()
 
 		VkDeviceSize size = 1 * 1024 * 1024;
 		frames[i].debug_vertex_buffer = new Vulkan::Buffer(
-			device->context->device,
-			device->context->gpu,
+			backend->device->context->device,
+			backend->device->context->gpu,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			size);
@@ -104,40 +112,40 @@ void Renderer::init()
 	VkDeviceSize vertices_size = sizeof(cube_vertices[0]) * ARRAYSIZE(cube_vertices);
 
 	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		vertices_size);
 
 	void* cube_vertex_data;
-	vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &cube_vertex_data);
+	vkMapMemory(backend->device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &cube_vertex_data);
 	memcpy(cube_vertex_data, cube_vertices, (size_t)vertex_staging_buffer->size);
-	vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, vertex_staging_buffer->device_memory);
 
 	VkDeviceSize indices_size = sizeof(cube_indices[0]) * ARRAYSIZE(cube_indices);
 
 	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		indices_size);
 
 	void* cube_index_data;
-	vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &cube_index_data);
+	vkMapMemory(backend->device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &cube_index_data);
 	memcpy(cube_index_data, cube_indices, (size_t)index_staging_buffer->size);
-	vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, index_staging_buffer->device_memory);
 
-	uint32_t vertex_offset = (uint32_t)device->upload_vertex_buffer(vertex_staging_buffer);
-	uint32_t index_offset = (uint32_t)device->upload_index_buffer(index_staging_buffer);
+	uint32_t vertex_offset = (uint32_t)backend->device->upload_vertex_buffer(vertex_staging_buffer);
+	uint32_t index_offset = (uint32_t)backend->device->upload_index_buffer(index_staging_buffer);
 
 	meshes[mesh_id].index_offset = index_offset / sizeof(uint16_t);
 	meshes[mesh_id].index_count = ARRAYSIZE(cube_indices);
 	meshes[mesh_id].vertex_offset = vertex_offset / sizeof(Vertex);
 
-	vertex_staging_buffer->destroy(device->context->device);
-	index_staging_buffer->destroy(device->context->device);
+	vertex_staging_buffer->destroy(backend->device->context->device);
+	index_staging_buffer->destroy(backend->device->context->device);
 
 	mesh_id++;
 
@@ -157,40 +165,40 @@ void Renderer::init()
 	vertices_size = sizeof(plane_vertices[0]) * ARRAYSIZE(plane_vertices);
 
 	vertex_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		vertices_size);
 
 	void* plane_vertex_data;
-	vkMapMemory(device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &plane_vertex_data);
+	vkMapMemory(backend->device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &plane_vertex_data);
 	memcpy(plane_vertex_data, plane_vertices, (size_t)vertex_staging_buffer->size);
-	vkUnmapMemory(device->context->device, vertex_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, vertex_staging_buffer->device_memory);
 
 	indices_size = sizeof(plane_indices[0]) * ARRAYSIZE(plane_indices);
 
 	index_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		indices_size);
 
 	void* plane_index_data;
-	vkMapMemory(device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &plane_index_data);
+	vkMapMemory(backend->device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &plane_index_data);
 	memcpy(plane_index_data, plane_indices, (size_t)index_staging_buffer->size);
-	vkUnmapMemory(device->context->device, index_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, index_staging_buffer->device_memory);
 
-	vertex_offset = (uint32_t)device->upload_vertex_buffer(vertex_staging_buffer);
-	index_offset = (uint32_t)device->upload_index_buffer(index_staging_buffer);
+	vertex_offset = (uint32_t)backend->device->upload_vertex_buffer(vertex_staging_buffer);
+	index_offset = (uint32_t)backend->device->upload_index_buffer(index_staging_buffer);
 
 	meshes[mesh_id].index_offset = index_offset / sizeof(uint16_t);
 	meshes[mesh_id].index_count = ARRAYSIZE(plane_indices);
 	meshes[mesh_id].vertex_offset = vertex_offset / sizeof(Vertex);
 
-	vertex_staging_buffer->destroy(device->context->device);
-	index_staging_buffer->destroy(device->context->device);
+	vertex_staging_buffer->destroy(backend->device->context->device);
+	index_staging_buffer->destroy(backend->device->context->device);
 
 	mesh_id++;
 
@@ -227,23 +235,23 @@ void Renderer::init()
 	VkDeviceSize instances_size = sizeof(static_transforms[0]) * transform_index;
 
 	Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		instances_size);
 
 	void* wall_instance_data;
-	vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &wall_instance_data);
+	vkMapMemory(backend->device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &wall_instance_data);
 	memcpy(wall_instance_data, static_transforms, (size_t)instance_staging_buffer->size);
-	vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, instance_staging_buffer->device_memory);
 
 	static_entitites[0] = {};
 	static_entitites[0].count = transform_index;
 	static_entitites[0].mesh_id = 0;
-	static_entitites[0].transform_offset = (uint32_t)device->upload_instance_buffer(instance_staging_buffer);
+	static_entitites[0].transform_offset = (uint32_t)backend->device->upload_instance_buffer(instance_staging_buffer);
 
-	instance_staging_buffer->destroy(device->context->device);
+	instance_staging_buffer->destroy(backend->device->context->device);
 
 	// Generate the transforms for the ground
 	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, 0.0f, distance * -1.5f), glm::vec3(board_width, 1.0f, board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
@@ -252,23 +260,23 @@ void Renderer::init()
 	instances_size = sizeof(static_transforms[0]) * 1;
 
 	instance_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 		instances_size);
 
 	void* ground_instance_data;
-	vkMapMemory(device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &ground_instance_data);
+	vkMapMemory(backend->device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &ground_instance_data);
 	memcpy(ground_instance_data, &static_transforms[transform_index], (size_t)instance_staging_buffer->size);
-	vkUnmapMemory(device->context->device, instance_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, instance_staging_buffer->device_memory);
 
 	static_entitites[1] = {};
 	static_entitites[1].count = transform_index;
 	static_entitites[1].mesh_id = 1;
-	static_entitites[1].transform_offset = (uint32_t)device->upload_instance_buffer(instance_staging_buffer);
+	static_entitites[1].transform_offset = (uint32_t)backend->device->upload_instance_buffer(instance_staging_buffer);
 
-	instance_staging_buffer->destroy(device->context->device);
+	instance_staging_buffer->destroy(backend->device->context->device);
 	delete instance_staging_buffer;
 
 	dynamic_entities[0].mesh_id = 0;
@@ -285,31 +293,31 @@ void Renderer::init()
 		assert(!"Failed to load texture");
 
 	Vulkan::Buffer* texture_staging_buffer = new Vulkan::Buffer(
-		device->context->device,
-		device->context->gpu,
+		backend->device->context->device,
+		backend->device->context->gpu,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		texture_size);
 
 	void* texture_data;
-	vkMapMemory(device->context->device, texture_staging_buffer->device_memory, 0, texture_staging_buffer->size, 0, &texture_data);
+	vkMapMemory(backend->device->context->device, texture_staging_buffer->device_memory, 0, texture_staging_buffer->size, 0, &texture_data);
 	memcpy(texture_data, pixels, (size_t)texture_staging_buffer->size);
-	vkUnmapMemory(device->context->device, texture_staging_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, texture_staging_buffer->device_memory);
 
 	stbi_image_free(pixels);
 
 	VkExtent2D texture_extent = { (uint32_t)tex_width, (uint32_t)tex_height };
-	VkFormat color_format = device->wsi->surface_format.format;
-	texture_image = new Vulkan::Image(device->context->device, device->context->gpu, texture_extent, color_format, VK_SAMPLE_COUNT_1_BIT,
+	VkFormat color_format = backend->device->wsi->surface_format.format;
+	texture_image = new Vulkan::Image(backend->device->context->device, backend->device->context->gpu, texture_extent, color_format, VK_SAMPLE_COUNT_1_BIT,
 									 VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_TILING_OPTIMAL,
 								 	 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 									 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	// NOTE: The upload_buffer_to_image function takes care of the necessary transitions between
 	// image layouts and queues
-	device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	backend->device->upload_buffer_to_image(texture_staging_buffer->buffer, texture_image->image, color_format, texture_extent.width, texture_extent.height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-	texture_staging_buffer->destroy(device->context->device);
+	texture_staging_buffer->destroy(backend->device->context->device);
 
 	VkSamplerCreateInfo sampler_info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 	sampler_info.magFilter = VK_FILTER_LINEAR;
@@ -317,7 +325,7 @@ void Renderer::init()
 	sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	if (device->context->gpu_enabled_features.samplerAnisotropy == VK_TRUE)
+	if (backend->device->context->gpu_enabled_features.samplerAnisotropy == VK_TRUE)
 	{
 		sampler_info.anisotropyEnable = VK_TRUE;
 		sampler_info.maxAnisotropy = 16;
@@ -336,7 +344,7 @@ void Renderer::init()
 	sampler_info.minLod = 0.0f;
 	sampler_info.maxLod = 0.0f;
 
-	VkResult result = vkCreateSampler(device->context->device, &sampler_info, nullptr, &texture_sampler);
+	VkResult result = vkCreateSampler(backend->device->context->device, &sampler_info, nullptr, &texture_sampler);
 	assert(result == VK_SUCCESS);
 }
 
@@ -344,12 +352,12 @@ void Renderer::render_frame(float delta_time)
 {
 	auto frame_cpu_start = std::chrono::high_resolution_clock::now();
 
-	Vulkan::FrameResources& frame_resources = device->begin_draw_frame();
+	Vulkan::FrameResources& frame_resources = backend->device->begin_draw_frame();
 	Frame* frame = (Frame*) frame_resources.custom;
 	
 	if (frame == nullptr)
 	{
-		frame = &frames[device->frame_index];
+		frame = &frames[backend->device->frame_index];
 		frame_resources.custom = frame;
 	}
 
@@ -387,14 +395,14 @@ void Renderer::render_frame(float delta_time)
 			descriptor_writes[1].descriptorCount = 1;
 			descriptor_writes[1].pImageInfo = &image_info;
 
-			vkUpdateDescriptorSets(device->context->device, ARRAYSIZE(descriptor_writes), descriptor_writes, 0, nullptr);
+			vkUpdateDescriptorSets(backend->device->context->device, ARRAYSIZE(descriptor_writes), descriptor_writes, 0, nullptr);
 		}
 	}
 
-	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
+	VkViewport viewport = { 0, 0, (float)backend->device->wsi->swapchain_extent.width, (float)backend->device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = device->wsi->swapchain_extent;
+	scissor.extent = backend->device->wsi->swapchain_extent;
 
 	VkDeviceSize offsets[] = { 0 };
 
@@ -409,12 +417,12 @@ void Renderer::render_frame(float delta_time)
 
 	// vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
 
-	VkBuffer vertex_buffers[] = { device->vertex_buffer->buffer };
-	VkBuffer instance_buffers[] = { device->instance_buffer->buffer };
+	VkBuffer vertex_buffers[] = { backend->device->vertex_buffer->buffer };
+	VkBuffer instance_buffers[] = { backend->device->instance_buffer->buffer };
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
-	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
 	for (uint32_t i = 0; i < static_entity_count; ++i)
 	{
@@ -434,22 +442,22 @@ void Renderer::render_frame(float delta_time)
 	// TODO: Move the following code to a "Simulation" struct that will deal
 	// with simulating stuff :)
 	/*
-	if (device->wsi->input_state.up_pressed)
+	if (backend->device->wsi->input_state.up_pressed)
 	{
 		player_direction = glm::vec3(0.0f, 0.0f, -1.0f);
 	}
 
-	if (device->wsi->input_state.down_pressed)
+	if (backend->device->wsi->input_state.down_pressed)
 	{
 		player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
 	}
 
-	if (device->wsi->input_state.left_pressed)
+	if (backend->device->wsi->input_state.left_pressed)
 	{
 		player_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
 	}
 
-	if (device->wsi->input_state.right_pressed)
+	if (backend->device->wsi->input_state.right_pressed)
 	{
 		player_direction = glm::vec3(1.0f, 0.0f, 0.0f);
 	}
@@ -462,7 +470,7 @@ void Renderer::render_frame(float delta_time)
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
-	vkCmdBindIndexBuffer(frame_resources.command_buffer, device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
 	for (uint32_t i = 0; i < dynamic_entity_count; ++i)
 	{
@@ -479,7 +487,7 @@ void Renderer::render_frame(float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->debug_vertex_buffer->buffer, offsets);
 	vkCmdDraw(frame_resources.command_buffer, 12, 1, 0, 0);
 
-	device->end_draw_frame(frame_resources);
+	backend->device->end_draw_frame(frame_resources);
 
 	auto frame_cpu_end = std::chrono::high_resolution_clock::now();
 	frame_cpu_avg = frame_cpu_avg * 0.95 + (frame_cpu_end - frame_cpu_start).count() * 1e-6 * 0.05;
@@ -492,7 +500,7 @@ VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descript
 	descriptor_set_ai.descriptorSetCount = 1;
 	descriptor_set_ai.pSetLayouts = &descriptor_set_layout;
 
-	return vkAllocateDescriptorSets(device->context->device, &descriptor_set_ai, &descriptor_set);
+	return vkAllocateDescriptorSets(backend->device->context->device, &descriptor_set_ai, &descriptor_set);
 }
 
 void Renderer::prepare_uniform_buffers()
@@ -503,13 +511,13 @@ void Renderer::prepare_uniform_buffers()
 
 		ViewUniformBufferObject ubo = {};
 		ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+		ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 		ubo.projection[1][1] *= -1;
 
 		void* data;
-		vkMapMemory(device->context->device, frames[i].view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+		vkMapMemory(backend->device->context->device, frames[i].view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
 		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device->context->device, frames[i].view_ubo_buffer->device_memory);
+		vkUnmapMemory(backend->device->context->device, frames[i].view_ubo_buffer->device_memory);
 	}
 }
 
@@ -525,13 +533,13 @@ void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 
 	ViewUniformBufferObject ubo = {};
 	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.projection = glm::perspective(glm::radians(45.0f), (float)device->wsi->swapchain_extent.width / (float)device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
 
 	void* data;
-	vkMapMemory(device->context->device, frame->view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
+	vkMapMemory(backend->device->context->device, frame->view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device->context->device, frame->view_ubo_buffer->device_memory);
+	vkUnmapMemory(backend->device->context->device, frame->view_ubo_buffer->device_memory);
 }
 
 void Renderer::prepare_debug_vertex_buffers()
@@ -558,53 +566,56 @@ void Renderer::prepare_debug_vertex_buffers()
 			glm::vec3(0.9f, 0.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
 		};
 
-		vkMapMemory(device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * ARRAYSIZE(debug_lines), 0, &frames[i].debug_vertex_buffer->data);
+		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * ARRAYSIZE(debug_lines), 0, &frames[i].debug_vertex_buffer->data);
 		memcpy(frames[i].debug_vertex_buffer->data, &debug_lines, sizeof(DebugLine) * ARRAYSIZE(debug_lines));
-		vkUnmapMemory(device->context->device, frames[i].debug_vertex_buffer->device_memory);
+		vkUnmapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory);
 	}
 }
 
 void Renderer::cleanup()
 {
-	vkQueueWaitIdle(device->context->graphics_queue);
-	vkDestroySampler(device->context->device, texture_sampler, nullptr);
+	vkQueueWaitIdle(backend->device->context->graphics_queue);
+	vkDestroySampler(backend->device->context->device, texture_sampler, nullptr);
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
 
 	// TODO: Move this its onw cleanup function
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		frames[i].debug_vertex_buffer->destroy(device->context->device);
+		frames[i].debug_vertex_buffer->destroy(backend->device->context->device);
 	}
 
-	vkDestroyDescriptorSetLayout(device->context->device, static_pipeline.descriptor_set_layouts[0], nullptr);
+	vkDestroyDescriptorSetLayout(backend->device->context->device, static_pipeline.descriptor_set_layouts[0], nullptr);
 	static_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(device->context->device, static_pipeline.pipeline, nullptr);
+	vkDestroyPipeline(backend->device->context->device, static_pipeline.pipeline, nullptr);
 	static_pipeline.pipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(device->context->device, static_pipeline.pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(backend->device->context->device, static_pipeline.pipeline_layout, nullptr);
 	static_pipeline.pipeline_layout = VK_NULL_HANDLE;
 
-	vkDestroyDescriptorSetLayout(device->context->device, dynamic_pipeline.descriptor_set_layouts[0], nullptr);
+	vkDestroyDescriptorSetLayout(backend->device->context->device, dynamic_pipeline.descriptor_set_layouts[0], nullptr);
 	dynamic_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(device->context->device, dynamic_pipeline.pipeline, nullptr);
+	vkDestroyPipeline(backend->device->context->device, dynamic_pipeline.pipeline, nullptr);
 	dynamic_pipeline.pipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(backend->device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
 	dynamic_pipeline.pipeline_layout = VK_NULL_HANDLE;
 
-	vkDestroyDescriptorSetLayout(device->context->device, debug_pipeline.descriptor_set_layouts[0], nullptr);
+	vkDestroyDescriptorSetLayout(backend->device->context->device, debug_pipeline.descriptor_set_layouts[0], nullptr);
 	debug_pipeline.descriptor_set_layouts[0] = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(device->context->device, debug_pipeline.pipeline, nullptr);
+	vkDestroyPipeline(backend->device->context->device, debug_pipeline.pipeline, nullptr);
 	debug_pipeline.pipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(device->context->device, debug_pipeline.pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(backend->device->context->device, debug_pipeline.pipeline_layout, nullptr);
 	debug_pipeline.pipeline_layout = VK_NULL_HANDLE;
 
-	texture_image->destroy(device->context->device);
+	texture_image->destroy(backend->device->context->device);
+
+	backend->device->cleanup();
+	backend->wsi->cleanup();
 }
 
 void Renderer::create_pipelines()
@@ -619,10 +630,10 @@ void Renderer::create_pipelines()
 	input_assembly_ci.primitiveRestartEnable = VK_FALSE;
 
 	// Viewport and Scissor
-	VkViewport viewport = { 0, 0, (float)device->wsi->swapchain_extent.width, (float)device->wsi->swapchain_extent.height, 0.0f, 1.0f };
+	VkViewport viewport = { 0, 0, (float)backend->device->wsi->swapchain_extent.width, (float)backend->device->wsi->swapchain_extent.height, 0.0f, 1.0f };
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = device->wsi->swapchain_extent;
+	scissor.extent = backend->device->wsi->swapchain_extent;
 	VkPipelineViewportStateCreateInfo viewport_ci = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 	viewport_ci.viewportCount = 1;
 	viewport_ci.pViewports = &viewport;
@@ -657,8 +668,8 @@ void Renderer::create_pipelines()
 
 	// Multisampling
 	VkPipelineMultisampleStateCreateInfo multisampling_ci = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	multisampling_ci.rasterizationSamples = device->context->msaa_samples;
-	if (device->context->gpu_enabled_features.sampleRateShading == VK_TRUE)
+	multisampling_ci.rasterizationSamples = backend->device->context->msaa_samples;
+	if (backend->device->context->gpu_enabled_features.sampleRateShading == VK_TRUE)
 	{
 		multisampling_ci.sampleShadingEnable = VK_TRUE;
 		// min fraction for sample shading; closer to one is smooth
@@ -913,13 +924,13 @@ Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* f
 	Pipeline graphics_pipeline = {};
 
 	VkPipelineShaderStageCreateInfo shader_stages[2];
-	shader_stages[0] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, vertex_shader_path, VK_SHADER_STAGE_VERTEX_BIT);
-	shader_stages[1] = Vulkan::Shader::load_shader(device->context->device, device->context->gpu, fragment_shader_path, VK_SHADER_STAGE_FRAGMENT_BIT);
+	shader_stages[0] = Vulkan::Shader::load_shader(backend->device->context->device, backend->device->context->gpu, vertex_shader_path, VK_SHADER_STAGE_VERTEX_BIT);
+	shader_stages[1] = Vulkan::Shader::load_shader(backend->device->context->device, backend->device->context->gpu, fragment_shader_path, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	graphics_pipeline.descriptor_set_layout_count = descriptor_count;
 	for (uint32_t i = 0; i < descriptor_count; ++i)
 	{
-		VkResult result = vkCreateDescriptorSetLayout(device->context->device, &descriptor_layout_cis[i], nullptr, &graphics_pipeline.descriptor_set_layouts[i]);
+		VkResult result = vkCreateDescriptorSetLayout(backend->device->context->device, &descriptor_layout_cis[i], nullptr, &graphics_pipeline.descriptor_set_layouts[i]);
 		assert(result == VK_SUCCESS);
 	}
 
@@ -934,7 +945,7 @@ Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* f
 		pipeline_layout_ci.pPushConstantRanges = push_constant_ranges;
 	}
 
-	VkResult result = vkCreatePipelineLayout(device->context->device, &pipeline_layout_ci, nullptr, &graphics_pipeline.pipeline_layout);
+	VkResult result = vkCreatePipelineLayout(backend->device->context->device, &pipeline_layout_ci, nullptr, &graphics_pipeline.pipeline_layout);
 	assert(result == VK_SUCCESS);
 
 	VkGraphicsPipelineCreateInfo pipeline_ci = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
@@ -949,15 +960,15 @@ Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* f
 	pipeline_ci.pColorBlendState = &color_blend_ci;
 	pipeline_ci.pDynamicState = &dynamic_state_ci;
 	pipeline_ci.layout = graphics_pipeline.pipeline_layout;
-	pipeline_ci.renderPass = device->render_pass;
+	pipeline_ci.renderPass = backend->device->render_pass;
 	pipeline_ci.subpass = 0;
 
-	result = vkCreateGraphicsPipelines(device->context->device, nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline.pipeline);
+	result = vkCreateGraphicsPipelines(backend->device->context->device, nullptr, 1, &pipeline_ci, nullptr, &graphics_pipeline.pipeline);
 	assert(result == VK_SUCCESS);
 
 	for (uint32_t i = 0; i < ARRAYSIZE(shader_stages); ++i)
 	{
-		vkDestroyShaderModule(device->context->device, shader_stages[i].module, nullptr);
+		vkDestroyShaderModule(backend->device->context->device, shader_stages[i].module, nullptr);
 	}
 
 	return graphics_pipeline;
@@ -977,7 +988,7 @@ void Renderer::create_descriptor_pool()
 	pool_ci.pPoolSizes = pool_sizes;
 	pool_ci.maxSets = 2 * Vulkan::MAX_FRAMES_IN_FLIGHT;
 
-	VkResult result = vkCreateDescriptorPool(device->context->device, &pool_ci, nullptr, &descriptor_pool);
+	VkResult result = vkCreateDescriptorPool(backend->device->context->device, &pool_ci, nullptr, &descriptor_pool);
 	assert(result == VK_SUCCESS);
 }
 
@@ -985,7 +996,7 @@ void Renderer::destroy_descriptor_pool()
 {
 	if (descriptor_pool != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorPool(device->context->device, descriptor_pool, nullptr);
+		vkDestroyDescriptorPool(backend->device->context->device, descriptor_pool, nullptr);
 		descriptor_pool = VK_NULL_HANDLE;
 	}
 }
@@ -996,8 +1007,8 @@ void Renderer::create_ubo_buffers()
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
 		frames[i].view_ubo_buffer = new Vulkan::Buffer(
-			device->context->device,
-			device->context->gpu,
+			backend->device->context->device,
+			backend->device->context->gpu,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			sizeof(ViewUniformBufferObject));
@@ -1008,7 +1019,7 @@ void Renderer::destroy_ubo_buffers()
 {
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
-		frames[i].view_ubo_buffer->destroy(device->context->device);
+		frames[i].view_ubo_buffer->destroy(backend->device->context->device);
 	}
 }
 

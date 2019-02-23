@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../vulkan/device.h"
+#include "../application/platform.h"
+#include "../vulkan/backend.h"
 #include "../vulkan/buffer.h"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -80,7 +81,7 @@ struct Pipeline
 
 struct Renderer
 {
-	Renderer(Vulkan::Device* device);
+	Renderer(Platform* platform);
 
 	void init();
 	void cleanup();
@@ -97,8 +98,10 @@ struct Renderer
 
 	void prepare_debug_vertex_buffers();
 
-	// Device
-	Vulkan::Device* device;
+	// Platform
+	Platform* platform;
+	// Vulkan Backend
+	Vulkan::Backend* backend;
 
 	Pipeline static_pipeline = {};
 	Pipeline dynamic_pipeline = {};

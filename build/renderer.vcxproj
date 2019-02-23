@@ -215,6 +215,7 @@
     <ClInclude Include="..\renderer\camera.h" />
     <ClInclude Include="..\renderer\renderer.h" />
     <ClInclude Include="..\vulkan\app.h" />
+    <ClInclude Include="..\vulkan\backend.h" />
     <ClInclude Include="..\vulkan\buffer.h" />
     <ClInclude Include="..\vulkan\context.h" />
     <ClInclude Include="..\vulkan\device.h" />

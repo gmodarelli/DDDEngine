@@ -3,6 +3,8 @@
 	- Keyboard Input
 	- Mouse Input
 
+- Move the pipeline creation to a Shader/Pipeline struct outside the Renderer
+
 - Add a Simulation struct that holds the GameState. The GameState struct could include things like:
 	- GameObjects related data
 		- Entities (static ones like walls, grounds. dynamic ones like players and enemies)

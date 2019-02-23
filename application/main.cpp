@@ -799,8 +799,6 @@ uint32_t height = 1200;
 struct State
 {
 	Platform* platform;
-	Vulkan::WSI* wsi;
-	Vulkan::Device* device;
 	Renderer::Renderer* renderer;
 
 	struct InputState
@@ -821,18 +819,11 @@ int main()
 	state->platform = new Platform();
 	state->platform->init("73 Games", width, height, state);
 
-	state->wsi = new Vulkan::WSI(state->platform);
-	state->wsi->init();
-
-	state->device = new Vulkan::Device(state->wsi, state->wsi->context);
-	state->device->init();
-
-	state->renderer = new Renderer::Renderer(state->device);
+	state->renderer = new Renderer::Renderer(state->platform);
 	state->renderer->init();
 
 	char stats[256];
 
-	// TODO: Pass delta_time to the render_frame function
 	auto start_time = std::chrono::high_resolution_clock::now();
 
 	while (state->platform->alive())
@@ -841,15 +832,14 @@ int main()
 		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
 		state->renderer->render_frame(delta_time);
-		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", state->renderer->frame_cpu_avg, state->device->frame_gpu_avg);
+
+		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", state->renderer->frame_cpu_avg, state->renderer->backend->device->frame_gpu_avg);
 		state->platform->set_window_title(stats);
 
 		start_time = current_time;
 	}
 
 	state->renderer->cleanup();
-	state->device->cleanup();
-	state->wsi->cleanup();
 	state->platform->cleanup();
 
 	return 0;
