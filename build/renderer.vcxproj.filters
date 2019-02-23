@@ -25,6 +25,9 @@
     <Filter Include="game">
       <UniqueIdentifier>{5d397b67-c174-473e-85b9-d5a79c222761}</UniqueIdentifier>
     </Filter>
+    <Filter Include="memory">
+      <UniqueIdentifier>{a78d699c-99dd-454b-b0d7-6d92444041fb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
@@ -106,6 +109,15 @@
       <Filter>application</Filter>
     </ClCompile>
     <ClCompile Include="..\game\simulation.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\state.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="..\memory\stack.cpp">
+      <Filter>memory</Filter>
+    </ClCompile>
+    <ClCompile Include="..\game\level.cpp">
       <Filter>game</Filter>
     </ClCompile>
   </ItemGroup>
@@ -203,6 +215,12 @@
       <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="..\game\state.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="..\memory\stack.h">
+      <Filter>memory</Filter>
+    </ClInclude>
+    <ClInclude Include="..\game\level.h">
       <Filter>game</Filter>
     </ClInclude>
   </ItemGroup>

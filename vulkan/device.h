@@ -107,14 +107,14 @@ struct Device
 	// TODO: Merge these buffers into one
 	Vulkan::Buffer* vertex_buffer;
 	Vulkan::Buffer* index_buffer;
-	Vulkan::Buffer* instance_buffer;
+	Vulkan::Buffer* transform_buffer;
 	VkDeviceSize vertex_head_cursor = 0;
 	VkDeviceSize index_head_cursor = 0;
-	VkDeviceSize instance_head_cursor = 0;
+	VkDeviceSize transform_head_cursor = 0;
 
 	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
-	VkDeviceSize upload_instance_buffer(Vulkan::Buffer* staging_buffer);
+	VkDeviceSize upload_transform_buffer(Vulkan::Buffer* staging_buffer);
 	void upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
 
 	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);

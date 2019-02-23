@@ -54,232 +54,6 @@ void Renderer::init()
 	}
 
 	prepare_debug_vertex_buffers();
-	
-	// NOTE: All the following code will be replaced with a scene loader.
-	// The hardcoded meshes will be loaded from asset files
-
-	// Static objects
-	static_transforms = new Transform[static_transform_count];
-	static_entity_count = 2;
-	static_entitites = new StaticEntity[static_entity_count];
-
-	// Dynamic objects
-	dynamic_entity_count = 1;
-	dynamic_entities = new Entity[dynamic_entity_count];
-
-	// Meshes
-	meshes_count = 2;
-	meshes = new Mesh[meshes_count];
-	uint32_t mesh_id = 0;
-
-	// NOTE: A cube mesh
-	// We use this mesh to draw obstacles in the level.
-	// Since obstacles don't move, we render them as static instances
-	Vertex cube_vertices[] = {
-		// front
-		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {1.0f, 0.0f} },
-		{ { 0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 0.0f} },
-		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.3f, 0.3f, 0.3f}, {0.0f, 1.0f} },
-		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 1.0f} },
-		// back
-		{ {	-0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 0.0f} },
-		{ {	 0.3f, -0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {0.0f, 0.0f} },
-		{ { 0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {0.0f, 1.0f} },
-		{ {	-0.3f,  0.3f, -0.3f }, { 0.0f, 0.0f, 0.0f }, {0.4f, 0.4f, 0.4f}, {1.0f, 1.0f} }
-	};
-
-	uint16_t cube_indices[] = {
-		// front
-		0, 1, 2,
-		2, 3, 0,
-		// right
-		1, 5, 6,
-		6, 2, 1,
-		// back
-		7, 6, 5,
-		5, 4, 7,
-		// left
-		4, 0, 3,
-		3, 7, 4,
-		// bottom
-		4, 5, 1,
-		1, 0, 4,
-		// top
-		3, 2, 6,
-		6, 7, 3
-	};
-
-	VkDeviceSize vertices_size = sizeof(cube_vertices[0]) * ARRAYSIZE(cube_vertices);
-
-	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		vertices_size);
-
-	void* cube_vertex_data;
-	vkMapMemory(backend->device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &cube_vertex_data);
-	memcpy(cube_vertex_data, cube_vertices, (size_t)vertex_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, vertex_staging_buffer->device_memory);
-
-	VkDeviceSize indices_size = sizeof(cube_indices[0]) * ARRAYSIZE(cube_indices);
-
-	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		indices_size);
-
-	void* cube_index_data;
-	vkMapMemory(backend->device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &cube_index_data);
-	memcpy(cube_index_data, cube_indices, (size_t)index_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, index_staging_buffer->device_memory);
-
-	uint32_t vertex_offset = (uint32_t)backend->device->upload_vertex_buffer(vertex_staging_buffer);
-	uint32_t index_offset = (uint32_t)backend->device->upload_index_buffer(index_staging_buffer);
-
-	meshes[mesh_id].index_offset = index_offset / sizeof(uint16_t);
-	meshes[mesh_id].index_count = ARRAYSIZE(cube_indices);
-	meshes[mesh_id].vertex_offset = vertex_offset / sizeof(Vertex);
-
-	vertex_staging_buffer->destroy(backend->device->context->device);
-	index_staging_buffer->destroy(backend->device->context->device);
-
-	mesh_id++;
-
-	// NOTE: A plane mesh
-	Vertex plane_vertices[] = {
-		{ { -0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 0.0f} },
-		{ { 0.3f, -0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 0.0f} },
-		{ {	0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {0.0f, 1.0f} },
-		{ {	-0.3f, 0.3f, 0.3f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.36f, 0.03f }, {1.0f, 1.0f} },
-	};
-
-	uint16_t plane_indices[] = {
-		0, 1, 2,
-		2, 3, 0,
-	};
-
-	vertices_size = sizeof(plane_vertices[0]) * ARRAYSIZE(plane_vertices);
-
-	vertex_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		vertices_size);
-
-	void* plane_vertex_data;
-	vkMapMemory(backend->device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &plane_vertex_data);
-	memcpy(plane_vertex_data, plane_vertices, (size_t)vertex_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, vertex_staging_buffer->device_memory);
-
-	indices_size = sizeof(plane_indices[0]) * ARRAYSIZE(plane_indices);
-
-	index_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		indices_size);
-
-	void* plane_index_data;
-	vkMapMemory(backend->device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &plane_index_data);
-	memcpy(plane_index_data, plane_indices, (size_t)index_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, index_staging_buffer->device_memory);
-
-	vertex_offset = (uint32_t)backend->device->upload_vertex_buffer(vertex_staging_buffer);
-	index_offset = (uint32_t)backend->device->upload_index_buffer(index_staging_buffer);
-
-	meshes[mesh_id].index_offset = index_offset / sizeof(uint16_t);
-	meshes[mesh_id].index_count = ARRAYSIZE(plane_indices);
-	meshes[mesh_id].vertex_offset = vertex_offset / sizeof(Vertex);
-
-	vertex_staging_buffer->destroy(backend->device->context->device);
-	index_staging_buffer->destroy(backend->device->context->device);
-
-	mesh_id++;
-
-	// Static Entitites
-
-	// A makeshift board for the game
-	// Build a surrounding wall
-	glm::vec3 scale(1.0f, 1.0f, 1.0f);
-	float distance = 0.6f;
-	float offset_x = -9.0f * distance;
-	float offset_z = -11.0f * distance;
-
-	uint32_t board_width = 20;
-	uint32_t board_height = 20;
-
-	// Generate the transforms for the walls
-	uint32_t transform_index = 0;
-	for (uint32_t c = 0; c < board_height; ++c)
-	{
-		for (uint32_t r = 0; r < board_width; ++r)
-		{
-			if (c == 0 || c == board_height - 1)
-			{
-				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.6f, c * distance + offset_z), scale };
-			}
-			else if (r == 0 || r == board_width - 1)
-			{
-				static_transforms[transform_index++] = { glm::vec3(r * distance + offset_x, 0.6f, c * distance + offset_z), scale };
-			}
-		}
-	}
-
-	// Upload the transforms for the walls
-	VkDeviceSize instances_size = sizeof(static_transforms[0]) * transform_index;
-
-	Vulkan::Buffer* instance_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		instances_size);
-
-	void* wall_instance_data;
-	vkMapMemory(backend->device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &wall_instance_data);
-	memcpy(wall_instance_data, static_transforms, (size_t)instance_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, instance_staging_buffer->device_memory);
-
-	static_entitites[0] = {};
-	static_entitites[0].count = transform_index;
-	static_entitites[0].mesh_id = 0;
-	static_entitites[0].transform_offset = (uint32_t)backend->device->upload_instance_buffer(instance_staging_buffer);
-
-	instance_staging_buffer->destroy(backend->device->context->device);
-
-	// Generate the transforms for the ground
-	static_transforms[transform_index] = { glm::vec3(distance * 0.5f, 0.0f, distance * -1.5f), glm::vec3(board_width, 1.0f, board_height) , glm::angleAxis(glm::radians(90.0f), glm::vec3(-1.0f, 0.0f, 0.0f)) };
-
-	// Upload the transforms for the grounnd
-	instances_size = sizeof(static_transforms[0]) * 1;
-
-	instance_staging_buffer = new Vulkan::Buffer(
-		backend->device->context->device,
-		backend->device->context->gpu,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-		instances_size);
-
-	void* ground_instance_data;
-	vkMapMemory(backend->device->context->device, instance_staging_buffer->device_memory, 0, instance_staging_buffer->size, 0, &ground_instance_data);
-	memcpy(ground_instance_data, &static_transforms[transform_index], (size_t)instance_staging_buffer->size);
-	vkUnmapMemory(backend->device->context->device, instance_staging_buffer->device_memory);
-
-	static_entitites[1] = {};
-	static_entitites[1].count = transform_index;
-	static_entitites[1].mesh_id = 1;
-	static_entitites[1].transform_offset = (uint32_t)backend->device->upload_instance_buffer(instance_staging_buffer);
-
-	instance_staging_buffer->destroy(backend->device->context->device);
-	delete instance_staging_buffer;
-
-	dynamic_entities[0].mesh_id = 0;
 
 	// Load chequered texture
 	int tex_width;
@@ -345,6 +119,63 @@ void Renderer::init()
 
 	VkResult result = vkCreateSampler(backend->device->context->device, &sampler_info, nullptr, &texture_sampler);
 	assert(result == VK_SUCCESS);
+}
+
+void Renderer::upload_buffers(Game::State* game_state)
+{
+	// Upload all vertices to the Vertex Buffer
+	VkDeviceSize vertices_size = sizeof(game_state->vertices[0]) * game_state->vertex_count;
+
+	Vulkan::Buffer* vertex_staging_buffer = new Vulkan::Buffer(
+		backend->device->context->device,
+		backend->device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		vertices_size);
+
+	void* vertices_data;
+	vkMapMemory(backend->device->context->device, vertex_staging_buffer->device_memory, 0, vertex_staging_buffer->size, 0, &vertices_data);
+	memcpy(vertices_data, game_state->vertices, vertices_size);
+	vkUnmapMemory(backend->device->context->device, vertex_staging_buffer->device_memory);
+
+	backend->device->upload_vertex_buffer(vertex_staging_buffer);
+	vertex_staging_buffer->destroy(backend->device->context->device);
+
+	// Upload all indices to the Index Buffer
+	VkDeviceSize indices_size = sizeof(game_state->indices[0]) * game_state->index_count;
+
+	Vulkan::Buffer* index_staging_buffer = new Vulkan::Buffer(
+		backend->device->context->device,
+		backend->device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		indices_size);
+
+	void* indices_data;
+	vkMapMemory(backend->device->context->device, index_staging_buffer->device_memory, 0, index_staging_buffer->size, 0, &indices_data);
+	memcpy(indices_data, game_state->indices, indices_size);
+	vkUnmapMemory(backend->device->context->device, index_staging_buffer->device_memory);
+
+	backend->device->upload_index_buffer(index_staging_buffer);
+	index_staging_buffer->destroy(backend->device->context->device);
+
+	// Upload all Static Transforms to the Instance Buffer
+	VkDeviceSize static_transforms_size = sizeof(game_state->static_transforms[0]) * game_state->static_transform_count;
+
+	Vulkan::Buffer* transform_staging_buffer = new Vulkan::Buffer(
+		backend->device->context->device,
+		backend->device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+		static_transforms_size);
+
+	void* transform_data;
+	vkMapMemory(backend->device->context->device, transform_staging_buffer->device_memory, 0, transform_staging_buffer->size, 0, &transform_data);
+	memcpy(transform_data, game_state->static_transforms, static_transforms_size);
+	vkUnmapMemory(backend->device->context->device, transform_staging_buffer->device_memory);
+
+	backend->device->upload_transform_buffer(transform_staging_buffer);
+	transform_staging_buffer->destroy(backend->device->context->device);
 }
 
 void Renderer::render_frame(Game::State* game_state, float delta_time)
@@ -414,23 +245,21 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
-	// vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
-
 	VkBuffer vertex_buffers[] = { backend->device->vertex_buffer->buffer };
-	VkBuffer instance_buffers[] = { backend->device->instance_buffer->buffer };
+	VkBuffer transform_buffers[] = { backend->device->transform_buffer->buffer };
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+	// Bind point 1: Transform data buffer
+	vkCmdBindVertexBuffers(frame_resources.command_buffer, 1, 1, transform_buffers, offsets);
 
-	for (uint32_t i = 0; i < static_entity_count; ++i)
+	// TODO: Since static entities are already sorted by mesh_id, we could simply
+	// use one draw call per mesh.
+	for (uint32_t i = 0; i < game_state->static_entity_count; ++i)
 	{
-		VkDeviceSize offsets[] = { static_entitites[i].transform_offset };
-		// Bind point 1: Instance data buffer
-		vkCmdBindVertexBuffers(frame_resources.command_buffer, 1, 1, instance_buffers, offsets);
-		// Draw all instances at once
-		Mesh& mesh = meshes[static_entitites[i].mesh_id];
-		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, static_entitites[i].count, mesh.index_offset, mesh.vertex_offset, 0);
+		Mesh& mesh = game_state->meshes[game_state->static_entities[i].mesh_id];
+		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, i);
 	}
 
 	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline);
@@ -439,16 +268,20 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	glm::mat4 model(1.0f);
-	model = glm::translate(model, game_state->player_transform.position);
+	model = glm::translate(model, game_state->transforms[game_state->player_entity_id].position);
 	vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 
 	// Bind point 0: Mesh vertex buffer
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	for (uint32_t i = 0; i < dynamic_entity_count; ++i)
+	// Render the player
+	Mesh& mesh = game_state->meshes[game_state->entities[game_state->player_entity_id].mesh_id];
+	vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
+
+	for (uint32_t i = game_state->player_entity_id + 1; i < game_state->entity_count; ++i)
 	{
-		Mesh& mesh = meshes[dynamic_entities[i].mesh_id];
+		Mesh& mesh = game_state->meshes[game_state->entities[i].mesh_id];
 		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
 	}
 

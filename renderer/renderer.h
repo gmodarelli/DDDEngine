@@ -37,6 +37,8 @@ struct Renderer
 	void init();
 	void cleanup();
 
+	void upload_buffers(Game::State* game_state);
+
 	void create_pipelines();
 	Pipeline create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, VkPipelineInputAssemblyStateCreateInfo input_assembly_ci,
 		uint32_t descriptor_count, VkDescriptorSetLayoutCreateInfo* descriptor_layout_cis, VkPipelineViewportStateCreateInfo viewport_ci, VkPipelineRasterizationStateCreateInfo rasterizer_ci,
@@ -62,22 +64,6 @@ struct Renderer
 	bool wait_on_semaphores = false;
 
 	double frame_cpu_avg = 0;
-
-	uint32_t meshes_count = 0;
-	Mesh* meshes;
-
-	// Dynamic Entities
-	//
-	uint32_t dynamic_entity_count = 0;
-	Entity* dynamic_entities;
-
-	// Static Entities
-	// 
-	uint32_t static_entity_count = 0;
-	StaticEntity* static_entitites;
-	// TODO: Increase this limit if necessary
-	uint32_t static_transform_count = 1024;
-	Transform* static_transforms;
 
 	Vulkan::Image* texture_image;
 	VkSampler texture_sampler;

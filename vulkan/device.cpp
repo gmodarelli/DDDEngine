@@ -87,9 +87,9 @@ VkDeviceSize Device::upload_index_buffer(Vulkan::Buffer* staging_buffer)
 	return index_offset;
 }
 
-VkDeviceSize Device::upload_instance_buffer(Vulkan::Buffer* staging_buffer)
+VkDeviceSize Device::upload_transform_buffer(Vulkan::Buffer* staging_buffer)
 {
-	VkDeviceSize instance_offset = instance_head_cursor;
+	VkDeviceSize transform_offset = transform_head_cursor;
 	// NOTE: For now we're copying the whole content of the buffer (staging_buffer->size)
 	// from its start offset (0). In the future we might want to take both information
 	// as input
@@ -97,16 +97,16 @@ VkDeviceSize Device::upload_instance_buffer(Vulkan::Buffer* staging_buffer)
 
 	VkBufferCopy copy_region = {};
 	copy_region.srcOffset = 0;
-	copy_region.dstOffset = instance_head_cursor;
+	copy_region.dstOffset = transform_head_cursor;
 	copy_region.size = staging_buffer->size;
 
-	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, instance_buffer->buffer, 1, &copy_region);
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, transform_buffer->buffer, 1, &copy_region);
 
 	flush_transfer_command_buffer(copy_cmd);
 
-	instance_head_cursor += staging_buffer->size;
+	transform_head_cursor += staging_buffer->size;
 
-	return instance_offset;
+	return transform_offset;
 }
 
 void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout)
@@ -202,7 +202,7 @@ void Device::create_vertex_index_buffers()
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		size);
 
-	instance_buffer = new Vulkan::Buffer(
+	transform_buffer = new Vulkan::Buffer(
 		context->device,
 		context->gpu,
 		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -214,7 +214,7 @@ void Device::free_vertex_index_buffers()
 {
 	vertex_buffer->destroy(context->device);
 	index_buffer->destroy(context->device);
-	instance_buffer->destroy(context->device);
+	transform_buffer->destroy(context->device);
 }
 
 void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout)

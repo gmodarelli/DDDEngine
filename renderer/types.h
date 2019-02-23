@@ -12,14 +12,15 @@ namespace Renderer
 
 struct Mesh
 {
+	uint32_t vertex_offset;
 	uint32_t index_offset;
 	uint32_t index_count;
-	uint32_t vertex_offset;
 };
 
 struct Entity
 {
 	uint32_t mesh_id;
+	char name[64];
 };
 
 struct StaticEntity
@@ -43,6 +44,8 @@ struct Vertex
 	glm::vec3 color;
 	glm::vec2 tex_coord;
 };
+
+typedef uint16_t Index;
 
 struct DebugLine
 {

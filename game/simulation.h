@@ -11,10 +11,9 @@ struct Simulation
 	Simulation(Application::Platform* platform);
 	void init();
 
-	void update(float delta_time);
+	void update(Game::State* game_state, float delta_time);
 
 	Application::Platform* platform;
-	State* game_state;
 };
 
 }

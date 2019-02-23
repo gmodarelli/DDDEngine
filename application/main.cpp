@@ -784,26 +784,25 @@ int main()
 }
 #else
 
-#include <inttypes.h>
 #include <stdio.h>
 #include <chrono>
+#include <cassert>
 
+#include "../memory/stack.h"
 #include "../application/platform.h"
-#include "../game/simulation.h"
-
 #include "../renderer/renderer.h"
-
-uint32_t width = 1600;
-uint32_t height = 1200;
+#include "../game/simulation.h"
+#include "../game/level.h"
 
 Application::Platform* platform;
 Renderer::Renderer* renderer;
 Game::Simulation* simulation;
+Game::State* game_state;
 
 int main()
 {
 	platform = new Application::Platform();
-	platform->init("73 Games", width, height);
+	platform->init("73 Games", 1600, 1200);
 
 	renderer = new Renderer::Renderer(platform);
 	renderer->init();
@@ -811,8 +810,14 @@ int main()
 	simulation = new Game::Simulation(platform);
 	simulation->init();
 
-	char stats[256];
+	game_state = new Game::State();
+ 
+	// Load a level data
+	Game::Level::load_level(game_state, "");
+	// Upload level data to the GPU
+	renderer->upload_buffers(game_state);
 
+	char stats[256];
 	auto start_time = std::chrono::high_resolution_clock::now();
 
 	while (platform->alive())
@@ -820,8 +825,8 @@ int main()
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
 
-		simulation->update(delta_time);
-		renderer->render_frame(simulation->game_state, delta_time);
+		simulation->update(game_state, delta_time);
+		renderer->render_frame(game_state, delta_time);
 
 		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, renderer->backend->device->frame_gpu_avg);
 		platform->set_window_title(stats);
