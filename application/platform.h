@@ -31,6 +31,9 @@ struct Platform
 	bool alive();
 	void set_window_title(const char* title);
 
+	void* allocate(size_t size);
+	void free(void* base_address, size_t size);
+
 	InputState get_input_state() const;
 
 	WindowParameters window_parameters;

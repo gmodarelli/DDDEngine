@@ -57,6 +57,22 @@ void Platform::cleanup()
 	glfwDestroyWindow(window_parameters.window);
 }
 
+void* Platform::allocate(size_t size)
+{
+#ifdef _WIN32
+	void* base_address = VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	assert(base_address);
+	return base_address;
+#endif
+}
+
+void Platform::free(void* base_address, size_t size)
+{
+#ifdef _WIN32
+	VirtualFree(base_address, size, MEM_RELEASE);
+#endif
+}
+
 void Platform::set_window_title(const char* title)
 {
 #ifdef SNAKE_USE_GLFW
