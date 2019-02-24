@@ -6,8 +6,6 @@ namespace Game
 
 struct State
 {
-	State();
-
 	// We are using a Data Oriented Design to store all the
 	// game state informations.
 	//
@@ -47,6 +45,17 @@ struct State
 	uint32_t player_entity_id = 0;
 	glm::vec3 player_direction = glm::vec3(0.0f, 0.0f, 0.0f);
 	float player_speed = 2.0f;
+
+	// TODO: Move this into a Camera struct
+	// Debug Camera
+	float camera_speed = 1.0f;
+	float camera_mouse_sensitivity = 0.6f;
+	float camera_yaw = -90.0f;
+	float camera_pitch = 0.0f;
+	glm::vec3 camera_position = { 0.0f, 0.0f, 3.0f };
+	glm::vec3 camera_front = { 0.0f, 0.0f, -1.0f };
+	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::mat4 camera_view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
 };
 
 }

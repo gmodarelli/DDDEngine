@@ -47,7 +47,7 @@ struct Renderer
 
 	void render_frame(Game::State* game_state, float delta_time);
 	void prepare_uniform_buffers();
-	void update_uniform_buffers(Vulkan::FrameResources& frame_resources);
+	void update_uniform_buffers(Game::State* game_state, Vulkan::FrameResources& frame_resources);
 
 	void prepare_debug_vertex_buffers();
 

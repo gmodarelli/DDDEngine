@@ -3,8 +3,4 @@
 namespace Game
 {
 
-State::State()
-{
-}
-
 } // namespace Game

@@ -10,6 +10,7 @@ struct Simulation
 {
 	Simulation(Application::Platform* platform);
 	void init();
+	void cleanup();
 
 	void update(Game::State* game_state, float delta_time);
 

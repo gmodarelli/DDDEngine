@@ -794,23 +794,18 @@ int main()
 #include "../game/simulation.h"
 #include "../game/level.h"
 
-Application::Platform* platform;
-Renderer::Renderer* renderer;
-Game::Simulation* simulation;
-Game::State* game_state;
-
 int main()
 {
-	platform = new Application::Platform();
+	Application::Platform* platform = new Application::Platform();
 	platform->init("73 Games", 1600, 1200);
 
-	renderer = new Renderer::Renderer(platform);
+	Renderer::Renderer* renderer = new Renderer::Renderer(platform);
 	renderer->init();
 
-	simulation = new Game::Simulation(platform);
+	Game::Simulation* simulation = new Game::Simulation(platform);
 	simulation->init();
 
-	game_state = new Game::State();
+	Game::State* game_state = new Game::State();
  
 	// Load a level data
 	Game::Level::load_level(game_state, "");
@@ -834,6 +829,7 @@ int main()
 		start_time = current_time;
 	}
 
+	simulation->cleanup();
 	renderer->cleanup();
 	platform->cleanup();
 

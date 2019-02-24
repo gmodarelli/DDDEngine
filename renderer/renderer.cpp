@@ -236,7 +236,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 
 	VkDeviceSize offsets[] = { 0 };
 
-	update_uniform_buffers(frame_resources);
+	update_uniform_buffers(game_state, frame_resources);
 	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, frame->descriptor_set_count, frame->descriptor_sets, 0, nullptr);
 
 	// Static Pipeline
@@ -292,7 +292,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 	vkCmdSetLineWidth(frame_resources.command_buffer, 1.0f);
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->debug_vertex_buffer->buffer, offsets);
-	vkCmdDraw(frame_resources.command_buffer, 12, 1, 0, 0);
+	vkCmdDraw(frame_resources.command_buffer, 6, 1, 0, 0);
 
 	backend->device->end_draw_frame(frame_resources);
 
@@ -314,10 +314,8 @@ void Renderer::prepare_uniform_buffers()
 {
 	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
 	{
-		glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
-
 		ViewUniformBufferObject ubo = {};
-		ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 		ubo.projection[1][1] *= -1;
 
@@ -328,7 +326,7 @@ void Renderer::prepare_uniform_buffers()
 	}
 }
 
-void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
+void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameResources& frame_resources)
 {
 	Frame* frame = (Frame*) frame_resources.custom;
 	assert(frame != nullptr);
@@ -336,10 +334,8 @@ void Renderer::update_uniform_buffers(Vulkan::FrameResources& frame_resources)
 	// TODO: Skip updating if nothing has changed.
 	// This is here now because on resize the aspect ration can change, and we need to
 	// recreate the projection matrix accordingly
-	glm::vec3 camera_position = { 0.0f, 15.0f, 5.0f };
-
 	ViewUniformBufferObject ubo = {};
-	ubo.view = glm::lookAt(camera_position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.view = game_state->camera_view;
 	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
 
@@ -353,6 +349,8 @@ void Renderer::prepare_debug_vertex_buffers()
 {
 	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
 	{
+		// xz-plane grid
+		/*
 		DebugLine debug_lines[] = {
 			glm::vec3(-10.0f, 0.0f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
 			glm::vec3(10.0f, 0.0f, -0.3f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
@@ -371,6 +369,21 @@ void Renderer::prepare_debug_vertex_buffers()
 
 			glm::vec3(0.9f, 0.0f, -10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
 			glm::vec3(0.9f, 0.0f, 10.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f),
+		};
+		*/
+
+		DebugLine debug_lines[] = {
+			// X-Axis
+			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
+			glm::vec3(3.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
+
+			// Z-Axis
+			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+			glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+
+			// Y-Axis
+			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
+			glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
 		};
 
 		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * ARRAYSIZE(debug_lines), 0, &frames[i].debug_vertex_buffer->data);

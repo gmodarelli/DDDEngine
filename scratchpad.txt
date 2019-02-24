@@ -7,14 +7,10 @@
 
 - [WIP] Add a Simulation struct that holds the GameState. The GameState struct could include things like:
 	- GameObjects related data
-		- Entities (static ones like walls, grounds. dynamic ones like players and enemies)
-		- Meshes 
-		- Transforms (vec3 position, vec3 scale, quat rotation)
+		- [DONE] Entities (static ones like walls, grounds. dynamic ones like players and enemies)
+		- [DONE] Meshes 
+		- [DONE] Transforms (vec3 position, vec3 scale, quat rotation)
 		- ...
-
-	- Renderer related data
-		- Uniform buffers...
-
 	- [WIP] Input data
 		- [WIP] Keyboard input states
 		- Mouse cursor position
@@ -24,16 +20,16 @@
 
 - Figure out what the Renderer API should look like. Some methods would be
 	- upload_mesh()
-	- upload_static_transforms()
-	- upload_dynamic_transforms()
+	- [done] upload_static_transforms()
+	- [done] upload_dynamic_transforms()
 	- upload_uniforms()
 	- ect...
 	- DebugDraw
 		- We need to provide debug drawing functions to draw things like grids, lines, axis gizmos, camera frustums
 
-- Implement a Camera struct that can function as a:
+- [WIP] Implement a Camera struct that can function as a:
 	- game camera (perspective), fixed in place that looks on the game board
-	- debug camera to freely move in the world (similar to the one offered by Blender)
+	- [DONE] debug camera to freely move in the world
 	- "cinematic" camera that can transition between source and target position and rotation, 
 	  with dedicated "animation curves"
 
