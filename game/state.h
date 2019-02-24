@@ -1,5 +1,6 @@
 #pragma once
 #include "../renderer/types.h"
+#include "../renderer/camera.h"
 
 namespace Game
 {
@@ -46,16 +47,12 @@ struct State
 	glm::vec3 player_direction = glm::vec3(0.0f, 0.0f, 0.0f);
 	float player_speed = 2.0f;
 
-	// TODO: Move this into a Camera struct
+	// Current camera
+	Renderer::Camera* current_camera;
 	// Debug Camera
-	float camera_speed = 1.0f;
-	float camera_mouse_sensitivity = 0.6f;
-	float camera_yaw = -90.0f;
-	float camera_pitch = 0.0f;
-	glm::vec3 camera_position = { 0.0f, 0.0f, 3.0f };
-	glm::vec3 camera_front = { 0.0f, 0.0f, -1.0f };
-	glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
-	glm::mat4 camera_view = glm::lookAt(camera_position, camera_position + camera_front, camera_up);
+	Renderer::Camera* fly_camera;
+	// Game Camera
+	Renderer::Camera* look_at_camera;
 };
 
 }

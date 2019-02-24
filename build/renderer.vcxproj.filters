@@ -120,6 +120,9 @@
     <ClCompile Include="..\game\level.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="..\renderer\camera.cpp">
+      <Filter>renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\glft.frag">
@@ -165,9 +168,6 @@
     </ClInclude>
     <ClInclude Include="..\vulkan\utils.h">
       <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="..\renderer\camera.h">
-      <Filter>renderer</Filter>
     </ClInclude>
     <ClInclude Include="..\extern\glfw\src\egl_context.h">
       <Filter>extern\glfw</Filter>
@@ -222,6 +222,9 @@
     </ClInclude>
     <ClInclude Include="..\game\level.h">
       <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="..\renderer\camera.h">
+      <Filter>renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

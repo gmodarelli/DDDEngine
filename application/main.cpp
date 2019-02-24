@@ -791,6 +791,7 @@ int main()
 #include "../memory/stack.h"
 #include "../application/platform.h"
 #include "../renderer/renderer.h"
+#include "../renderer/camera.h"
 #include "../game/simulation.h"
 #include "../game/level.h"
 
@@ -806,6 +807,9 @@ int main()
 	simulation->init();
 
 	Game::State* game_state = new Game::State();
+	game_state->fly_camera = new Renderer::Camera(Renderer::CameraType::Fly, glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	game_state->look_at_camera = new Renderer::Camera(Renderer::CameraType::LookAt, glm::vec3(0.0f, 10.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	game_state->current_camera = game_state->look_at_camera;
  
 	// Load a level data
 	Game::Level::load_level(game_state, "");

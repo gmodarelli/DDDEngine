@@ -171,6 +171,7 @@
     <ClCompile Include="..\game\simulation.cpp" />
     <ClCompile Include="..\game\state.cpp" />
     <ClCompile Include="..\memory\stack.cpp" />
+    <ClCompile Include="..\renderer\camera.cpp" />
     <ClCompile Include="..\renderer\renderer.cpp" />
     <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />

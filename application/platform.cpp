@@ -267,6 +267,30 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 			platform->input_state.key_d = false;
 		}
 	}
+
+	if (key == GLFW_KEY_1)
+	{
+		if (action == GLFW_PRESS)
+		{
+			platform->input_state.key_1 = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			platform->input_state.key_1 = false;
+		}
+	}
+
+	if (key == GLFW_KEY_2)
+	{
+		if (action == GLFW_PRESS)
+		{
+			platform->input_state.key_2 = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			platform->input_state.key_2 = false;
+		}
+	}
 }
 #endif
 

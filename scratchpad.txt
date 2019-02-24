@@ -1,7 +1,7 @@
 - [DONE] Move GLFWwindow outside of the Wsi struct. Introduce a Platform struct that handles:
 	- [DONE] Window creation
 	- [DONE] Keyboard Input
-	- Mouse Input
+	- [DONE] Mouse Input
 
 - Move the pipeline creation to a Shader/Pipeline struct outside the Renderer
 
@@ -13,22 +13,22 @@
 		- ...
 	- [WIP] Input data
 		- [WIP] Keyboard input states
-		- Mouse cursor position
+		- [DONE] Mouse cursor position
 
 	- [WIP] In general the game state should be split into "section" that are going to be read/written
 	  by separate "system", like Simulation, Renderer, Vulkan, Audio
 
 - Figure out what the Renderer API should look like. Some methods would be
 	- upload_mesh()
-	- [done] upload_static_transforms()
-	- [done] upload_dynamic_transforms()
+	- [DONE] upload_static_transforms()
+	- [DONE] upload_dynamic_transforms()
 	- upload_uniforms()
 	- ect...
 	- DebugDraw
 		- We need to provide debug drawing functions to draw things like grids, lines, axis gizmos, camera frustums
 
 - [WIP] Implement a Camera struct that can function as a:
-	- game camera (perspective), fixed in place that looks on the game board
+	- [DONE] game camera (perspective), fixed in place that looks on the game board
 	- [DONE] debug camera to freely move in the world
 	- "cinematic" camera that can transition between source and target position and rotation, 
 	  with dedicated "animation curves"
@@ -36,3 +36,8 @@
 - Implement a Clock struct (based on the one in Game Engine Architecture)
 
 - Adapt the glTF asset importer to the new code
+
+- Memory Management
+	- Linear Allocator
+	- [DONE] Stack Allocator
+	- Move Game::State data into a Stack

@@ -335,7 +335,7 @@ void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameReso
 	// This is here now because on resize the aspect ration can change, and we need to
 	// recreate the projection matrix accordingly
 	ViewUniformBufferObject ubo = {};
-	ubo.view = game_state->camera_view;
+	ubo.view = game_state->current_camera->view;
 	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
 
