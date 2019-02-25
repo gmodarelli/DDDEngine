@@ -232,7 +232,6 @@
     <ClInclude Include="..\vulkan\buffer.h" />
     <ClInclude Include="..\vulkan\context.h" />
     <ClInclude Include="..\vulkan\device.h" />
-    <ClInclude Include="..\vulkan\gltf.h" />
     <ClInclude Include="..\vulkan\image.h" />
     <ClInclude Include="..\vulkan\shaders.h" />
     <ClInclude Include="..\vulkan\swapchain.h" />

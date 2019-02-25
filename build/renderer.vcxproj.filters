@@ -163,9 +163,6 @@
     <ClInclude Include="..\vulkan\buffer.h">
       <Filter>vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="..\vulkan\gltf.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="..\vulkan\shaders.h">
       <Filter>vulkan</Filter>
     </ClInclude>

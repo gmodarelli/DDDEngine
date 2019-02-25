@@ -1,6 +1,7 @@
 #pragma once
 #include "../renderer/types.h"
 #include "../renderer/camera.h"
+#include "../resources/resources.h"
 
 namespace Game
 {
@@ -27,20 +28,14 @@ struct State
 	// loop and the render loop
 	uint32_t static_entity_count = 0;
 	Renderer::Entity* static_entities = nullptr;
-	// A mesh contains pointer into a list of vertices and indices.
-	uint32_t mesh_count = 0;
-	Renderer::Primitive* meshes = nullptr;
 	// A Transform contains the position, scale and
 	// rotation of an entity.
 	uint32_t transform_count = 0;
 	Renderer::Transform* transforms = nullptr;
 	uint32_t static_transform_count = 0;
 	Renderer::Transform* static_transforms = nullptr;
-	//
-	uint32_t vertex_count = 0;
-	Renderer::Vertex* vertices = nullptr;
-	uint32_t index_count = 0;
-	Renderer::Index* indices = nullptr;
+
+	const Resources::AssetsInfo* assets_info;
 
 	// Player
 	uint32_t player_entity_id = 0;

@@ -12,7 +12,7 @@ static const uint32_t GLTF_CHUNK_TYPE_BIN = 0x004E4942;
 
 struct Loader
 {
-	static Model load_model(const char* path, AssetsInfo* assets_info);
+	static uint32_t load_model(const char* path, const char* name, AssetsInfo* assets_info);
 };
 
 }

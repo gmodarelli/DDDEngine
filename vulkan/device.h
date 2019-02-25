@@ -104,19 +104,19 @@ struct Device
 
 	double frame_gpu_avg = 0;
 
-	// TODO: Merge these buffers into one
+	// TODO: Merge these 3 buffers into one
 	Vulkan::Buffer* vertex_buffer;
 	Vulkan::Buffer* index_buffer;
-	Vulkan::Buffer* transform_buffer;
+	Vulkan::Buffer* uniform_buffer;
 	VkDeviceSize vertex_head_cursor = 0;
 	VkDeviceSize index_head_cursor = 0;
-	VkDeviceSize transform_head_cursor = 0;
+	VkDeviceSize uniform_head_cursor = 0;
 
 	VkDeviceSize upload_vertex_buffer(Vulkan::Buffer* staging_buffer);
 	VkDeviceSize upload_index_buffer(Vulkan::Buffer* staging_buffer);
-	VkDeviceSize upload_transform_buffer(Vulkan::Buffer* staging_buffer);
-	void upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
+	VkDeviceSize upload_uniform_buffer(Vulkan::Buffer* staging_buffer);
 
+	void upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout);
 	void transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout);
 
 	VkCommandBuffer create_graphics_command_buffer(VkCommandBufferLevel level, bool begin = true);
@@ -127,9 +127,9 @@ struct Device
 
 private:
 
-	// Vertex Index buffers helpers
-	void create_vertex_index_buffers();
-	void free_vertex_index_buffers();
+	// Vertex, Index, Uniform buffers helpers
+	void create_gpu_buffers();
+	void free_gpu_buffers();
 
 	// Render pass helpers
 	void create_render_pass();

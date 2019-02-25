@@ -13,7 +13,7 @@ Device::Device(WSI* wsi, Context* context) : wsi(wsi), context(context)
 void Device::init()
 {
 	create_command_pools();
-	create_vertex_index_buffers();
+	create_gpu_buffers();
 	create_color_buffer();
 	create_depth_buffer();
 	allocate_command_buffers();
@@ -38,7 +38,7 @@ void Device::cleanup()
 	free_command_buffers();
 	destroy_depth_buffer();
 	destroy_color_buffer();
-	free_vertex_index_buffers();
+	free_gpu_buffers();
 	destroy_command_pools();
 	destroy_framebuffers();
 }
@@ -87,9 +87,9 @@ VkDeviceSize Device::upload_index_buffer(Vulkan::Buffer* staging_buffer)
 	return index_offset;
 }
 
-VkDeviceSize Device::upload_transform_buffer(Vulkan::Buffer* staging_buffer)
+VkDeviceSize Device::upload_uniform_buffer(Vulkan::Buffer* staging_buffer)
 {
-	VkDeviceSize transform_offset = transform_head_cursor;
+	VkDeviceSize uniform_offset = uniform_head_cursor;
 	// NOTE: For now we're copying the whole content of the buffer (staging_buffer->size)
 	// from its start offset (0). In the future we might want to take both information
 	// as input
@@ -97,16 +97,16 @@ VkDeviceSize Device::upload_transform_buffer(Vulkan::Buffer* staging_buffer)
 
 	VkBufferCopy copy_region = {};
 	copy_region.srcOffset = 0;
-	copy_region.dstOffset = transform_head_cursor;
+	copy_region.dstOffset = uniform_head_cursor;
 	copy_region.size = staging_buffer->size;
 
-	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, transform_buffer->buffer, 1, &copy_region);
+	vkCmdCopyBuffer(copy_cmd, staging_buffer->buffer, uniform_buffer->buffer, 1, &copy_region);
 
 	flush_transfer_command_buffer(copy_cmd);
 
-	transform_head_cursor += staging_buffer->size;
+	uniform_head_cursor += staging_buffer->size;
 
-	return transform_offset;
+	return uniform_offset;
 }
 
 void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat format, uint32_t width, uint32_t height, VkImageLayout old_layout, VkImageLayout new_old_layout, VkImageLayout new_layout)
@@ -180,7 +180,7 @@ void Device::upload_buffer_to_image(VkBuffer buffer, VkImage image, VkFormat for
 	flush_graphics_command_buffer(command_buffer);
 }
 
-void Device::create_vertex_index_buffers()
+void Device::create_gpu_buffers()
 {
 	// TODO: Figure out the needed size
 	// NOTE: 10 MB
@@ -202,19 +202,19 @@ void Device::create_vertex_index_buffers()
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		size);
 
-	transform_buffer = new Vulkan::Buffer(
+	uniform_buffer = new Vulkan::Buffer(
 		context->device,
 		context->gpu,
-		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		size);
 }
 
-void Device::free_vertex_index_buffers()
+void Device::free_gpu_buffers()
 {
 	vertex_buffer->destroy(context->device);
 	index_buffer->destroy(context->device);
-	transform_buffer->destroy(context->device);
+	uniform_buffer->destroy(context->device);
 }
 
 void Device::transition_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout)

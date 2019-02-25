@@ -15,7 +15,7 @@ typedef rapidjson::GenericArray<false, rapidjson::Value::ValueType> JsonArray;
 typedef rapidjson::GenericObject<true, rapidjson::Value::ValueType> ConstJsonObject;
 typedef rapidjson::GenericArray<true, rapidjson::Value::ValueType> ConstJsonArray;
 
-Model Loader::load_model(const char* path, AssetsInfo* assets_info)
+uint32_t Loader::load_model(const char* path, const char* name, AssetsInfo* assets_info)
 {
 	// Open input file
 	FILE* file_handle = NULL;
@@ -294,7 +294,8 @@ Model Loader::load_model(const char* path, AssetsInfo* assets_info)
 	JsonArray __meshes = document["meshes"].GetArray();
 
 	Model model = {};
-	memcpy(model.name, __scene["name"].GetString(), strlen(__scene["name"].GetString()));
+	// memcpy(model.name, __scene["name"].GetString(), strlen(__scene["name"].GetString()));
+	memcpy(model.name, name, strlen(name));
 	model.node_count = __nodes.Size();
 	assert(model.node_count <= 8);
 
@@ -466,7 +467,11 @@ Model Loader::load_model(const char* path, AssetsInfo* assets_info)
 		model.nodes[i] = node;
 	}
 
-	return model;
+	assets_info->models[assets_info->model_offset] = model;
+	uint32_t model_index = assets_info->model_offset;
+	assets_info->model_offset++;
+
+	return model_index;
 }
 
 }

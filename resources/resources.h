@@ -14,7 +14,6 @@ struct Node
 {
 	char name[64];
 	uint32_t mesh_id;
-
 	glm::vec3 translation = { 0.0f, 0.0f, 0.0f };
 	glm::vec3 scale = { 1.0f, 1.0f, 1.0f };
 	glm::quat rotation = glm::identity<glm::quat>();
@@ -76,14 +75,17 @@ typedef uint16_t Index32;
 
 const size_t vertex_buffer_size = 1024;
 const size_t index_buffer_size = 2048;
+const size_t uniform_buffer_size = 1024;
 
 struct AssetsInfo
 {
+	size_t model_offset = 0;
 	size_t material_offset = 0;
 	size_t mesh_offset = 0;
 	size_t vertex_offset = 0;
 	size_t index_offset = 0;
 
+	Model models[16];
 	Material materials[16];
 	Mesh meshes[32];
 	Vertex vertices[vertex_buffer_size];
