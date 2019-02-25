@@ -173,6 +173,7 @@
     <ClCompile Include="..\memory\stack.cpp" />
     <ClCompile Include="..\renderer\camera.cpp" />
     <ClCompile Include="..\renderer\renderer.cpp" />
+    <ClCompile Include="..\resources\loader.cpp" />
     <ClCompile Include="..\vulkan\buffer.cpp" />
     <ClCompile Include="..\vulkan\context.cpp" />
     <ClCompile Include="..\vulkan\device.cpp" />
@@ -224,6 +225,8 @@
     <ClInclude Include="..\renderer\camera.h" />
     <ClInclude Include="..\renderer\renderer.h" />
     <ClInclude Include="..\renderer\types.h" />
+    <ClInclude Include="..\resources\loader.h" />
+    <ClInclude Include="..\resources\resources.h" />
     <ClInclude Include="..\vulkan\app.h" />
     <ClInclude Include="..\vulkan\backend.h" />
     <ClInclude Include="..\vulkan\buffer.h" />

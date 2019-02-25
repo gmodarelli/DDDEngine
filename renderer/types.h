@@ -10,7 +10,7 @@
 namespace Renderer
 {
 
-struct Mesh
+struct Primitive
 {
 	uint32_t vertex_offset;
 	uint32_t index_offset;
@@ -19,13 +19,13 @@ struct Mesh
 
 struct Entity
 {
-	uint32_t mesh_id;
+	uint32_t primitive_id;
 	char name[64];
 };
 
 struct StaticEntity
 {
-	uint32_t mesh_id;
+	uint32_t primitive_id;
 	uint32_t count;
 	size_t transform_offset;
 };

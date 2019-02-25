@@ -258,7 +258,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	// use one draw call per mesh.
 	for (uint32_t i = 0; i < game_state->static_entity_count; ++i)
 	{
-		Mesh& mesh = game_state->meshes[game_state->static_entities[i].mesh_id];
+		Primitive& mesh = game_state->meshes[game_state->static_entities[i].primitive_id];
 		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, i);
 	}
 
@@ -276,12 +276,12 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
 	// Render the player
-	Mesh& mesh = game_state->meshes[game_state->entities[game_state->player_entity_id].mesh_id];
+	Primitive& mesh = game_state->meshes[game_state->entities[game_state->player_entity_id].primitive_id];
 	vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
 
 	for (uint32_t i = game_state->player_entity_id + 1; i < game_state->entity_count; ++i)
 	{
-		Mesh& mesh = game_state->meshes[game_state->entities[i].mesh_id];
+		Primitive& mesh = game_state->meshes[game_state->entities[i].primitive_id];
 		vkCmdDrawIndexed(frame_resources.command_buffer, mesh.index_count, 1, mesh.index_offset, mesh.vertex_offset, 0);
 	}
 

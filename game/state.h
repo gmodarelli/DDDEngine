@@ -29,7 +29,7 @@ struct State
 	Renderer::Entity* static_entities = nullptr;
 	// A mesh contains pointer into a list of vertices and indices.
 	uint32_t mesh_count = 0;
-	Renderer::Mesh* meshes = nullptr;
+	Renderer::Primitive* meshes = nullptr;
 	// A Transform contains the position, scale and
 	// rotation of an entity.
 	uint32_t transform_count = 0;

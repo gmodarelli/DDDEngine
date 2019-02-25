@@ -16,7 +16,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	game_state->static_entities = new Renderer::Entity[256];
 	game_state->static_transforms = new Renderer::Transform[256];
 
-	game_state->meshes = new Renderer::Mesh[16];
+	game_state->meshes = new Renderer::Primitive[16];
 	game_state->vertices = new Renderer::Vertex[512];
 	game_state->indices = new Renderer::Index[1024];
 
@@ -85,7 +85,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	// Player
 	assert(entity_index == transform_offset);
 	game_state->entities[entity_index] = {};
-	game_state->entities[entity_index].mesh_id = 0; // Cube Mesh
+	game_state->entities[entity_index].primitive_id = 0; // Cube Mesh
 	const char* player_name = "Player";
 	memcpy(game_state->entities[entity_index].name, player_name, 7);
 	entity_index++;
@@ -101,7 +101,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	// Ground
 	assert(static_entity_index == static_transform_offset);
 	game_state->static_entities[static_entity_index] = {};
-	game_state->static_entities[static_entity_index].mesh_id = 1; // Plane Mesh
+	game_state->static_entities[static_entity_index].primitive_id = 1; // Plane Mesh
 	const char* ground_name = "Ground";
 	memcpy(game_state->static_entities[static_entity_index].name, ground_name, 7);
 	static_entity_index++;
@@ -119,7 +119,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 			{
 				assert(static_entity_index == static_transform_offset);
 				game_state->static_entities[static_entity_index] = {};
-				game_state->static_entities[static_entity_index].mesh_id = 0; // Cube Mesh
+				game_state->static_entities[static_entity_index].primitive_id = 0; // Cube Mesh
 				const char* name = "Box";
 				memcpy(game_state->static_entities[static_entity_index].name, name, 4);
 				static_entity_index++;

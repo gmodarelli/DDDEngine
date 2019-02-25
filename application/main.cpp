@@ -794,6 +794,7 @@ int main()
 #include "../renderer/camera.h"
 #include "../game/simulation.h"
 #include "../game/level.h"
+#include "../resources/loader.h"
 
 int main()
 {
@@ -810,6 +811,11 @@ int main()
 	game_state->fly_camera = new Renderer::Camera(Renderer::CameraType::Fly, glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	game_state->look_at_camera = new Renderer::Camera(Renderer::CameraType::LookAt, glm::vec3(0.0f, 10.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	game_state->current_camera = game_state->look_at_camera;
+
+	Resources::AssetsInfo* assets_info = new Resources::AssetsInfo();
+	Resources::Model snake_head = Resources::Loader::load_model("../data/models/snake_head.glb", assets_info);
+	Resources::Model wall = Resources::Loader::load_model("../data/models/wall.glb", assets_info);
+	Resources::Model ground = Resources::Loader::load_model("../data/models/ground.glb", assets_info);
  
 	// Load a level data
 	Game::Level::load_level(game_state, "");

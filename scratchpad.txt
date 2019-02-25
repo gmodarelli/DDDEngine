@@ -35,7 +35,7 @@
 
 - Implement a Clock struct (based on the one in Game Engine Architecture)
 
-- Adapt the glTF asset importer to the new code
+- [WIP] Adapt the glTF asset importer to the new code
 
 - Memory Management
 	- Linear Allocator

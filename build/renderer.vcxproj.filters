@@ -28,6 +28,9 @@
     <Filter Include="memory">
       <UniqueIdentifier>{a78d699c-99dd-454b-b0d7-6d92444041fb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="resources">
+      <UniqueIdentifier>{e84c5126-dfcf-4304-a3ef-73a74795e2a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
@@ -122,6 +125,9 @@
     </ClCompile>
     <ClCompile Include="..\renderer\camera.cpp">
       <Filter>renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\resources\loader.cpp">
+      <Filter>resources</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -225,6 +231,12 @@
     </ClInclude>
     <ClInclude Include="..\renderer\camera.h">
       <Filter>renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\resources\resources.h">
+      <Filter>resources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\resources\loader.h">
+      <Filter>resources</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
