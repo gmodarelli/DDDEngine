@@ -23,18 +23,6 @@ struct Transform
 	glm::quat rotation = glm::identity<glm::quat>();
 };
 
-struct AlignedTransform
-{
-	glm::vec4 position;
-	glm::vec4 scale;
-	glm::quat rotation = glm::identity<glm::quat>();
-};
-
-struct NodeUboTransform
-{
-	AlignedTransform* transforms;
-};
-
 struct NodeUbo
 {
 	glm::mat4* model;

@@ -138,15 +138,15 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 		nodes += model.node_count;
 	}
 
-	dynamic_alignment = sizeof(AlignedTransform);
+	dynamic_alignment = sizeof(glm::mat4);
 	if (min_ubo_alignment > 0)
 	{
 		dynamic_alignment = (dynamic_alignment + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1);
 	}
 	size_t buffer_size = nodes * dynamic_alignment;
-	NodeUboTransform dynamic_ubo;
-	dynamic_ubo.transforms = (AlignedTransform*)_aligned_malloc(buffer_size, dynamic_alignment);
-	assert(dynamic_ubo.transforms);
+	NodeUbo dynamic_ubo;
+	dynamic_ubo.model = (glm::mat4*)_aligned_malloc(buffer_size, dynamic_alignment);
+	assert(dynamic_ubo.model);
 
 	uint32_t absolute_node_count = 0;
 
@@ -158,10 +158,13 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 		for (uint32_t n = 0; n < model.node_count; ++n)
 		{
 			// Aligned offset
-			AlignedTransform* transform = (AlignedTransform*)(((uint64_t)dynamic_ubo.transforms + (absolute_node_count * dynamic_alignment)));
-			transform->position = glm::vec4(game_state->transforms[e].position + model.nodes[n].translation, 0.0f);
-			transform->scale = glm::vec4(game_state->transforms[e].scale * model.nodes[n].scale, 1.0f);
-			transform->rotation = game_state->transforms[e].rotation * model.nodes[n].rotation;
+			glm::mat4* model_matrix = (glm::mat4*)(((uint64_t)dynamic_ubo.model + (absolute_node_count * dynamic_alignment)));
+			*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
+			*model_matrix = glm::translate(*model_matrix, game_state->transforms[e].position);
+			*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
+			*model_matrix = glm::scale(*model_matrix, game_state->transforms[e].scale);
+			*model_matrix = *model_matrix * glm::toMat4(model.nodes[n].rotation) * glm::toMat4(game_state->transforms[e].rotation);
+
 			absolute_node_count++;
 		}
 	}
@@ -175,12 +178,12 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 
 	void* uniform_data;
 	vkMapMemory(backend->device->context->device, uniform_staging_buffer->device_memory, 0, uniform_staging_buffer->size, 0, &uniform_data);
-	memcpy(uniform_data, dynamic_ubo.transforms, buffer_size);
+	memcpy(uniform_data, dynamic_ubo.model, buffer_size);
 	vkUnmapMemory(backend->device->context->device, uniform_staging_buffer->device_memory);
 
 	VkDeviceSize offset = backend->device->upload_uniform_buffer(uniform_staging_buffer);
 	uniform_staging_buffer->destroy(backend->device->context->device);
-	_aligned_free(dynamic_ubo.transforms);
+	_aligned_free(dynamic_ubo.model);
 
 	VkDescriptorBufferInfo buffer_info = {};
 	buffer_info.buffer = backend->device->uniform_buffer->buffer;
