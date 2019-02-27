@@ -402,33 +402,43 @@ void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameReso
 
 void Renderer::prepare_debug_vertex_buffers()
 {
+	glm::vec4 line_color_dark = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
+	glm::vec4 line_color_light = glm::vec4(0.6f, 0.6f, 0.6f, 0.5f);
+	glm::vec4 red = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	glm::vec4 green = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+	glm::vec4 blue = glm::vec4(-.0f, 0.0f, 1.0f, 1.0f);
+
+	float line_space = 0.6f;
+
 	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
 	{
-		glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0);
-		glm::vec3 line_color = glm::vec3(0.4f, 0.4f, 0.4f);
-		float line_space = 0.6f;
 		frames[i].debug_line_count = 0;
 
 		for (int32_t d = -10; d < 10; ++d)
 		{
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space), normal, line_color };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space), normal, line_color };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, -20.0f), normal, line_color };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, 20.0f), normal, line_color };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, -20.0f), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, 20.0f), line_color_dark };
+
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space * 0.5f), line_color_light };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space * 0.5f), line_color_light };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space * 0.5f, 0.0f, -20.0f), line_color_light };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space * 0.5f, 0.0f, 20.0f), line_color_light };
 		}
 
 		// Origin
 		// X-Axis
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(1.0f, 0.0f, 0.0f) };
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(3.0f, 0.0f, 0.0f), normal, glm::vec3(1.0f, 0.0f, 0.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), red };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(3.0f, 0.0f, 0.0f), red };
 
 		// Z-Axis
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(0.0f, 0.0f, 1.0f) };
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 3.0f), normal, glm::vec3(0.0f, 0.0f, 1.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), blue };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 3.0f), blue };
 
 		// Y-Axis
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(0.0f, 1.0f, 0.0f) };
-		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 3.0f, 0.0f), normal, glm::vec3(0.0f, 1.0f, 0.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), green };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 3.0f, 0.0f), green };
 
 		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * frames[i].debug_line_count, 0, &frames[i].debug_vertex_buffer->data);
 		memcpy(frames[i].debug_vertex_buffer->data, &frames[i].debug_lines, sizeof(DebugLine) * frames[i].debug_line_count);
@@ -677,25 +687,20 @@ void Renderer::create_pipelines()
 	debug_vertex_input_ci.pVertexBindingDescriptions = debug_vertex_binding_descriptions;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
-	// originating from a binding description. We have 3 attributes, position, normal and color
-	// so we need 3 attribute description structs
-	VkVertexInputAttributeDescription debug_vertex_input_attribute_descriptions[3];
+	// originating from a binding description. We have 3 attributes, position, and color
+	// so we need 2 attribute description structs
+	VkVertexInputAttributeDescription debug_vertex_input_attribute_descriptions[2];
 	// Per-vertex attributes
 	// Position
 	debug_vertex_input_attribute_descriptions[0].binding = 0;
 	debug_vertex_input_attribute_descriptions[0].location = 0;
 	debug_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 	debug_vertex_input_attribute_descriptions[0].offset = offsetof(DebugLine, position);
-	// Normal
+	// Color
 	debug_vertex_input_attribute_descriptions[1].binding = 0;
 	debug_vertex_input_attribute_descriptions[1].location = 1;
-	debug_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	debug_vertex_input_attribute_descriptions[1].offset = offsetof(DebugLine, normal);
-	// Color
-	debug_vertex_input_attribute_descriptions[2].binding = 0;
-	debug_vertex_input_attribute_descriptions[2].location = 2;
-	debug_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-	debug_vertex_input_attribute_descriptions[2].offset = offsetof(DebugLine, color);
+	debug_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	debug_vertex_input_attribute_descriptions[1].offset = offsetof(DebugLine, color);
 
 	debug_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(debug_vertex_input_attribute_descriptions);
 	debug_vertex_input_ci.pVertexAttributeDescriptions = debug_vertex_input_attribute_descriptions;

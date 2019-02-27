@@ -49,8 +49,9 @@ void main()
 	vec3 L = normalize(light_position - in_world_position);
 	vec3 H = normalize(V + L);
 	float distance = length(light_position - in_world_position);
+	// Increasing the light power until we have proper lighting
 	// float attenuation = 1.0f / (distance * distance);
-	float attenuation = 1.0f;// / (distance * distance);
+	float attenuation = 3.0f;
 	vec3 radiance = light_color.rgb * attenuation;
 
 	// Cook-Torrance BRDF
