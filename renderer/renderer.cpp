@@ -295,6 +295,13 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		}
 	}
 
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline);
+
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, 1, &frame->view_descriptor_set, 0, nullptr);
+
+	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
+	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
+
 	// Rendere all other entities
 	for (uint32_t e_id = game_state->player_entity_id + 1; e_id < game_state->entity_count; ++e_id)
 	{
@@ -304,27 +311,29 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		{
 			uint32_t dynamic_offset = (entity.node_offset + n_id) * static_cast<uint32_t>(dynamic_alignment);
 			Resources::Node node = model.nodes[n_id];
-			vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline_layout, 1, 1, &node_descriptor_set, 1, &dynamic_offset);
+			vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 1, 1, &node_descriptor_set, 1, &dynamic_offset);
 			Resources::Mesh mesh = game_state->assets_info->meshes[node.mesh_id];
 			for (uint32_t p_id = 0; p_id < mesh.primitive_count; ++p_id)
 			{
 				Resources::Primitive primitive = mesh.primitives[p_id];
 				Resources::Material material = game_state->assets_info->materials[primitive.material_id];
-				vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
+				vkCmdPushConstants(frame_resources.command_buffer, static_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
 				vkCmdDrawIndexed(frame_resources.command_buffer, primitive.index_count, 1, primitive.index_offset, 0, 0);
 			}
 		}
 	}
 
-
 	// Debug Draw
-	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debug_pipeline.pipeline);
+	if (game_state->show_grid)
+	{
+		vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debug_pipeline.pipeline);
 
-	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
-	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
-	vkCmdSetLineWidth(frame_resources.command_buffer, 1.0f);
-	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->debug_vertex_buffer->buffer, offsets);
-	vkCmdDraw(frame_resources.command_buffer, 6, 1, 0, 0);
+		vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
+		vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
+		vkCmdSetLineWidth(frame_resources.command_buffer, 1.0f);
+		vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->debug_vertex_buffer->buffer, offsets);
+		vkCmdDraw(frame_resources.command_buffer, frame->debug_line_count, 1, 0, 0);
+	}
 
 	backend->device->end_draw_frame(frame_resources);
 
@@ -384,22 +393,34 @@ void Renderer::prepare_debug_vertex_buffers()
 {
 	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
 	{
-		DebugLine debug_lines[] = {
-			// X-Axis
-			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
-			glm::vec3(3.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f),
+		glm::vec3 normal = glm::vec3(0.0f, 1.0f, 0.0);
+		glm::vec3 line_color = glm::vec3(0.4f, 0.4f, 0.4f);
+		float line_space = 0.6f;
+		frames[i].debug_line_count = 0;
 
-			// Z-Axis
-			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
-			glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f),
+		for (int32_t d = -10; d < 10; ++d)
+		{
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space), normal, line_color };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space), normal, line_color };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, -20.0f), normal, line_color };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, 20.0f), normal, line_color };
+		}
 
-			// Y-Axis
-			glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
-			glm::vec3(0.0f, 3.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f),
-		};
+		// Origin
+		// X-Axis
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(1.0f, 0.0f, 0.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(3.0f, 0.0f, 0.0f), normal, glm::vec3(1.0f, 0.0f, 0.0f) };
 
-		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * ARRAYSIZE(debug_lines), 0, &frames[i].debug_vertex_buffer->data);
-		memcpy(frames[i].debug_vertex_buffer->data, &debug_lines, sizeof(DebugLine) * ARRAYSIZE(debug_lines));
+		// Z-Axis
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(0.0f, 0.0f, 1.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 3.0f), normal, glm::vec3(0.0f, 0.0f, 1.0f) };
+
+		// Y-Axis
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), normal, glm::vec3(0.0f, 1.0f, 0.0f) };
+		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 3.0f, 0.0f), normal, glm::vec3(0.0f, 1.0f, 0.0f) };
+
+		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * frames[i].debug_line_count, 0, &frames[i].debug_vertex_buffer->data);
+		memcpy(frames[i].debug_vertex_buffer->data, &frames[i].debug_lines, sizeof(DebugLine) * frames[i].debug_line_count);
 		vkUnmapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory);
 	}
 }
@@ -523,59 +544,45 @@ void Renderer::create_pipelines()
 	dynamic_state_ci.dynamicStateCount = ARRAYSIZE(dynamic_states);
 	dynamic_state_ci.pDynamicStates = dynamic_states;
 
-
-	// Pipeline 1: Graphics pipeline for dynamic entities
 	// Pipeline Fixed Functions
 	// Vertex Input
-	VkPipelineVertexInputStateCreateInfo dynamic_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	VkPipelineVertexInputStateCreateInfo vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
 	// It specifies the number of bytes between data entries and whether to move to the next 
 	// data entry after each vertex or after each instance.
-	VkVertexInputBindingDescription dynamic_vertex_binding_descriptions[1];
+	VkVertexInputBindingDescription vertex_binding_descriptions[1];
 	// Mesh vertex bindings
-	dynamic_vertex_binding_descriptions[0] = {};
-	dynamic_vertex_binding_descriptions[0].binding = 0;
-	dynamic_vertex_binding_descriptions[0].stride = sizeof(Resources::Vertex);
-	dynamic_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	vertex_binding_descriptions[0] = {};
+	vertex_binding_descriptions[0].binding = 0;
+	vertex_binding_descriptions[0].stride = sizeof(Resources::Vertex);
+	vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	dynamic_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(dynamic_vertex_binding_descriptions);
-	dynamic_vertex_input_ci.pVertexBindingDescriptions = dynamic_vertex_binding_descriptions;
+	vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(vertex_binding_descriptions);
+	vertex_input_ci.pVertexBindingDescriptions = vertex_binding_descriptions;
 
 	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
 	// originating from a binding description. We have 4 attributes, position, normal, and tex_coord_0
 	// so we need 3 attribute description structs
-	VkVertexInputAttributeDescription dynamic_vertex_input_attribute_descriptions[3];
+	VkVertexInputAttributeDescription vertex_input_attribute_descriptions[3];
 	// Per-vertex attributes
 	// Position
-	dynamic_vertex_input_attribute_descriptions[0].binding = 0;
-	dynamic_vertex_input_attribute_descriptions[0].location = 0;
-	dynamic_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	dynamic_vertex_input_attribute_descriptions[0].offset = offsetof(Resources::Vertex, position);
+	vertex_input_attribute_descriptions[0].binding = 0;
+	vertex_input_attribute_descriptions[0].location = 0;
+	vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[0].offset = offsetof(Resources::Vertex, position);
 	// Normal
-	dynamic_vertex_input_attribute_descriptions[1].binding = 0;
-	dynamic_vertex_input_attribute_descriptions[1].location = 1;
-	dynamic_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	dynamic_vertex_input_attribute_descriptions[1].offset = offsetof(Resources::Vertex, normal);
+	vertex_input_attribute_descriptions[1].binding = 0;
+	vertex_input_attribute_descriptions[1].location = 1;
+	vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertex_input_attribute_descriptions[1].offset = offsetof(Resources::Vertex, normal);
 	// Tex Coord 0
-	dynamic_vertex_input_attribute_descriptions[2].binding = 0;
-	dynamic_vertex_input_attribute_descriptions[2].location = 2;
-	dynamic_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-	dynamic_vertex_input_attribute_descriptions[2].offset = offsetof(Resources::Vertex, tex_coord_0);
+	vertex_input_attribute_descriptions[2].binding = 0;
+	vertex_input_attribute_descriptions[2].location = 2;
+	vertex_input_attribute_descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+	vertex_input_attribute_descriptions[2].offset = offsetof(Resources::Vertex, tex_coord_0);
 
-	dynamic_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(dynamic_vertex_input_attribute_descriptions);
-	dynamic_vertex_input_ci.pVertexAttributeDescriptions = dynamic_vertex_input_attribute_descriptions;
-
-	VkPushConstantRange player_matrix = {};
-	player_matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	player_matrix.size = sizeof(glm::mat4);
-	player_matrix.offset = 0;
-
-	VkPushConstantRange material_params = {};
-	material_params.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	material_params.size = sizeof(Resources::Material::PBRMetallicRoughness);
-	material_params.offset = sizeof(glm::mat4);
-
-	VkPushConstantRange push_constant_ranges[] = { player_matrix, material_params };
+	vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(vertex_input_attribute_descriptions);
+	vertex_input_ci.pVertexAttributeDescriptions = vertex_input_attribute_descriptions;
 
 	// View Descriptor Set Layout
 	// TODO: Add more info about these DescriptorSet Layout Bindings
@@ -614,8 +621,32 @@ void Renderer::create_pipelines()
 	assert(result == VK_SUCCESS);
 	descriptor_set_layout_count++;
 
-	dynamic_pipeline = create_pipeline("../data/shaders/dynamic_entity.vert.spv", "../data/shaders/dynamic_entity.frag.spv", dynamic_vertex_input_ci, input_assembly_ci, descriptor_set_layout_count, descriptor_set_layouts,
-		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(push_constant_ranges), push_constant_ranges);
+	// Pipeline 1: Graphics pipeline for dynamic entities
+	VkPushConstantRange player_matrix = {};
+	player_matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	player_matrix.size = sizeof(glm::mat4);
+	player_matrix.offset = 0;
+
+	VkPushConstantRange material_params = {};
+	material_params.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	material_params.size = sizeof(Resources::Material::PBRMetallicRoughness);
+	material_params.offset = sizeof(glm::mat4);
+
+	VkPushConstantRange dynamic_pipeline_push_constant_ranges[] = { player_matrix, material_params };
+
+	dynamic_pipeline = create_pipeline("../data/shaders/dynamic_entity.vert.spv", "../data/shaders/dynamic_entity.frag.spv", vertex_input_ci, input_assembly_ci, descriptor_set_layout_count, descriptor_set_layouts,
+		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(dynamic_pipeline_push_constant_ranges), dynamic_pipeline_push_constant_ranges);
+
+	// Pipeline 2: Graphics pipeline for static entities
+	// VkPushConstantRange material_params = {};
+	// material_params.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	// material_params.size = sizeof(Resources::Material::PBRMetallicRoughness);
+	material_params.offset = 0;
+
+	VkPushConstantRange static_pipeline_push_constant_ranges[] = { material_params };
+
+	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", vertex_input_ci, input_assembly_ci, descriptor_set_layout_count, descriptor_set_layouts,
+		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(static_pipeline_push_constant_ranges), static_pipeline_push_constant_ranges);
 
 	// Pipeline 2: Debug Draw pipeline for debug gizmos
 	// Pipeline Fixed Functions

@@ -16,6 +16,9 @@ struct Frame
 	VkDescriptorSet view_descriptor_set;
 	Vulkan::Buffer* view_ubo_buffer = nullptr;
 	Vulkan::Buffer* debug_vertex_buffer = nullptr;
+
+	DebugLine debug_lines[1024];
+	uint32_t debug_line_count;
 };
 
 struct Pipeline

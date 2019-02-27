@@ -53,6 +53,12 @@ void Simulation::update(Game::State* game_state, float delta_time)
 		game_state->current_camera = game_state->fly_camera;
 	}
 
+	// Toggle grid
+	if (input_state.key_g)
+	{
+		game_state->show_grid = !game_state->show_grid;
+	}
+
 	// Handle Debug Camera Movements
 	if (game_state->current_camera == game_state->fly_camera)
 	{

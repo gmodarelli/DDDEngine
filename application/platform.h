@@ -29,6 +29,7 @@ struct InputState
 	bool key_s = false;
 	bool key_a = false;
 	bool key_d = false;
+	bool key_g = false;
 
 	bool key_1 = false;
 	bool key_2 = false;

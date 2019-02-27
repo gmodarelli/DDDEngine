@@ -1,30 +1,34 @@
 #version 450
 
-layout (set = 0, binding = 0) uniform UniformBufferObject
+layout (set = 0, binding = 0) uniform ViewUniformBufferObject
 {
 	mat4 view;
 	mat4 projection;
+	vec3 camera_position;
 } ubo;
 
-layout (location = 0) in vec3 inPosition;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec3 inColor;
-layout (location = 3) in vec2 inTexCoord;
+layout (set = 1, binding = 0) uniform NodeUniformBufferObject
+{
+	mat4 model;
+} node;
 
-layout (location = 4) in vec3 instancePosition;
-layout (location = 5) in vec3 instanceScale;
-layout (location = 6) in vec4 instanceRotation;
+layout (location = 0) in vec3 in_position;
+layout (location = 1) in vec3 in_normal;
+layout (location = 2) in vec2 in_tex_coord_0;
 
-layout (location = 0) out vec4 fragColor;
-layout (location = 1) out vec2 outTexCoord;
+layout (location = 0) out vec3 out_world_position;
+layout (location = 1) out vec3 out_normal;
+layout (location = 2) out vec3 out_world_normal;
 
 void main()
 {
-	vec3 b = instanceRotation.xyz;
-	float b2 = b.x * b.x + b.y * b.y + b.z * b.z;
-	vec3 rotatedPosition = (inPosition * (instanceRotation.w * instanceRotation.w - b2) + b * (dot(inPosition, b) * 2.0f) + cross(b, inPosition) * (instanceRotation.w * 2.0f));
-    vec4 pos = vec4((rotatedPosition.xyz * instanceScale) + instancePosition, 1.0f);
-	gl_Position = ubo.projection * ubo.view * pos;
-	fragColor = vec4(inColor, 1.0f);
-	outTexCoord = inTexCoord;
+	vec4 local_position = node.model * vec4(in_position, 1.0f);
+
+	out_world_position = local_position.xyz / local_position.w;
+	out_normal = in_normal;
+	// Transform the normal from object space to world space
+	// TODO: Maybe add why we're inverting, transposing and normalizing
+	out_world_normal = normalize(transpose(inverse(mat3(node.model))) * in_normal);
+
+	gl_Position = ubo.projection * ubo.view * local_position;
 }

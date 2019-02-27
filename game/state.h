@@ -48,6 +48,9 @@ struct State
 	Renderer::Camera* fly_camera;
 	// Game Camera
 	Renderer::Camera* look_at_camera;
+
+	// Editor
+	bool show_grid = false;
 };
 
 }

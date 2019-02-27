@@ -41,7 +41,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	memcpy(game_state->entities[entity_index].name, player_name, 7);
 	entity_index++;
 
-	game_state->transforms[transform_offset++] = { glm::vec3(0.6f * -4.0f, 0.0f, 0.6f * -4.0f), glm::vec3(16.0f, 1.0f, 16.0f) };
+	game_state->transforms[transform_offset++] = { glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(20.0f, 1.0f, 20.0f) };
 	assert(entity_index == transform_offset);
 
 	// Wall Cubes
