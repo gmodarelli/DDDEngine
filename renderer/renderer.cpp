@@ -288,6 +288,8 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		for (uint32_t p_id = 0; p_id < mesh.primitive_count; ++p_id)
 		{
 			Resources::Primitive primitive = mesh.primitives[p_id];
+			Resources::Material material = game_state->assets_info->materials[primitive.material_id];
+			vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
 			vkCmdDrawIndexed(frame_resources.command_buffer, primitive.index_count, 1, primitive.index_offset, 0, 0);
 		}
 	}
@@ -538,12 +540,17 @@ void Renderer::create_pipelines()
 	dynamic_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(dynamic_vertex_input_attribute_descriptions);
 	dynamic_vertex_input_ci.pVertexAttributeDescriptions = dynamic_vertex_input_attribute_descriptions;
 
-	VkPushConstantRange player_matrix;
+	VkPushConstantRange player_matrix = {};
 	player_matrix.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	player_matrix.size = sizeof(glm::mat4);
 	player_matrix.offset = 0;
 
-	VkPushConstantRange push_constant_ranges[] = { player_matrix };
+	VkPushConstantRange material_params = {};
+	material_params.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	material_params.size = sizeof(Resources::Material::PBRMetallicRoughness);
+	material_params.offset = sizeof(glm::mat4);
+
+	VkPushConstantRange push_constant_ranges[] = { player_matrix, material_params };
 
 	// View Descriptor Set Layout
 	// TODO: Add more info about these DescriptorSet Layout Bindings

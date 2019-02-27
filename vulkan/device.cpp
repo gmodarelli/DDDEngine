@@ -438,7 +438,7 @@ FrameResources& Device::begin_draw_frame()
 	render_pass_bi.renderArea.extent = wsi->swapchain_extent;
 
 	VkClearValue clear_values[2];
-	clear_values[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clear_values[0].color = { 0.3f, 0.3f, 0.3f, 1.0f };
 	clear_values[1].depthStencil = { 1.0f, 0 };
 	render_pass_bi.clearValueCount = ARRAYSIZE(clear_values);
 	render_pass_bi.pClearValues = clear_values;
