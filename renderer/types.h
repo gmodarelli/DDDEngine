@@ -14,6 +14,7 @@ struct Entity
 {
 	char name[64];
 	uint32_t model_id;
+	uint32_t node_offset = 0;
 };
 
 struct Transform

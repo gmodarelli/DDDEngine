@@ -131,12 +131,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\data\shaders\glft.frag">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="..\data\shaders\glft.vert">
-      <Filter>shaders</Filter>
-    </None>
     <None Include="..\data\shaders\static_entity.frag">
       <Filter>shaders</Filter>
     </None>
@@ -157,9 +151,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\vulkan\app.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="..\vulkan\buffer.h">
       <Filter>vulkan</Filter>
     </ClInclude>
@@ -167,9 +158,6 @@
       <Filter>vulkan</Filter>
     </ClInclude>
     <ClInclude Include="..\vulkan\swapchain.h">
-      <Filter>vulkan</Filter>
-    </ClInclude>
-    <ClInclude Include="..\vulkan\utils.h">
       <Filter>vulkan</Filter>
     </ClInclude>
     <ClInclude Include="..\extern\glfw\src\egl_context.h">

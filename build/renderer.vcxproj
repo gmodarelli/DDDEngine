@@ -184,9 +184,6 @@
     <None Include="..\data\shaders\debug_draw.vert" />
     <None Include="..\data\shaders\dynamic_entity.frag" />
     <None Include="..\data\shaders\dynamic_entity.vert" />
-    <None Include="..\data\shaders\glft.vert">
-      <FileType>Document</FileType>
-    </None>
     <ClCompile Include="..\application\main.cpp" />
     <ClCompile Include="..\extern\glfw\src\context.c" />
     <ClCompile Include="..\extern\glfw\src\egl_context.c" />
@@ -206,7 +203,6 @@
     <ClCompile Include="..\extern\volk\volk.c" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\data\shaders\glft.frag" />
     <None Include="..\data\shaders\static_entity.frag" />
     <None Include="..\data\shaders\static_entity.vert" />
   </ItemGroup>
@@ -227,7 +223,6 @@
     <ClInclude Include="..\renderer\types.h" />
     <ClInclude Include="..\resources\loader.h" />
     <ClInclude Include="..\resources\resources.h" />
-    <ClInclude Include="..\vulkan\app.h" />
     <ClInclude Include="..\vulkan\backend.h" />
     <ClInclude Include="..\vulkan\buffer.h" />
     <ClInclude Include="..\vulkan\context.h" />
@@ -235,7 +230,6 @@
     <ClInclude Include="..\vulkan\image.h" />
     <ClInclude Include="..\vulkan\shaders.h" />
     <ClInclude Include="..\vulkan\swapchain.h" />
-    <ClInclude Include="..\vulkan\utils.h" />
     <ClInclude Include="..\vulkan\wsi.h" />
   </ItemGroup>
   <ItemGroup>
