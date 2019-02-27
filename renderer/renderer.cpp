@@ -160,11 +160,23 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 		{
 			// Aligned offset
 			glm::mat4* model_matrix = (glm::mat4*)(((uint64_t)dynamic_ubo.model + (absolute_node_count * dynamic_alignment)));
-			*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
-			*model_matrix = glm::translate(*model_matrix, game_state->transforms[e].position);
-			*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
-			*model_matrix = glm::scale(*model_matrix, game_state->transforms[e].scale);
-			*model_matrix = *model_matrix * glm::toMat4(model.nodes[n].rotation) * glm::toMat4(game_state->transforms[e].rotation);
+
+			// NOTE: Temporary solution
+			// For dynamic entities we do not apply the game_state->transforms beforehand
+			if (e < 3)
+			{
+				*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
+				*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
+				*model_matrix = *model_matrix * glm::toMat4(model.nodes[n].rotation);
+			}
+			else
+			{
+				*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
+				*model_matrix = glm::translate(*model_matrix, game_state->transforms[e].position);
+				*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
+				*model_matrix = glm::scale(*model_matrix, game_state->transforms[e].scale);
+				*model_matrix = *model_matrix * glm::toMat4(model.nodes[n].rotation) * glm::toMat4(game_state->transforms[e].rotation);
+			}
 
 			absolute_node_count++;
 		}
@@ -269,29 +281,28 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	glm::mat4 model_matrix(1.0f);
-	glm::vec3 transform_v3;
-	transform_v3.x = game_state->transforms[game_state->player_entity_id].position.x;
-	transform_v3.y = game_state->transforms[game_state->player_entity_id].position.y;
-	transform_v3.z = game_state->transforms[game_state->player_entity_id].position.z;
-	model_matrix = glm::translate(model_matrix, transform_v3);
-	vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model_matrix);
-
-	// Render the player
-	Entity& player = game_state->entities[game_state->player_entity_id];
-	Resources::Model model = game_state->assets_info->models[player.model_id];
-	for (uint32_t n_id = 0; n_id < model.node_count; ++n_id)
+	for (uint32_t x = game_state->player_entity_id; x < game_state->player_entity_id + 3; ++x)
 	{
-		uint32_t dynamic_offset = (player.node_offset + n_id) * static_cast<uint32_t>(dynamic_alignment);
-		Resources::Node node = model.nodes[n_id];
-		vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline_layout, 1, 1, &node_descriptor_set, 1, &dynamic_offset);
-		Resources::Mesh mesh = game_state->assets_info->meshes[node.mesh_id];
-		for (uint32_t p_id = 0; p_id < mesh.primitive_count; ++p_id)
+		glm::mat4 model_matrix(1.0f);
+		model_matrix = glm::translate(model_matrix, game_state->transforms[x].position);
+		vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model_matrix);
+
+		// Render the player
+		Entity& entity = game_state->entities[x];
+		Resources::Model model = game_state->assets_info->models[entity.model_id];
+		for (uint32_t n_id = 0; n_id < model.node_count; ++n_id)
 		{
-			Resources::Primitive primitive = mesh.primitives[p_id];
-			Resources::Material material = game_state->assets_info->materials[primitive.material_id];
-			vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
-			vkCmdDrawIndexed(frame_resources.command_buffer, primitive.index_count, 1, primitive.index_offset, 0, 0);
+			uint32_t dynamic_offset = (entity.node_offset + n_id) * static_cast<uint32_t>(dynamic_alignment);
+			Resources::Node node = model.nodes[n_id];
+			vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline_layout, 1, 1, &node_descriptor_set, 1, &dynamic_offset);
+			Resources::Mesh mesh = game_state->assets_info->meshes[node.mesh_id];
+			for (uint32_t p_id = 0; p_id < mesh.primitive_count; ++p_id)
+			{
+				Resources::Primitive primitive = mesh.primitives[p_id];
+				Resources::Material material = game_state->assets_info->materials[primitive.material_id];
+				vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
+				vkCmdDrawIndexed(frame_resources.command_buffer, primitive.index_count, 1, primitive.index_offset, 0, 0);
+			}
 		}
 	}
 
@@ -303,7 +314,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	// Rendere all other entities
-	for (uint32_t e_id = game_state->player_entity_id + 1; e_id < game_state->entity_count; ++e_id)
+	for (uint32_t e_id = game_state->player_entity_id + 3; e_id < game_state->entity_count; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];

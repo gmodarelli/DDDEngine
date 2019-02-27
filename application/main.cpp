@@ -29,6 +29,8 @@ int main()
 	// Level preparation
 	Resources::AssetsInfo* assets_info = new Resources::AssetsInfo();
 	uint32_t snake_head_id = Resources::Loader::load_model("../data/models/snake_head.glb", "snake_head", assets_info);
+	uint32_t snake_body_id = Resources::Loader::load_model("../data/models/snake_body.glb", "snake_body", assets_info);
+	uint32_t snake_tail_id = Resources::Loader::load_model("../data/models/snake_tail.glb", "snake_tail", assets_info);
 	uint32_t wall_id = Resources::Loader::load_model("../data/models/wall.glb", "wall", assets_info);
 	uint32_t ground_id = Resources::Loader::load_model("../data/models/ground.glb", "ground", assets_info);
 	game_state->assets_info = assets_info;

@@ -20,25 +20,43 @@ void Level::load_level(Game::State* game_state, const char* _path)
 
 	// Loading Entities
 	//
-	// Player
+	// Player Head
 	assert(entity_index == 0);
 	assert(entity_index == transform_offset);
 
 	game_state->entities[entity_index] = {};
-	game_state->entities[entity_index].model_id = 0; // Player Mesh
-	const char* player_name = "Player";
-	memcpy(game_state->entities[entity_index].name, player_name, 7);
+	game_state->entities[entity_index].model_id = 0; // Player Head
+	memcpy(game_state->entities[entity_index].name, "Snake Head", 11);
 	entity_index++;
 
-	// Player transform
+	// Player Head transform
 	game_state->transforms[transform_offset++] = { glm::vec3(0.0f, 0.3f, 0.0f), glm::vec3(1.0f) };
+	assert(entity_index == transform_offset);
+
+	// Player Body
+	game_state->entities[entity_index] = {};
+	game_state->entities[entity_index].model_id = 1; // Player Body
+	memcpy(game_state->entities[entity_index].name, "Snake Body", 11);
+	entity_index++;
+
+	// Player Body transform
+	game_state->transforms[transform_offset++] = { glm::vec3(0.0f, 0.3f, -0.6f), glm::vec3(1.0f) };
+	assert(entity_index == transform_offset);
+
+	// Player Tail
+	game_state->entities[entity_index] = {};
+	game_state->entities[entity_index].model_id = 2; // Player Tail
+	memcpy(game_state->entities[entity_index].name, "Snake Tail", 11);
+	entity_index++;
+
+	// Player Tail transform
+	game_state->transforms[transform_offset++] = { glm::vec3(0.0f, 0.3f, -1.2f), glm::vec3(1.0f) };
 	assert(entity_index == transform_offset);
 
 	// Ground
 	game_state->entities[entity_index] = {};
-	game_state->entities[entity_index].model_id = 2; // Ground Mesh
-	const char* name = "Ground";
-	memcpy(game_state->entities[entity_index].name, player_name, 7);
+	game_state->entities[entity_index].model_id = 4; // Ground Mesh
+	memcpy(game_state->entities[entity_index].name, "Ground", 7);
 	entity_index++;
 
 	game_state->transforms[transform_offset++] = { glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(20.0f, 1.0f, 20.0f) };
@@ -48,7 +66,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	for (uint32_t i = 1; i < 5; ++i)
 	{
 		game_state->entities[entity_index] = {};
-		game_state->entities[entity_index].model_id = 1; // Cube Mesh
+		game_state->entities[entity_index].model_id = 3; // Cube Mesh
 		char name[64];
 		sprintf(name, "Wall %d", i);
 		memcpy(game_state->entities[entity_index].name, name, 64);
