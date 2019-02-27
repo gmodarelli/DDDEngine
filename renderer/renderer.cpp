@@ -328,6 +328,7 @@ void Renderer::prepare_uniform_buffers()
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 		ubo.projection[1][1] *= -1;
+		ubo.camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
 
 		void* data;
 		vkMapMemory(backend->device->context->device, frames[i].view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
@@ -348,6 +349,7 @@ void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameReso
 	ubo.view = game_state->current_camera->view;
 	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
 	ubo.projection[1][1] *= -1;
+	ubo.camera_position = game_state->current_camera->position;
 
 	void* data;
 	vkMapMemory(backend->device->context->device, frame->view_ubo_buffer->device_memory, 0, sizeof(ubo), 0, &data);
