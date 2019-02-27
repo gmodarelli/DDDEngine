@@ -31,6 +31,9 @@
     <Filter Include="resources">
       <UniqueIdentifier>{e84c5126-dfcf-4304-a3ef-73a74795e2a6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="extern\imgui">
+      <UniqueIdentifier>{52531386-07ae-4121-b279-fa1ca2ae8055}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
@@ -129,6 +132,18 @@
     <ClCompile Include="..\resources\loader.cpp">
       <Filter>resources</Filter>
     </ClCompile>
+    <ClCompile Include="..\extern\imgui\imgui.cpp">
+      <Filter>extern\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\imgui\imgui_demo.cpp">
+      <Filter>extern\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\imgui\imgui_draw.cpp">
+      <Filter>extern\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\extern\imgui\imgui_widgets.cpp">
+      <Filter>extern\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\static_entity.frag">
@@ -222,6 +237,24 @@
     </ClInclude>
     <ClInclude Include="..\resources\loader.h">
       <Filter>resources</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imconfig.h">
+      <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imgui.h">
+      <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imgui_internal.h">
+      <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imstb_rectpack.h">
+      <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imstb_textedit.h">
+      <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\extern\imgui\imstb_truetype.h">
+      <Filter>extern\imgui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

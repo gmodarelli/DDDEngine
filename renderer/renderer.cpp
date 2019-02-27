@@ -13,6 +13,8 @@
 #include "../resources/resources.h"
 #include "../renderer/types.h"
 
+#include "../extern/imgui/imgui.h"
+
 namespace Renderer
 {
 
@@ -48,6 +50,64 @@ void Renderer::init()
 	}
 
 	prepare_debug_vertex_buffers();
+
+	ImGui::CreateContext();
+
+	// ImGUI Initialization
+	// Color scheme
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.6f);
+	style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+	style.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+	style.Colors[ImGuiCol_Header] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+	style.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+	// Dimensions
+	ImGuiIO& io = ImGui::GetIO();
+	io.DisplaySize = ImVec2(backend->wsi->swapchain_extent.width, backend->wsi->swapchain_extent.height);
+	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+	// Create ImGui Vulkan Resources
+	unsigned char* font_data;
+	int tex_width, tex_height;
+	io.Fonts->GetTexDataAsRGBA32(&font_data, &tex_width, &tex_height);
+	VkDeviceSize upload_size = tex_width * tex_height * 4 * sizeof(char);
+
+	imgui_font = new Vulkan::Image(
+		backend->device->context->device,
+		backend->device->context->gpu,
+		{ (uint32_t)tex_width, (uint32_t)tex_height },
+		VK_FORMAT_R8G8B8A8_UNORM,
+		VK_SAMPLE_COUNT_1_BIT,
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	Vulkan::Buffer* font_staging_buffer = new Vulkan::Buffer(
+		backend->device->context->device,
+		backend->device->context->gpu,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		upload_size);
+
+	void* mapped;
+	vkMapMemory(backend->device->context->device, font_staging_buffer->device_memory, 0, font_staging_buffer->size, 0, &mapped);
+	memcpy(mapped, font_data, upload_size);
+	vkUnmapMemory(backend->device->context->device, font_staging_buffer->device_memory);
+
+	backend->device->upload_buffer_to_image(font_staging_buffer->buffer, imgui_font->image, VK_FORMAT_R8G8_UNORM, tex_width, tex_height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	font_staging_buffer->destroy(backend->device->context->device);
+
+	VkSamplerCreateInfo sampler_ci = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+	sampler_ci.magFilter = VK_FILTER_LINEAR;
+	sampler_ci.minFilter = VK_FILTER_LINEAR;
+	sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	sampler_ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+	VkResult result = vkCreateSampler(backend->device->context->device, &sampler_ci, nullptr, &imgui_font_sampler);
+	assert(result == VK_SUCCESS);
 }
 
 void Renderer::upload_buffers(const Game::State* game_state)
@@ -449,6 +509,11 @@ void Renderer::prepare_debug_vertex_buffers()
 void Renderer::cleanup()
 {
 	vkQueueWaitIdle(backend->device->context->graphics_queue);
+
+	ImGui::DestroyContext();
+
+	vkDestroySampler(backend->device->context->device, imgui_font_sampler, nullptr);
+	imgui_font->destroy(backend->device->context->device);
 
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();

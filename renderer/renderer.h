@@ -63,6 +63,7 @@ struct Renderer
 	Pipeline static_pipeline = {};
 	Pipeline dynamic_pipeline = {};
 	Pipeline debug_pipeline = {};
+	Pipeline imgui_pipeline = {};
 
 	// Node Descriptor Sets Resources
 	VkDescriptorSet node_descriptor_set;
@@ -81,6 +82,10 @@ struct Renderer
 	// UBO Buffer helpers
 	void create_ubo_buffers();
 	void destroy_ubo_buffers();
+
+	// ImGUI
+	Vulkan::Image* imgui_font;
+	VkSampler imgui_font_sampler;
 }; // struct Renderer
 
 } // namespace Renderer

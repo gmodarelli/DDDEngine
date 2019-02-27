@@ -167,6 +167,10 @@
   <ItemGroup>
     <ClCompile Include="..\application\platform.cpp" />
     <ClCompile Include="..\application\stb_image.cpp" />
+    <ClCompile Include="..\extern\imgui\imgui.cpp" />
+    <ClCompile Include="..\extern\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\extern\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\extern\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\game\level.cpp" />
     <ClCompile Include="..\game\simulation.cpp" />
     <ClCompile Include="..\game\state.cpp" />
@@ -214,6 +218,12 @@
     <ClInclude Include="..\extern\glfw\src\wgl_context.h" />
     <ClInclude Include="..\extern\glfw\src\win32_joystick.h" />
     <ClInclude Include="..\extern\glfw\src\win32_platform.h" />
+    <ClInclude Include="..\extern\imgui\imconfig.h" />
+    <ClInclude Include="..\extern\imgui\imgui.h" />
+    <ClInclude Include="..\extern\imgui\imgui_internal.h" />
+    <ClInclude Include="..\extern\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\extern\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\extern\imgui\imstb_truetype.h" />
     <ClInclude Include="..\game\level.h" />
     <ClInclude Include="..\game\simulation.h" />
     <ClInclude Include="..\game\state.h" />
