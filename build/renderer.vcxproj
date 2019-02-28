@@ -205,6 +205,8 @@
     <ClCompile Include="..\extern\glfw\src\win32_window.c" />
     <ClCompile Include="..\extern\glfw\src\window.c" />
     <ClCompile Include="..\extern\volk\volk.c" />
+    <None Include="..\data\shaders\ui.frag" />
+    <None Include="..\data\shaders\ui.vert" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\static_entity.frag" />

@@ -42,4 +42,10 @@ struct ViewUniformBufferObject
 	glm::vec3 camera_position;
 };
 
+struct UIPushConstantBlock
+{
+	glm::vec2 translate;
+	glm::vec2 scale;
+};
+
 }

@@ -164,6 +164,12 @@
     <None Include="..\data\shaders\debug_draw.frag">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\data\shaders\ui.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\data\shaders\ui.frag">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\vulkan\buffer.h">

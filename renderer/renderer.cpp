@@ -2,6 +2,7 @@
 #include "../vulkan/shaders.h"
 #include <cassert>
 #include <stdio.h>
+#include <algorithm>
 #include <chrono>
 
 #define GLM_FORCE_RADIANS
@@ -35,7 +36,6 @@ void Renderer::init()
 	create_descriptor_pool();
 	create_ubo_buffers();
 	prepare_uniform_buffers();
-	create_pipelines();
 
 	// Init frame resources
 	for (uint32_t i = 0; i < ARRAYSIZE(frames); ++i)
@@ -108,6 +108,23 @@ void Renderer::init()
 	sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
 	VkResult result = vkCreateSampler(backend->device->context->device, &sampler_ci, nullptr, &imgui_font_sampler);
 	assert(result == VK_SUCCESS);
+
+	// Descriptor Set Layout
+	VkDescriptorSetLayoutBinding imgui_set_layout_bindings[1];
+	imgui_set_layout_bindings[0] = {};
+	imgui_set_layout_bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	imgui_set_layout_bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	imgui_set_layout_bindings[0].binding = 0;
+	imgui_set_layout_bindings[0].descriptorCount = 1;
+	imgui_set_layout_bindings[0].pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo set_layout_ci = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+	set_layout_ci.bindingCount = ARRAYSIZE(imgui_set_layout_bindings);
+	set_layout_ci.pBindings = imgui_set_layout_bindings;
+	result = vkCreateDescriptorSetLayout(backend->device->context->device, &set_layout_ci, nullptr, &imgui_descriptor_set_layout);
+	assert(result == VK_SUCCESS);
+
+	create_pipelines();
 }
 
 void Renderer::upload_buffers(const Game::State* game_state)
@@ -318,6 +335,25 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		descriptor_writes[0].pBufferInfo = &buffer_info;
 
 		vkUpdateDescriptorSets(backend->device->context->device, ARRAYSIZE(descriptor_writes), descriptor_writes, 0, nullptr);
+
+		result = allocate_descriptor_set(imgui_descriptor_set_layout, frame->imgui_descriptor_set);
+		assert(result == VK_SUCCESS);
+
+		VkDescriptorImageInfo font_info = {};
+		font_info.sampler = imgui_font_sampler;
+		font_info.imageView = imgui_font->image_view;
+		font_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+		VkWriteDescriptorSet font_descriptor_writes[1];
+		font_descriptor_writes[0] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+		font_descriptor_writes[0].dstSet = frame->imgui_descriptor_set;
+		font_descriptor_writes[0].dstBinding = 0;
+		font_descriptor_writes[0].dstArrayElement = 0;
+		font_descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		font_descriptor_writes[0].descriptorCount = 1;
+		font_descriptor_writes[0].pImageInfo = &font_info;
+
+		vkUpdateDescriptorSets(backend->device->context->device, ARRAYSIZE(font_descriptor_writes), font_descriptor_writes, 0, nullptr);
 	}
 
 	VkViewport viewport = { 0, 0, (float)backend->device->wsi->swapchain_extent.width, (float)backend->device->wsi->swapchain_extent.height, 0.0f, 1.0f };
@@ -406,11 +442,159 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		vkCmdDraw(frame_resources.command_buffer, frame->debug_line_count, 1, 0, 0);
 	}
 
-	backend->device->end_draw_frame(frame_resources);
+	imgui_new_frame();
+	imgui_update_buffers();
+	imgui_draw_frame(frame_resources);
 
+	backend->device->end_draw_frame(frame_resources);
 
 	auto frame_cpu_end = std::chrono::high_resolution_clock::now();
 	frame_cpu_avg = frame_cpu_avg * 0.95 + (frame_cpu_end - frame_cpu_start).count() * 1e-6 * 0.05;
+}
+
+// ImGUI-Specific
+void Renderer::imgui_new_frame()
+{
+	ImGui::NewFrame();
+
+	// Init ImGui windows and elements
+	ImVec4 clear_color = ImColor(144, 144, 154);
+	static float f = 0.0f;
+	ImGui::TextUnformatted("73 Games");
+	ImGui::TextUnformatted(backend->device->context->gpu_properties.deviceName);
+
+	// Render to generate draw buffers
+	ImGui::Render();
+}
+
+void Renderer::imgui_update_buffers()
+{
+	static size_t vertex_count = 0;
+	static size_t index_count = 0;
+
+	ImDrawData* im_draw_data = ImGui::GetDrawData();
+
+	VkDeviceSize vertex_buffer_size = im_draw_data->TotalVtxCount * sizeof(ImDrawVert);
+	VkDeviceSize index_buffer_size = im_draw_data->TotalIdxCount * sizeof(ImDrawIdx);
+
+	if (vertex_buffer_size == 0 || index_buffer_size == 0)
+	{
+		return;
+	}
+
+	// Update buffers only if vertex or index count has changed
+	// Vertex buffer
+	if (!imgui_vertex_buffer || imgui_vertex_buffer->buffer == VK_NULL_HANDLE || vertex_count != im_draw_data->TotalVtxCount)
+	{
+		if (imgui_vertex_buffer)
+		{
+			imgui_vertex_buffer->unmap(backend->device->context->device);
+			imgui_vertex_buffer->destroy(backend->device->context->device);
+		}
+
+		imgui_vertex_buffer = new Vulkan::Buffer(
+			backend->device->context->device,
+			backend->device->context->gpu,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			vertex_buffer_size
+		);
+
+		vertex_count = im_draw_data->TotalVtxCount;
+		imgui_vertex_buffer->unmap(backend->device->context->device);
+		imgui_vertex_buffer->map(backend->device->context->device);
+	}
+
+	// Index buffer
+	if (!imgui_index_buffer || imgui_index_buffer->buffer == VK_NULL_HANDLE || index_count != im_draw_data->TotalVtxCount)
+	{
+		if (imgui_index_buffer)
+		{
+			imgui_index_buffer->unmap(backend->device->context->device);
+			imgui_index_buffer->destroy(backend->device->context->device);
+		}
+
+		imgui_index_buffer = new Vulkan::Buffer(
+			backend->device->context->device,
+			backend->device->context->gpu,
+			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			index_buffer_size
+		);
+
+		index_count = im_draw_data->TotalVtxCount;
+		imgui_index_buffer->unmap(backend->device->context->device);
+		imgui_index_buffer->map(backend->device->context->device);
+	}
+
+	// Upload data
+	ImDrawVert* vtx_dst = (ImDrawVert*)imgui_vertex_buffer->mapped;
+	ImDrawVert* idx_dst = (ImDrawVert*)imgui_index_buffer->mapped;
+
+	for (int n = 0; n < im_draw_data->CmdListsCount; n++) {
+		const ImDrawList* cmd_list = im_draw_data->CmdLists[n];
+		memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+		memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+		vtx_dst += cmd_list->VtxBuffer.Size;
+		idx_dst += cmd_list->IdxBuffer.Size;
+	}
+
+	// Flush to make writes visible to GPU
+	imgui_vertex_buffer->flush(backend->device->context->device);
+	imgui_index_buffer->flush(backend->device->context->device);
+}
+
+void Renderer::imgui_draw_frame(Vulkan::FrameResources& frame_resources)
+{
+	Frame* frame = (Frame*) frame_resources.custom;
+	assert(frame);
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, imgui_pipeline.pipeline_layout, 0, 1, &frame->imgui_descriptor_set, 0, nullptr);
+	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, imgui_pipeline.pipeline);
+
+	VkViewport viewport = {};
+	viewport.width = io.DisplaySize.x;
+	viewport.height = io.DisplaySize.y;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
+
+	// UI Translate and Scale via push commands
+	imgui_push_const_block.translate = glm::vec2(-1.0f);
+	imgui_push_const_block.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
+	vkCmdPushConstants(frame_resources.command_buffer, imgui_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstantBlock), &imgui_push_const_block);
+
+	// Render commands
+	ImDrawData* im_draw_data = ImGui::GetDrawData();
+	int32_t vertex_offset = 0;
+	int32_t index_offset = 0;
+
+	if (im_draw_data->CmdListsCount > 0)
+	{
+		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &imgui_vertex_buffer->buffer, offsets);
+		vkCmdBindIndexBuffer(frame_resources.command_buffer, imgui_index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+
+		for (int32_t i = 0; i < im_draw_data->CmdListsCount; i++)
+		{
+			const ImDrawList* cmd_list = im_draw_data->CmdLists[i];
+			for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++)
+			{
+				const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
+				VkRect2D scissorRect;
+				scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
+				scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
+				scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
+				scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+				vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissorRect);
+				vkCmdDrawIndexed(frame_resources.command_buffer, pcmd->ElemCount, 1, index_offset, vertex_offset, 0);
+				index_offset += pcmd->ElemCount;
+			}
+			vertex_offset += cmd_list->VtxBuffer.Size;
+		}
+	}
 }
 
 VkResult Renderer::allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set, uint32_t descriptor_set_count)
@@ -500,8 +684,8 @@ void Renderer::prepare_debug_vertex_buffers()
 		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 0.0f, 0.0f), green };
 		frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(0.0f, 3.0f, 0.0f), green };
 
-		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * frames[i].debug_line_count, 0, &frames[i].debug_vertex_buffer->data);
-		memcpy(frames[i].debug_vertex_buffer->data, &frames[i].debug_lines, sizeof(DebugLine) * frames[i].debug_line_count);
+		vkMapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory, 0, sizeof(DebugLine) * frames[i].debug_line_count, 0, &frames[i].debug_vertex_buffer->mapped);
+		memcpy(frames[i].debug_vertex_buffer->mapped, &frames[i].debug_lines, sizeof(DebugLine) * frames[i].debug_line_count);
 		vkUnmapMemory(backend->device->context->device, frames[i].debug_vertex_buffer->device_memory);
 	}
 }
@@ -517,6 +701,8 @@ void Renderer::cleanup()
 
 	destroy_ubo_buffers();
 	destroy_descriptor_pool();
+
+	vkDestroyDescriptorSetLayout(backend->device->context->device, imgui_descriptor_set_layout, nullptr);
 
 	// TODO: Move this its onw cleanup function
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
@@ -541,6 +727,12 @@ void Renderer::cleanup()
 
 	vkDestroyPipelineLayout(backend->device->context->device, dynamic_pipeline.pipeline_layout, nullptr);
 	dynamic_pipeline.pipeline_layout = VK_NULL_HANDLE;
+
+	vkDestroyPipeline(backend->device->context->device, imgui_pipeline.pipeline, nullptr);
+	imgui_pipeline.pipeline = VK_NULL_HANDLE;
+
+	vkDestroyPipelineLayout(backend->device->context->device, imgui_pipeline.pipeline_layout, nullptr);
+	imgui_pipeline.pipeline_layout = VK_NULL_HANDLE;
 
 	vkDestroyPipeline(backend->device->context->device, debug_pipeline.pipeline, nullptr);
 	debug_pipeline.pipeline = VK_NULL_HANDLE;
@@ -734,7 +926,81 @@ void Renderer::create_pipelines()
 	static_pipeline = create_pipeline("../data/shaders/static_entity.vert.spv", "../data/shaders/static_entity.frag.spv", vertex_input_ci, input_assembly_ci, descriptor_set_layout_count, descriptor_set_layouts,
 		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(static_pipeline_push_constant_ranges), static_pipeline_push_constant_ranges);
 
-	// Pipeline 2: Debug Draw pipeline for debug gizmos
+	// Pipeline 3: Graphics pipeline for ImGui
+	// Color Blend
+	VkPipelineColorBlendAttachmentState imgui_color_blend_attachment_ci = {};
+	imgui_color_blend_attachment_ci.blendEnable = VK_TRUE;
+	imgui_color_blend_attachment_ci.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	imgui_color_blend_attachment_ci.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	imgui_color_blend_attachment_ci.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	imgui_color_blend_attachment_ci.colorBlendOp = VK_BLEND_OP_ADD;
+	imgui_color_blend_attachment_ci.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	imgui_color_blend_attachment_ci.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	imgui_color_blend_attachment_ci.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo imgui_color_blend_ci = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+	imgui_color_blend_ci.logicOpEnable = VK_FALSE;
+	imgui_color_blend_ci.attachmentCount = 1;
+	imgui_color_blend_ci.pAttachments = &imgui_color_blend_attachment_ci;
+
+	// Depth Buffer
+	VkPipelineDepthStencilStateCreateInfo imgui_depth_stencil_ci = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+	imgui_depth_stencil_ci.depthTestEnable = VK_FALSE;
+	imgui_depth_stencil_ci.depthWriteEnable = VK_FALSE;
+	imgui_depth_stencil_ci.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	imgui_depth_stencil_ci.depthBoundsTestEnable = VK_FALSE;
+	imgui_depth_stencil_ci.stencilTestEnable = VK_FALSE;
+
+	// Vertex Input
+	VkPipelineVertexInputStateCreateInfo imgui_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+	// A vertex binding describes at which rate to load data from memory throughout the vertices. 
+	// It specifies the number of bytes between data entries and whether to move to the next 
+	// data entry after each vertex or after each instance.
+	VkVertexInputBindingDescription imgui_vertex_binding_descriptions[1];
+	// Mesh vertex bindings
+	imgui_vertex_binding_descriptions[0] = {};
+	imgui_vertex_binding_descriptions[0].binding = 0;
+	imgui_vertex_binding_descriptions[0].stride = sizeof(DebugLine);
+	imgui_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	imgui_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(imgui_vertex_binding_descriptions);
+	imgui_vertex_input_ci.pVertexBindingDescriptions = imgui_vertex_binding_descriptions;
+
+	// An attribute description struct describes how to extract a vertex attribute from a chunk of vertex data 
+	// originating from a binding description. We have 3 attributes, position, uv and color
+	// so we need 3 attribute description structs
+	VkVertexInputAttributeDescription imgui_vertex_input_attribute_descriptions[3];
+	// Per-vertex attributes
+	// Position
+	imgui_vertex_input_attribute_descriptions[0].binding = 0;
+	imgui_vertex_input_attribute_descriptions[0].location = 0;
+	imgui_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	imgui_vertex_input_attribute_descriptions[0].offset = 0;
+	// UV
+	imgui_vertex_input_attribute_descriptions[1].binding = 0;
+	imgui_vertex_input_attribute_descriptions[1].location = 1;
+	imgui_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+	imgui_vertex_input_attribute_descriptions[1].offset = sizeof(float) * 2;
+	// Color
+	imgui_vertex_input_attribute_descriptions[2].binding = 0;
+	imgui_vertex_input_attribute_descriptions[2].location = 2;
+	imgui_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R8G8B8A8_UNORM;
+	imgui_vertex_input_attribute_descriptions[2].offset = sizeof(float) * 4;
+
+	imgui_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(imgui_vertex_input_attribute_descriptions);
+	imgui_vertex_input_ci.pVertexAttributeDescriptions = imgui_vertex_input_attribute_descriptions;
+
+	VkPushConstantRange ui_params = {};
+	ui_params.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	ui_params.size = sizeof(UIPushConstantBlock);
+	ui_params.offset = 0;
+
+	VkPushConstantRange imgui_pipeline_push_constant_ranges[] = { ui_params };
+
+	imgui_pipeline = create_pipeline("../data/shaders/ui.vert.spv", "../data/shaders/ui.frag.spv", imgui_vertex_input_ci, input_assembly_ci, 1, &imgui_descriptor_set_layout,
+		viewport_ci, rasterizer_ci, imgui_depth_stencil_ci, multisampling_ci, imgui_color_blend_ci, dynamic_state_ci, ARRAYSIZE(imgui_pipeline_push_constant_ranges), imgui_pipeline_push_constant_ranges);
+
+	// Pipeline 4: Debug Draw pipeline for debug gizmos
 	// Pipeline Fixed Functions
 	// Vertex Input
 	VkPipelineVertexInputStateCreateInfo debug_vertex_input_ci = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -875,6 +1141,7 @@ void Renderer::create_ubo_buffers()
 			sizeof(ViewUniformBufferObject));
 
 		frames[i].view_descriptor_set = VK_NULL_HANDLE;
+		frames[i].imgui_descriptor_set = VK_NULL_HANDLE;
 	}
 }
 

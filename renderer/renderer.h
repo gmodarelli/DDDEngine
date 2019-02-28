@@ -14,6 +14,7 @@ namespace Renderer
 struct Frame
 {
 	VkDescriptorSet view_descriptor_set;
+	VkDescriptorSet imgui_descriptor_set;
 	Vulkan::Buffer* view_ubo_buffer = nullptr;
 	Vulkan::Buffer* debug_vertex_buffer = nullptr;
 
@@ -86,6 +87,13 @@ struct Renderer
 	// ImGUI
 	Vulkan::Image* imgui_font;
 	VkSampler imgui_font_sampler;
+	VkDescriptorSetLayout imgui_descriptor_set_layout;
+	UIPushConstantBlock imgui_push_const_block;
+	Vulkan::Buffer* imgui_vertex_buffer = nullptr;
+	Vulkan::Buffer* imgui_index_buffer = nullptr;
+	void imgui_new_frame();
+	void imgui_update_buffers();
+	void imgui_draw_frame(Vulkan::FrameResources& frame_resources);
 }; // struct Renderer
 
 } // namespace Renderer

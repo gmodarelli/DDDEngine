@@ -32,6 +32,30 @@ Buffer::Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usage_f
 	assert(result == VK_SUCCESS);
 }
 
+VkResult Buffer::map(VkDevice device, VkDeviceSize size, VkDeviceSize offset)
+{
+	return vkMapMemory(device, device_memory, offset, size, 0, &mapped);
+}
+
+void Buffer::unmap(VkDevice device)
+{
+	if (mapped)
+	{
+		vkUnmapMemory(device, device_memory);
+		mapped = nullptr;
+	}
+}
+
+VkResult Buffer::flush(VkDevice device, VkDeviceSize size, VkDeviceSize offset)
+{
+	VkMappedMemoryRange mapped_range = {};
+	mapped_range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	mapped_range.memory = device_memory;
+	mapped_range.offset = offset;
+	mapped_range.size = size;
+	return vkFlushMappedMemoryRanges(device, 1, &mapped_range);
+}
+
 void Buffer::destroy(VkDevice device)
 {
 	vkFreeMemory(device, device_memory, nullptr);
