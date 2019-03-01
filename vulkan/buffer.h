@@ -12,7 +12,7 @@ namespace Vulkan
 
 struct Buffer
 {
-	Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE);
+	Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkSharingMode sharing_mode = VK_SHARING_MODE_EXCLUSIVE, bool align = false);
 	void destroy(VkDevice device);
 	VkResult map(VkDevice device, VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
 	void unmap(VkDevice device);

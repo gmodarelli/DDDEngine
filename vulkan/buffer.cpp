@@ -4,9 +4,15 @@
 namespace Vulkan
 {
 
-Buffer::Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkDeviceSize size, VkSharingMode sharing_mode)
+Buffer::Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usage_flags, VkMemoryPropertyFlags memory_property_flags, VkDeviceSize size, VkSharingMode sharing_mode, bool align)
 {
-	this->size = size;
+	if (align)
+	{
+		this->size = ((size - 1) / 256 + 1) * 256;
+	}
+	{
+		this->size = size;
+	}
 	this->usage = usage_flags;
 
 	// Create the buffer handle
@@ -20,6 +26,11 @@ Buffer::Buffer(VkDevice device, VkPhysicalDevice gpu, VkBufferUsageFlags usage_f
 	// Allocate the memory backing the buffer handle
 	VkMemoryRequirements memory_requirements;
 	vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
+
+	if (align)
+	{
+		assert(256 == memory_requirements.alignment);
+	}
 
 	VkMemoryAllocateInfo allocate_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	allocate_info.allocationSize = memory_requirements.size;

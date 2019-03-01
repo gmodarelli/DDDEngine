@@ -442,8 +442,8 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		vkCmdDraw(frame_resources.command_buffer, frame->debug_line_count, 1, 0, 0);
 	}
 
-	imgui_new_frame();
-	imgui_update_buffers();
+	imgui_new_frame(frame_resources);
+	imgui_update_buffers(frame_resources);
 	imgui_draw_frame(frame_resources);
 
 	backend->device->end_draw_frame(frame_resources);
@@ -453,24 +453,24 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 }
 
 // ImGUI-Specific
-void Renderer::imgui_new_frame()
+void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources)
 {
 	ImGui::NewFrame();
 
 	// Init ImGui windows and elements
 	ImVec4 clear_color = ImColor(144, 144, 154);
-	static float f = 0.0f;
-	ImGui::TextUnformatted("73 Games");
-	ImGui::TextUnformatted(backend->device->context->gpu_properties.deviceName);
+
+	ImGui::SetNextWindowPos(ImVec2(650, 20), ImGuiSetCond_FirstUseEver);
+	ImGui::ShowDemoWindow();
 
 	// Render to generate draw buffers
 	ImGui::Render();
 }
 
-void Renderer::imgui_update_buffers()
+void Renderer::imgui_update_buffers(Vulkan::FrameResources& frame_resources)
 {
-	static size_t vertex_count = 0;
-	static size_t index_count = 0;
+	Frame* frame = (Frame*) frame_resources.custom;
+	assert(frame);
 
 	ImDrawData* im_draw_data = ImGui::GetDrawData();
 
@@ -484,52 +484,56 @@ void Renderer::imgui_update_buffers()
 
 	// Update buffers only if vertex or index count has changed
 	// Vertex buffer
-	if (!imgui_vertex_buffer || imgui_vertex_buffer->buffer == VK_NULL_HANDLE || vertex_count != im_draw_data->TotalVtxCount)
+	if (!frame->imgui_vertex_buffer || frame->imgui_vertex_buffer->buffer == VK_NULL_HANDLE || frame->imgui_vertex_count != im_draw_data->TotalVtxCount)
 	{
-		if (imgui_vertex_buffer)
+		if (frame->imgui_vertex_buffer)
 		{
-			imgui_vertex_buffer->unmap(backend->device->context->device);
-			imgui_vertex_buffer->destroy(backend->device->context->device);
+			frame->imgui_vertex_buffer->unmap(backend->device->context->device);
+			frame->imgui_vertex_buffer->destroy(backend->device->context->device);
 		}
 
-		imgui_vertex_buffer = new Vulkan::Buffer(
+		frame->imgui_vertex_buffer = new Vulkan::Buffer(
 			backend->device->context->device,
 			backend->device->context->gpu,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			vertex_buffer_size
+			vertex_buffer_size,
+			VK_SHARING_MODE_EXCLUSIVE,
+			true
 		);
 
-		vertex_count = im_draw_data->TotalVtxCount;
-		imgui_vertex_buffer->unmap(backend->device->context->device);
-		imgui_vertex_buffer->map(backend->device->context->device);
+		frame->imgui_vertex_count = im_draw_data->TotalVtxCount;
+		frame->imgui_vertex_buffer->unmap(backend->device->context->device);
+		frame->imgui_vertex_buffer->map(backend->device->context->device);
 	}
 
 	// Index buffer
-	if (!imgui_index_buffer || imgui_index_buffer->buffer == VK_NULL_HANDLE || index_count != im_draw_data->TotalVtxCount)
+	if (!frame->imgui_index_buffer || frame->imgui_index_buffer->buffer == VK_NULL_HANDLE || frame->imgui_index_count != im_draw_data->TotalVtxCount)
 	{
-		if (imgui_index_buffer)
+		if (frame->imgui_index_buffer)
 		{
-			imgui_index_buffer->unmap(backend->device->context->device);
-			imgui_index_buffer->destroy(backend->device->context->device);
+			frame->imgui_index_buffer->unmap(backend->device->context->device);
+			frame->imgui_index_buffer->destroy(backend->device->context->device);
 		}
 
-		imgui_index_buffer = new Vulkan::Buffer(
+		frame->imgui_index_buffer = new Vulkan::Buffer(
 			backend->device->context->device,
 			backend->device->context->gpu,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			index_buffer_size
+			index_buffer_size,
+			VK_SHARING_MODE_EXCLUSIVE,
+			true
 		);
 
-		index_count = im_draw_data->TotalVtxCount;
-		imgui_index_buffer->unmap(backend->device->context->device);
-		imgui_index_buffer->map(backend->device->context->device);
+		frame->imgui_index_count = im_draw_data->TotalVtxCount;
+		frame->imgui_index_buffer->unmap(backend->device->context->device);
+		frame->imgui_index_buffer->map(backend->device->context->device);
 	}
 
 	// Upload data
-	ImDrawVert* vtx_dst = (ImDrawVert*)imgui_vertex_buffer->mapped;
-	ImDrawVert* idx_dst = (ImDrawVert*)imgui_index_buffer->mapped;
+	ImDrawVert* vtx_dst = (ImDrawVert*)frame->imgui_vertex_buffer->mapped;
+	ImDrawIdx* idx_dst = (ImDrawIdx*)frame->imgui_index_buffer->mapped;
 
 	for (int n = 0; n < im_draw_data->CmdListsCount; n++) {
 		const ImDrawList* cmd_list = im_draw_data->CmdLists[n];
@@ -540,8 +544,8 @@ void Renderer::imgui_update_buffers()
 	}
 
 	// Flush to make writes visible to GPU
-	imgui_vertex_buffer->flush(backend->device->context->device);
-	imgui_index_buffer->flush(backend->device->context->device);
+	frame->imgui_vertex_buffer->flush(backend->device->context->device);
+	frame->imgui_index_buffer->flush(backend->device->context->device);
 }
 
 void Renderer::imgui_draw_frame(Vulkan::FrameResources& frame_resources)
@@ -574,8 +578,8 @@ void Renderer::imgui_draw_frame(Vulkan::FrameResources& frame_resources)
 	if (im_draw_data->CmdListsCount > 0)
 	{
 		VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &imgui_vertex_buffer->buffer, offsets);
-		vkCmdBindIndexBuffer(frame_resources.command_buffer, imgui_index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, &frame->imgui_vertex_buffer->buffer, offsets);
+		vkCmdBindIndexBuffer(frame_resources.command_buffer, frame->imgui_index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
 		for (int32_t i = 0; i < im_draw_data->CmdListsCount; i++)
 		{
@@ -927,6 +931,13 @@ void Renderer::create_pipelines()
 		viewport_ci, rasterizer_ci, depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, ARRAYSIZE(static_pipeline_push_constant_ranges), static_pipeline_push_constant_ranges);
 
 	// Pipeline 3: Graphics pipeline for ImGui
+	// Rasterizer
+	VkPipelineRasterizationStateCreateInfo imgui_rasterizer_ci = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+	imgui_rasterizer_ci.polygonMode = VK_POLYGON_MODE_FILL;
+	imgui_rasterizer_ci.lineWidth = 1.0f;
+	imgui_rasterizer_ci.cullMode = VK_CULL_MODE_NONE;
+	imgui_rasterizer_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+
 	// Color Blend
 	VkPipelineColorBlendAttachmentState imgui_color_blend_attachment_ci = {};
 	imgui_color_blend_attachment_ci.blendEnable = VK_TRUE;
@@ -960,7 +971,7 @@ void Renderer::create_pipelines()
 	// Mesh vertex bindings
 	imgui_vertex_binding_descriptions[0] = {};
 	imgui_vertex_binding_descriptions[0].binding = 0;
-	imgui_vertex_binding_descriptions[0].stride = sizeof(DebugLine);
+	imgui_vertex_binding_descriptions[0].stride = sizeof(ImDrawVert);
 	imgui_vertex_binding_descriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	imgui_vertex_input_ci.vertexBindingDescriptionCount = ARRAYSIZE(imgui_vertex_binding_descriptions);
@@ -975,17 +986,17 @@ void Renderer::create_pipelines()
 	imgui_vertex_input_attribute_descriptions[0].binding = 0;
 	imgui_vertex_input_attribute_descriptions[0].location = 0;
 	imgui_vertex_input_attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-	imgui_vertex_input_attribute_descriptions[0].offset = 0;
+	imgui_vertex_input_attribute_descriptions[0].offset = offsetof(ImDrawVert, pos);
 	// UV
 	imgui_vertex_input_attribute_descriptions[1].binding = 0;
 	imgui_vertex_input_attribute_descriptions[1].location = 1;
 	imgui_vertex_input_attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-	imgui_vertex_input_attribute_descriptions[1].offset = sizeof(float) * 2;
+	imgui_vertex_input_attribute_descriptions[1].offset = offsetof(ImDrawVert, uv);
 	// Color
 	imgui_vertex_input_attribute_descriptions[2].binding = 0;
 	imgui_vertex_input_attribute_descriptions[2].location = 2;
 	imgui_vertex_input_attribute_descriptions[2].format = VK_FORMAT_R8G8B8A8_UNORM;
-	imgui_vertex_input_attribute_descriptions[2].offset = sizeof(float) * 4;
+	imgui_vertex_input_attribute_descriptions[2].offset = offsetof(ImDrawVert, col);
 
 	imgui_vertex_input_ci.vertexAttributeDescriptionCount = ARRAYSIZE(imgui_vertex_input_attribute_descriptions);
 	imgui_vertex_input_ci.pVertexAttributeDescriptions = imgui_vertex_input_attribute_descriptions;
@@ -998,7 +1009,7 @@ void Renderer::create_pipelines()
 	VkPushConstantRange imgui_pipeline_push_constant_ranges[] = { ui_params };
 
 	imgui_pipeline = create_pipeline("../data/shaders/ui.vert.spv", "../data/shaders/ui.frag.spv", imgui_vertex_input_ci, input_assembly_ci, 1, &imgui_descriptor_set_layout,
-		viewport_ci, rasterizer_ci, imgui_depth_stencil_ci, multisampling_ci, imgui_color_blend_ci, dynamic_state_ci, ARRAYSIZE(imgui_pipeline_push_constant_ranges), imgui_pipeline_push_constant_ranges);
+		viewport_ci, imgui_rasterizer_ci, imgui_depth_stencil_ci, multisampling_ci, imgui_color_blend_ci, dynamic_state_ci, ARRAYSIZE(imgui_pipeline_push_constant_ranges), imgui_pipeline_push_constant_ranges);
 
 	// Pipeline 4: Debug Draw pipeline for debug gizmos
 	// Pipeline Fixed Functions
@@ -1150,6 +1161,8 @@ void Renderer::destroy_ubo_buffers()
 	for (uint32_t i = 0; i < Vulkan::MAX_FRAMES_IN_FLIGHT; ++i)
 	{
 		frames[i].view_ubo_buffer->destroy(backend->device->context->device);
+		frames[i].imgui_vertex_buffer->destroy(backend->device->context->device);
+		frames[i].imgui_index_buffer->destroy(backend->device->context->device);
 	}
 }
 
