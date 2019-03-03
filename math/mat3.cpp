@@ -192,4 +192,52 @@ Mat3 make_involution(const Vec3& a)
 		axaz, ayaz, z * a.z - 1.0f);
 }
 
+Mat3 make_scale(const Vec3& s)
+{
+	return Mat3(
+		s.x, 0.0f, 0.0f,
+		0.0f, s.y, 0.0f,
+		0.0f, 0.0f, s.z);
+}
+
+Mat3 make_scale(float s, const Vec3& a)
+{
+	// NOTE: we assume a to be a unit vector
+	assert(magnitude(a) == 1.0f);
+
+	s -= 1.0f;
+
+	float x = a.x * s;
+	float y = a.y * s;
+	float z = a.z * s;
+	float axay = x * a.y;
+	float axaz = x * a.z;
+	float ayaz = y * a.z;
+
+	return Mat3(
+		x * a.x + 1.0f, axay, axaz,
+		axay, y * a.y + 1.0f, ayaz,
+		axaz, ayaz, z * a.z + 1.0f);
+}
+
+Mat3 make_skew(float t, const Vec3& a, const Vec3 b)
+{
+	// NOTE: we assume a and b to be a unit vectors
+	// and we also assume they are orthogonal
+	assert(magnitude(a) == 1.0f);
+	assert(magnitude(b) == 1.0f);
+	assert(dot(a, b) == 0.0f);
+
+	t = tanf(t);
+	float x = a.x * t;
+	float y = a.y * t;
+	float z = a.z * t;
+
+	return Mat3(
+		x * b.x + 1.0f, x * b.y, x * b.z,
+		y * b.x, y * b.y + 1.0f, y * b.z,
+		z * b.x, z * b.y, z * b.z + 1.0f);
+}
+
+
 } // namespace Math

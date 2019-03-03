@@ -37,5 +37,8 @@ Mat3 make_rotation_z(float t);
 Mat3 make_rotation(float t, const Vec3& a);
 Mat3 make_reflection(const Vec3& a);
 Mat3 make_involution(const Vec3& a);
+Mat3 make_scale(const Vec3& s);
+Mat3 make_scale(float s, const Vec3& a);
+Mat3 make_skew(float r, const Vec3& a, const Vec3 b);
 
 } // namespace Math
