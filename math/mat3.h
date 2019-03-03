@@ -31,4 +31,11 @@ Vec3 operator *(const Mat3& m, const Vec3& v);
 float determinant(const Mat3& m);
 Mat3 inverse(const Mat3& m);
 
+Mat3 make_rotation_x(float t);
+Mat3 make_rotation_y(float t);
+Mat3 make_rotation_z(float t);
+Mat3 make_rotation(float t, const Vec3& a);
+Mat3 make_reflection(const Vec3& a);
+Mat3 make_involution(const Vec3& a);
+
 } // namespace Math

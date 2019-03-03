@@ -1,5 +1,6 @@
 #include "vec3.h"
 #include "mat3.h"
+#include <cassert>
 
 namespace Math
 {
@@ -98,6 +99,97 @@ Mat3 inverse(const Mat3& m)
 		r0.x * inverse_determinant, r0.y * inverse_determinant, r0.z * inverse_determinant,
 		r1.x * inverse_determinant, r1.y * inverse_determinant, r1.z * inverse_determinant,
 		r2.x * inverse_determinant, r2.y * inverse_determinant, r2.z * inverse_determinant));
+}
+
+Mat3 make_rotation_x(float t)
+{
+	float c = cosf(t);
+	float s = sinf(t);
+
+	return Mat3(
+		1.0f, 0.0f, 0.0f,
+		0.0f, c, -s,
+		0.0f, s, c);
+}
+
+Mat3 make_rotation_y(float t)
+{
+	float c = cosf(t);
+	float s = sinf(t);
+
+	return Mat3(
+		c, 0.0f, s,
+		0.0f, 1.0f, 0.0f,
+		-s, 0.0f, c);
+}
+Mat3 make_rotation_z(float t)
+{
+	float c = cosf(t);
+	float s = sinf(t);
+
+	return Mat3(
+		c, -s, 0.0f,
+		s, c, 0.0f,
+		0.0f, 0.0f, 1.0f);
+}
+
+Mat3 make_rotation(float t, const Vec3& a)
+{
+	// NOTE: we assume a to be a unit vector
+	assert(magnitude(a) == 1.0f);
+
+	float c = cosf(t);
+	float s = sinf(t);
+	float d = 1.0f - c;
+
+	float x = a.x * d;
+	float y = a.y * d;
+	float z = a.z * d;
+
+	float axay = x * a.y;
+	float axaz = x * a.z;
+	float ayaz = y * a.z;
+
+	return Mat3(
+		c + x * a.x, axay - s * a.z, axaz + s * a.y,
+		axay + s * a.z, c + y * a.y, ayaz - s * a.x,
+		axaz - s * a.y, ayaz + s * a.x, c + z * a.z);
+}
+
+Mat3 make_reflection(const Vec3& a)
+{
+	// NOTE: we assume a to be a unit vector
+	assert(magnitude(a) == 1.0f);
+
+	float x = a.x * -2.0f;
+	float y = a.y * -2.0f;
+	float z = a.z * -2.0f;
+	float axay = x * a.y;
+	float axaz = x * a.z;
+	float ayaz = y * a.z;
+
+	return Mat3(
+		x * a.x + 1.0f, axay, axaz,
+		axay, y * a.y + 1.0f, ayaz,
+		axaz, ayaz, z * a.z + 1.0f);
+}
+
+Mat3 make_involution(const Vec3& a)
+{
+	// NOTE: we assume a to be a unit vector
+	assert(magnitude(a) == 1.0f);
+
+	float x = a.x * 2.0f;
+	float y = a.y * 2.0f;
+	float z = a.z * 2.0f;
+	float axay = x * a.y;
+	float axaz = x * a.z;
+	float ayaz = y * a.z;
+
+	return Mat3(
+		x * a.x - 1.0f, axay, axaz,
+		axay, y * a.y - 1.0f, ayaz,
+		axaz, ayaz, z * a.z - 1.0f);
 }
 
 } // namespace Math
