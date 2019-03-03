@@ -34,6 +34,9 @@
     <Filter Include="extern\imgui">
       <UniqueIdentifier>{52531386-07ae-4121-b279-fa1ca2ae8055}</UniqueIdentifier>
     </Filter>
+    <Filter Include="math">
+      <UniqueIdentifier>{0d769647-aeeb-4b12-a56d-5d9b7f8f1b34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\extern\volk\volk.c">
@@ -143,6 +146,18 @@
     </ClCompile>
     <ClCompile Include="..\extern\imgui\imgui_widgets.cpp">
       <Filter>extern\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\math\vec3.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\math\mat3.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\math\mat4.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\math\vec4.cpp">
+      <Filter>math</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -261,6 +276,18 @@
     </ClInclude>
     <ClInclude Include="..\extern\imgui\imstb_truetype.h">
       <Filter>extern\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\mat3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\vec3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\mat4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\vec4.h">
+      <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
