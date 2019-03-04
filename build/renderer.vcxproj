@@ -176,6 +176,8 @@
     <ClCompile Include="..\game\state.cpp" />
     <ClCompile Include="..\math\mat3.cpp" />
     <ClCompile Include="..\math\mat4.cpp" />
+    <ClCompile Include="..\math\point3.cpp" />
+    <ClCompile Include="..\math\transform4.cpp" />
     <ClCompile Include="..\math\vec3.cpp" />
     <ClCompile Include="..\math\vec4.cpp" />
     <ClCompile Include="..\memory\stack.cpp" />
@@ -235,6 +237,8 @@
     <ClInclude Include="..\game\state.h" />
     <ClInclude Include="..\math\mat3.h" />
     <ClInclude Include="..\math\mat4.h" />
+    <ClInclude Include="..\math\point3.h" />
+    <ClInclude Include="..\math\transform4.h" />
     <ClInclude Include="..\math\vec3.h" />
     <ClInclude Include="..\math\vec4.h" />
     <ClInclude Include="..\memory\stack.h" />

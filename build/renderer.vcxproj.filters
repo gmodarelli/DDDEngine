@@ -159,6 +159,12 @@
     <ClCompile Include="..\math\vec4.cpp">
       <Filter>math</Filter>
     </ClCompile>
+    <ClCompile Include="..\math\point3.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
+    <ClCompile Include="..\math\transform4.cpp">
+      <Filter>math</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\data\shaders\static_entity.frag">
@@ -287,6 +293,12 @@
       <Filter>math</Filter>
     </ClInclude>
     <ClInclude Include="..\math\vec4.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\point3.h">
+      <Filter>math</Filter>
+    </ClInclude>
+    <ClInclude Include="..\math\transform4.h">
       <Filter>math</Filter>
     </ClInclude>
   </ItemGroup>
