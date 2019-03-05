@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vec4.h"
+#include "vec3.h"
 
 namespace Math
 {
@@ -30,5 +31,6 @@ struct Mat4
 Mat4 operator *(const Mat4& a, const Mat4& b);
 Vec4 operator *(const Mat4& m, const Vec4& v);
 Mat4 inverse(const Mat4& m);
+Mat4 translate(const Mat4& m, const Vec3& v);
 
 } // namespace Math

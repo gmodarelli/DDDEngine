@@ -1,5 +1,4 @@
 #include "mat4.h"
-#include "vec3.h"
 
 namespace Math
 {
@@ -106,6 +105,20 @@ Mat4 inverse(const Mat4& m)
 		r1.x, r1.y, r1.z,  dot(a, t),
 		r2.x, r2.y, r2.z, -dot(d, s),
 		r3.x, r3.y, r3.z, dot(c, s));
+}
+
+Mat4 translate(const Mat4& m, const Vec3& v)
+{
+	const Vec4& a = m[0];
+	const Vec4& b = m[1];
+	const Vec4& c = m[2];
+	Vec4 d = m[3];
+
+	d.x = v.x;
+	d.y = v.y;
+	d.z = v.z;
+
+	return Mat4(a, b, c, d);
 }
 
 } // namespace Math
