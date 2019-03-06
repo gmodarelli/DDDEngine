@@ -26,32 +26,40 @@ void Simulation::update(Game::State* game_state, float delta_time)
 {
 	Application::InputState input_state = platform->get_input_state();
 
-	if (game_state->player_rotating == false)
+	// Player Movement
+	if (input_state.key_up)
 	{
-		// Player Movement
-		if (input_state.key_up)
-		{
-			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, -1.0f);
-		}
+		game_state->player_target_direction = glm::vec3(0.0f, 0.0f, -1.0f);
+	}
 
-		if (input_state.key_down)
-		{
-			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-		}
+	if (input_state.key_down)
+	{
+		game_state->player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	}
 
-		if (input_state.key_left)
-		{
-			game_state->player_target_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
-		}
+	if (input_state.key_left)
+	{
+		game_state->player_target_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+	}
 
-		if (input_state.key_right)
-		{
-			game_state->player_target_direction = glm::vec3(1.0f, 0.0f, 0.0f);
-		}
+	if (input_state.key_right)
+	{
+		game_state->player_target_direction = glm::vec3(1.0f, 0.0f, 0.0f);
 	}
 
 	if (game_state->player_direction != game_state->player_target_direction)
 	{
+		// NOTE: Can we turn?
+		const glm::vec3& player_position = game_state->transforms[game_state->player_entity_id].position;
+		int x, z;
+		float _intpart;
+		x = (int) (modf(player_position.x, &_intpart) * 100);
+		z = (int) (modf(player_position.z, &_intpart) * 100);
+
+
+
+		printf("\nPosition: %dx%d", x, z);
+
 		float dot = glm::dot(game_state->player_direction, game_state->player_target_direction);
 
 		// NOTE: Cannot turn to face the opposite direction. The snake can only turn by 90
@@ -62,8 +70,10 @@ void Simulation::update(Game::State* game_state, float delta_time)
 		}
 		else
 		{
-			glm::vec3 player_position = game_state->transforms[game_state->player_entity_id].position;
-			game_state->player_orientation = glm::rotate(game_state->player_orientation, acosf(dot), glm::vec3(0.0f, 1.0f, 0.0f));
+			// NOTE: acosf returns a value between 0 and PI radians, so we don't have information
+			// about the direction of the rotation. That's why we use atan2f instead.
+			float angle = atan2f(game_state->player_direction.z, game_state->player_target_direction.z) - atan2f(game_state->player_direction.x, game_state->player_target_direction.x);
+			game_state->player_orientation = glm::rotate(game_state->player_orientation, angle, glm::vec3(0.0f, 1.0f, 0.0f));
 			game_state->player_direction = game_state->player_target_direction;
 		}
 	}
@@ -127,15 +137,15 @@ void Simulation::update(Game::State* game_state, float delta_time)
 
 	if (first_mouse)
 	{
-		mouse_last_x = input_state.cursor_position_x;
-		mouse_last_y = input_state.cursor_position_y;
+		mouse_last_x = (float)input_state.cursor_position_x;
+		mouse_last_y = (float)input_state.cursor_position_y;
 		first_mouse = false;
 	}
 
-	float x_offest = (input_state.cursor_position_x - mouse_last_x);
-	float y_offest = (mouse_last_y - input_state.cursor_position_y);
-	mouse_last_x = input_state.cursor_position_x;
-	mouse_last_y = input_state.cursor_position_y;
+	float x_offest = ((float)input_state.cursor_position_x - mouse_last_x);
+	float y_offest = (mouse_last_y - (float)input_state.cursor_position_y);
+	mouse_last_x = (float)input_state.cursor_position_x;
+	mouse_last_y = (float)input_state.cursor_position_y;
 
 	if (input_state.mouse_btn_right)
 	{

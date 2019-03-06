@@ -43,9 +43,8 @@ struct State
 	glm::mat4 player_orientation = glm::mat4(1.0f);
 	glm::vec3 player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec3 player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	float player_speed = 2.0f;
+	float player_speed = 0.6f;
 	float player_rotation_speed = 4.0f;
-	bool player_rotating = false;
 
 	// Current camera
 	Renderer::Camera* current_camera;

@@ -517,7 +517,13 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 
 	ImGui::InputFloat3("Player Target Direction", target_direction, 2);
 
-	ImGui::Text("dot(direction, target) %.2f", glm::dot(game_state->player_direction, game_state->player_target_direction));
+	float player_position[] = {
+		game_state->transforms[game_state->player_entity_id].position.x,
+		game_state->transforms[game_state->player_entity_id].position.y,
+		game_state->transforms[game_state->player_entity_id].position.z,
+	};
+
+	ImGui::InputFloat3("Player Position", player_position, 2);
 
 	ImGui::End();
 
