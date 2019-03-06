@@ -80,6 +80,9 @@ struct Renderer
 
 	double frame_cpu_avg = 0;
 
+	const static size_t cpu_frame_buffer_size = 128;
+	float cpu_frame_buffer[cpu_frame_buffer_size];
+
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;
 	VkResult allocate_descriptor_set(const VkDescriptorSetLayout& descriptor_set_layout, VkDescriptorSet& descriptor_set, uint32_t descriptor_set_count = 1);
@@ -95,7 +98,7 @@ struct Renderer
 	VkSampler imgui_font_sampler;
 	VkDescriptorSetLayout imgui_descriptor_set_layout;
 	UIPushConstantBlock imgui_push_const_block;
-	void imgui_new_frame(Vulkan::FrameResources& frame_resources);
+	void imgui_new_frame(Vulkan::FrameResources& frame_resources, const Game::State* game_state);
 	void imgui_update_buffers(Vulkan::FrameResources& frame_resources);
 	void imgui_draw_frame(Vulkan::FrameResources& frame_resources);
 }; // struct Renderer

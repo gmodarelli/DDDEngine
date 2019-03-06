@@ -1,4 +1,11 @@
 #include "simulation.h"
+#include <stdio.h>
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace Game
 {
@@ -19,30 +26,58 @@ void Simulation::update(Game::State* game_state, float delta_time)
 {
 	Application::InputState input_state = platform->get_input_state();
 
-	// Player Movement
-	if (input_state.key_up)
+	if (game_state->player_rotating == false)
 	{
-		game_state->player_direction = glm::vec3(0.0f, 0.0f, -1.0f);
+		// Player Movement
+		if (input_state.key_up)
+		{
+			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, -1.0f);
+		}
+
+		if (input_state.key_down)
+		{
+			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+		}
+
+		if (input_state.key_left)
+		{
+			game_state->player_target_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+		}
+
+		if (input_state.key_right)
+		{
+			game_state->player_target_direction = glm::vec3(1.0f, 0.0f, 0.0f);
+		}
 	}
 
-	if (input_state.key_down)
+	if (game_state->player_direction != game_state->player_target_direction)
 	{
-		game_state->player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	}
+		float dot = glm::dot(game_state->player_direction, game_state->player_target_direction);
 
-	if (input_state.key_left)
-	{
-		game_state->player_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
-	}
-
-	if (input_state.key_right)
-	{
-		game_state->player_direction = glm::vec3(1.0f, 0.0f, 0.0f);
+		// NOTE: Cannot turn to face the opposite direction. The snake can only turn by 90
+		// degrees left or right
+		if (dot == -1.0f)
+		{
+			game_state->player_target_direction = game_state->player_direction;
+		}
+		else
+		{
+			glm::vec3 player_position = game_state->transforms[game_state->player_entity_id].position;
+			game_state->player_orientation = glm::rotate(game_state->player_orientation, acosf(dot), glm::vec3(0.0f, 1.0f, 0.0f));
+			game_state->player_direction = game_state->player_target_direction;
+		}
 	}
 
 	game_state->transforms[game_state->player_entity_id].position += game_state->player_direction * delta_time * game_state->player_speed;
 	game_state->transforms[game_state->player_entity_id + 1].position += game_state->player_direction * delta_time * game_state->player_speed;
 	game_state->transforms[game_state->player_entity_id + 2].position += game_state->player_direction * delta_time * game_state->player_speed;
+
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, game_state->transforms[game_state->player_entity_id].position);
+	model *= game_state->player_orientation;
+
+	game_state->player_matrices[0] = model;
+
 
 	// Swith cameras
 	if (input_state.key_1)
