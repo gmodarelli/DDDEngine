@@ -22,72 +22,71 @@ void Simulation::cleanup()
 {
 }
 
-void Simulation::update(Game::State* game_state, float delta_time)
+void Simulation::update(Game::State* game_state)
 {
 	Application::InputState input_state = platform->get_input_state();
 
 	// Player Movement
-	if (input_state.key_up)
+	float distance_x = abs(game_state->player_position.x - game_state->player_target_position.x);
+	float distance_z = abs(game_state->player_position.z - game_state->player_target_position.z);
+	if (distance_x <= 0.2f || distance_z <= 0.2f)
 	{
-		game_state->player_target_direction = glm::vec3(0.0f, 0.0f, -1.0f);
-	}
-
-	if (input_state.key_down)
-	{
-		game_state->player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	}
-
-	if (input_state.key_left)
-	{
-		game_state->player_target_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
-	}
-
-	if (input_state.key_right)
-	{
-		game_state->player_target_direction = glm::vec3(1.0f, 0.0f, 0.0f);
-	}
-
-	if (game_state->player_direction != game_state->player_target_direction)
-	{
-		// NOTE: Can we turn?
-		const glm::vec3& player_position = game_state->transforms[game_state->player_entity_id].position;
-		int x, z;
-		float _intpart;
-		x = (int) (modf(player_position.x, &_intpart) * 100);
-		z = (int) (modf(player_position.z, &_intpart) * 100);
-
-
-
-		printf("\nPosition: %dx%d", x, z);
-
-		float dot = glm::dot(game_state->player_direction, game_state->player_target_direction);
-
-		// NOTE: Cannot turn to face the opposite direction. The snake can only turn by 90
-		// degrees left or right
-		if (dot == -1.0f)
+		if (input_state.key_up)
 		{
-			game_state->player_target_direction = game_state->player_direction;
+			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, -1.0f);
+		}
+
+		if (input_state.key_down)
+		{
+			game_state->player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+		}
+
+		if (input_state.key_left)
+		{
+			game_state->player_target_direction = glm::vec3(-1.0f, 0.0f, 0.0f);
+		}
+
+		if (input_state.key_right)
+		{
+			game_state->player_target_direction = glm::vec3(1.0f, 0.0f, 0.0f);
+		}
+	}
+
+	if (game_state->player_position.x != game_state->player_target_position.x || game_state->player_position.z != game_state->player_target_position.z)
+	{
+		if (abs(game_state->player_position.x - game_state->player_target_position.x) > 0.001f || abs(game_state->player_position.z - game_state->player_target_position.z) > 0.001f)
+		{
+			game_state->player_position += game_state->player_direction * game_state->player_speed;
+			game_state->transforms[game_state->player_entity_id].position = game_state->player_position;
 		}
 		else
 		{
-			// NOTE: acosf returns a value between 0 and PI radians, so we don't have information
-			// about the direction of the rotation. That's why we use atan2f instead.
-			float angle = atan2f(game_state->player_direction.z, game_state->player_target_direction.z) - atan2f(game_state->player_direction.x, game_state->player_target_direction.x);
-			game_state->player_orientation = glm::rotate(game_state->player_orientation, angle, glm::vec3(0.0f, 1.0f, 0.0f));
-			game_state->player_direction = game_state->player_target_direction;
+			game_state->player_position = game_state->player_target_position;
+			game_state->transforms[game_state->player_entity_id].position = game_state->player_position;
+
+			if (game_state->player_direction != game_state->player_target_direction)
+			{
+				float dot = glm::dot(game_state->player_direction, game_state->player_target_direction);
+
+				// NOTE: Cannot turn to face the opposite direction. The snake can only turn by 90
+				// degrees left or right
+				if (dot == -1.0f)
+				{
+					game_state->player_target_direction = game_state->player_direction;
+				}
+				else
+				{
+					// NOTE: acosf returns a value between 0 and PI radians, so we don't have information
+					// about the direction of the rotation. That's why we use atan2f instead.
+					float angle = atan2f(game_state->player_direction.z, game_state->player_target_direction.z) - atan2f(game_state->player_direction.x, game_state->player_target_direction.x);
+					game_state->player_orientation = glm::rotate(game_state->player_orientation, angle, glm::vec3(0.0f, 1.0f, 0.0f));
+					game_state->player_direction = game_state->player_target_direction;
+				}
+			}
+
+			game_state->player_target_position = game_state->player_position + glm::vec3(0.6f) * game_state->player_direction;
 		}
 	}
-
-	game_state->transforms[game_state->player_entity_id].position += game_state->player_direction * delta_time * game_state->player_speed;
-	game_state->transforms[game_state->player_entity_id + 1].position += game_state->player_direction * delta_time * game_state->player_speed;
-	game_state->transforms[game_state->player_entity_id + 2].position += game_state->player_direction * delta_time * game_state->player_speed;
-
-	glm::mat4 model = glm::mat4(1.0f);
-	model = glm::translate(model, game_state->transforms[game_state->player_entity_id].position);
-	model *= game_state->player_orientation;
-
-	game_state->player_matrices[0] = model;
-
 
 	// Swith cameras
 	if (input_state.key_1)
@@ -111,22 +110,22 @@ void Simulation::update(Game::State* game_state, float delta_time)
 	{
 		if (input_state.key_w)
 		{
-			game_state->current_camera->position += game_state->current_camera->front * delta_time * game_state->current_camera->speed;
+			game_state->current_camera->position += game_state->current_camera->front * game_state->current_camera->speed;
 		}
 
 		if (input_state.key_s)
 		{
-			game_state->current_camera->position -= game_state->current_camera->front * delta_time * game_state->current_camera->speed;
+			game_state->current_camera->position -= game_state->current_camera->front * game_state->current_camera->speed;
 		}
 
 		if (input_state.key_a)
 		{
-			game_state->current_camera->position -= glm::normalize(glm::cross(game_state->current_camera->front, game_state->current_camera->up)) * delta_time * game_state->current_camera->speed;
+			game_state->current_camera->position -= glm::normalize(glm::cross(game_state->current_camera->front, game_state->current_camera->up)) * game_state->current_camera->speed;
 		}
 
 		if (input_state.key_d)
 		{
-			game_state->current_camera->position += glm::normalize(glm::cross(game_state->current_camera->front, game_state->current_camera->up)) * delta_time * game_state->current_camera->speed;
+			game_state->current_camera->position += glm::normalize(glm::cross(game_state->current_camera->front, game_state->current_camera->up)) * game_state->current_camera->speed;
 		}
 	}
 

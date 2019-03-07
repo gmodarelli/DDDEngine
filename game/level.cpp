@@ -30,7 +30,10 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	entity_index++;
 
 	// Player Head transform
-	glm::vec3 player_position = glm::vec3(0.0f, 0.3f, 0.0f);
+	glm::vec3 player_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	game_state->player_position = player_position;
+	game_state->player_target_position = player_position + glm::vec3(0.6f) * game_state->player_direction;
+
 	game_state->player_matrices[transform_offset] = glm::translate(glm::mat4(1.0f), player_position);
 	game_state->transforms[transform_offset++] = { player_position, glm::vec3(1.0f) };
 	assert(entity_index == transform_offset);

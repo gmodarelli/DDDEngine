@@ -43,21 +43,28 @@ int main()
 	// Upload nodes UBOs data to the GPU
 	renderer->upload_dynamic_uniform_buffers(game_state);
 
-	char stats[256];
-	auto start_time = std::chrono::high_resolution_clock::now();
+	// 
+	const uint32_t ticks_per_second = 25;
+	const uint32_t skip_ticks = 1000 / ticks_per_second;
+	const uint32_t max_frame_skip = 5;
+
+	double next_game_tick = glfwGetTime() * 1000.0f;
+	uint32_t loops;
+	float interpolation;
 
 	while (platform->alive())
 	{
-		auto current_time = std::chrono::high_resolution_clock::now();
-		float delta_time = std::chrono::duration<float, std::chrono::seconds::period>(current_time - start_time).count();
+		loops = 0;
+		while (glfwGetTime() * 1000.0f > next_game_tick && loops < max_frame_skip)
+		{
+			simulation->update(game_state);
 
-		simulation->update(game_state, delta_time);
-		renderer->render_frame(game_state, delta_time);
+			next_game_tick += skip_ticks;
+			loops++;
+		}
 
-		sprintf(stats, "CPU: %.4f ms - GPU: %.4f ms", renderer->frame_cpu_avg, renderer->backend->device->frame_gpu_avg);
-		platform->set_window_title(stats);
-
-		start_time = current_time;
+		interpolation = float(glfwGetTime() * 1000.0f + skip_ticks - next_game_tick) / float(skip_ticks);
+		renderer->render_frame(game_state, interpolation);
 	}
 
 	simulation->cleanup();

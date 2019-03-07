@@ -384,6 +384,13 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
+	glm::mat4 model = glm::mat4(1.0f);
+	game_state->player_view_position = game_state->player_position + (game_state->player_direction * game_state->player_speed * delta_time);
+	model = glm::translate(model, game_state->player_view_position);
+	model *= game_state->player_orientation;
+
+	game_state->player_matrices[0] = model;
+
 	for (uint32_t x = game_state->player_entity_id; x < game_state->player_entity_id + 3; ++x)
 	{
 		vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &game_state->player_matrices[x]);
@@ -436,7 +443,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	}
 
 	// Debug Draw
-	if (game_state->show_grid)
+	// if (game_state->show_grid)
 	{
 		vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debug_pipeline.pipeline);
 
@@ -518,12 +525,20 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 	ImGui::InputFloat3("Player Target Direction", target_direction, 2);
 
 	float player_position[] = {
-		game_state->transforms[game_state->player_entity_id].position.x,
-		game_state->transforms[game_state->player_entity_id].position.y,
-		game_state->transforms[game_state->player_entity_id].position.z,
+		game_state->player_position.x,
+		game_state->player_position.y,
+		game_state->player_position.z,
 	};
 
-	ImGui::InputFloat3("Player Position", player_position, 2);
+	ImGui::InputFloat3("Player Position", player_position, 6);
+
+	float player_target_position[] = {
+		game_state->player_target_position.x,
+		game_state->player_target_position.y,
+		game_state->player_target_position.z,
+	};
+
+	ImGui::InputFloat3("Player Target Position", player_target_position, 6);
 
 	ImGui::End();
 
@@ -681,7 +696,7 @@ void Renderer::prepare_uniform_buffers()
 	{
 		ViewUniformBufferObject ubo = {};
 		ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+		ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 1000.0f);
 		ubo.projection[1][1] *= -1;
 		ubo.camera_position = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -702,7 +717,7 @@ void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameReso
 	// recreate the projection matrix accordingly
 	ViewUniformBufferObject ubo = {};
 	ubo.view = game_state->current_camera->view;
-	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 100.0f);
+	ubo.projection = glm::perspective(glm::radians(45.0f), (float)backend->device->wsi->swapchain_extent.width / (float)backend->device->wsi->swapchain_extent.height, 0.001f, 1000.0f);
 	ubo.projection[1][1] *= -1;
 	ubo.camera_position = game_state->current_camera->position;
 
@@ -714,7 +729,7 @@ void Renderer::update_uniform_buffers(Game::State* game_state, Vulkan::FrameReso
 
 void Renderer::prepare_debug_vertex_buffers()
 {
-	glm::vec4 line_color_dark = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
+	glm::vec4 line_color_dark = glm::vec4(0.4f, 0.4f, 0.4f, 0.8f);
 	glm::vec4 line_color_light = glm::vec4(0.6f, 0.6f, 0.6f, 0.5f);
 	glm::vec4 red = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 	glm::vec4 green = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
@@ -728,15 +743,17 @@ void Renderer::prepare_debug_vertex_buffers()
 
 		for (int32_t d = -10; d < 10; ++d)
 		{
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space), line_color_dark };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space), line_color_dark };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, -20.0f), line_color_dark };
-			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space, 0.0f, 20.0f), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space + (line_space * 0.5f)), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space + (line_space * 0.5f)), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space + (line_space * 0.5f), 0.0f, -20.0f), line_color_dark };
+			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space + (line_space * 0.5f), 0.0f, 20.0f), line_color_dark };
 
+			/*
 			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(-20.0f, 0.0f, d * line_space * 0.5f), line_color_light };
 			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(20.0f, 0.0f, d * line_space * 0.5f), line_color_light };
 			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space * 0.5f, 0.0f, -20.0f), line_color_light };
 			frames[i].debug_lines[frames[i].debug_line_count++] = { glm::vec3(d * line_space * 0.5f, 0.0f, 20.0f), line_color_light };
+			*/
 		}
 
 		// Origin
@@ -1113,6 +1130,22 @@ void Renderer::create_pipelines()
 
 	input_assembly_ci.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
+	// Color Blend
+	VkPipelineColorBlendAttachmentState debug_color_blend_attachment_ci = {};
+	debug_color_blend_attachment_ci.blendEnable = VK_TRUE;
+	debug_color_blend_attachment_ci.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	debug_color_blend_attachment_ci.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	debug_color_blend_attachment_ci.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	debug_color_blend_attachment_ci.colorBlendOp = VK_BLEND_OP_ADD;
+	debug_color_blend_attachment_ci.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	debug_color_blend_attachment_ci.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	debug_color_blend_attachment_ci.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	VkPipelineColorBlendStateCreateInfo debug_color_blend_ci = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+	debug_color_blend_ci.logicOpEnable = VK_FALSE;
+	debug_color_blend_ci.attachmentCount = 1;
+	debug_color_blend_ci.pAttachments = &debug_color_blend_attachment_ci;
+
 	// Depth Buffer
 	VkPipelineDepthStencilStateCreateInfo debug_depth_stencil_ci = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 	debug_depth_stencil_ci.depthTestEnable = VK_FALSE;
@@ -1122,7 +1155,7 @@ void Renderer::create_pipelines()
 	debug_depth_stencil_ci.stencilTestEnable = VK_FALSE;
 
 	debug_pipeline = create_pipeline("../data/shaders/debug_draw.vert.spv", "../data/shaders/debug_draw.frag.spv", debug_vertex_input_ci, input_assembly_ci, 1, descriptor_set_layouts,
-		viewport_ci, rasterizer_ci, debug_depth_stencil_ci, multisampling_ci, color_blend_ci, dynamic_state_ci, 0, nullptr);
+		viewport_ci, rasterizer_ci, debug_depth_stencil_ci, multisampling_ci, debug_color_blend_ci, dynamic_state_ci, 0, nullptr);
 }
 
 Pipeline Renderer::create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, VkPipelineInputAssemblyStateCreateInfo input_assembly_ci,

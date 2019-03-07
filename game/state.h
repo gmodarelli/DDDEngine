@@ -39,11 +39,14 @@ struct State
 
 	// Player
 	uint32_t player_entity_id = 0;
+	glm::vec3 player_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 player_view_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 player_target_position = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::mat4 player_matrices[3] = { glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f) };
 	glm::mat4 player_orientation = glm::mat4(1.0f);
 	glm::vec3 player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec3 player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	float player_speed = 0.6f;
+	float player_speed = 0.025f *2.0f;
 	float player_rotation_speed = 4.0f;
 
 	// Current camera

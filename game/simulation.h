@@ -12,7 +12,7 @@ struct Simulation
 	void init();
 	void cleanup();
 
-	void update(Game::State* game_state, float delta_time);
+	void update(Game::State* game_state);
 
 	Application::Platform* platform;
 };
