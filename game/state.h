@@ -21,19 +21,15 @@ struct State
 	// and upload them to the GPU every frame.
 	// For now we don't make any distinction between
 	// entities and their rendering frequencies will be the same.
+	// TODO: The entities table contains both static and dynamic entities.
+	//		 Move the static entities to the top of the table and the dynamic
+	//		 right after.
 	uint32_t entity_count = 0;
 	Renderer::Entity* entities = nullptr;
-	// Static entities are entits whose transforms will
-	// never changed, so we can optimize both the simulation
-	// loop and the render loop
-	uint32_t static_entity_count = 0;
-	Renderer::Entity* static_entities = nullptr;
 	// A Transform contains the position, scale and
 	// rotation of an entity.
 	uint32_t transform_count = 0;
 	Renderer::Transform* transforms = nullptr;
-	uint32_t static_transform_count = 0;
-	Renderer::Transform* static_transforms = nullptr;
 
 	const Resources::AssetsInfo* assets_info;
 
@@ -43,26 +39,36 @@ struct State
 	//		 25 is the numbers of tick per seconds (ie the simulation
 	//		 is run 25 times per second.
 	float player_speed = 0.024f;
-	// Player Head
+
 	uint32_t player_head_id = 0;
-	uint32_t player_body_id = 1;
+	uint32_t player_tail_id = 1;
 
-	glm::vec3 player_head_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 player_head_target_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 player_head_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 player_head_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::mat4 player_head_orientation = glm::mat4(1.0f);
+	// NOTE: We store the positions where
+	struct PlayerMove
+	{
+		glm::vec3 position;
+		glm::vec3 direction;
+		glm::mat4 orientation;
+	};
 
-	glm::vec3 player_body_position = glm::vec3(0.0f, 0.0f, -0.6f);
-	glm::vec3 player_body_target_position = glm::vec3(0.0f, 0.0f, -0.6f);
-	glm::vec3 player_body_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 player_body_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::mat4 player_body_orientation = glm::mat4(1.0f);
+	struct BodyPart
+	{
+		uint32_t target_move_index = 0;
+		glm::vec3 position;
+		glm::vec3 direction;
+		glm::mat4 orientation;
+	};
 
-	glm::mat4 player_matrices[3] = { glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f) };
-	glm::vec3 player_head_view_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 player_body_view_position = glm::vec3(0.0f, 0.0f, -0.6f);
+	static const uint32_t max_moves = 256;
+	PlayerMove player_moves[max_moves];
+	uint32_t player_move_count = 0;
+	BodyPart body_parts[max_moves];
+	uint32_t player_body_part_count = 0;
 
+	glm::vec3 player_head_target_position;
+	glm::vec3 player_head_target_direction;
+
+	glm::mat4 player_matrices[max_moves] = {};
 
 	// Current camera
 	Renderer::Camera* current_camera;

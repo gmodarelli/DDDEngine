@@ -3,6 +3,7 @@ build/*.user
 build/x64
 build/Debug
 build/Release
+build/imgui.ini
 *.spv
 data/models/*
 !data/models/.gitkeep

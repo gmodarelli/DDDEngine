@@ -43,7 +43,7 @@ int main()
 	// Upload nodes UBOs data to the GPU
 	renderer->upload_dynamic_uniform_buffers(game_state);
 
-	// 
+	// TODO: Explain how this works
 	const uint32_t ticks_per_second = 25;
 	const uint32_t skip_ticks = 1000 / ticks_per_second;
 	const uint32_t max_frame_skip = 5;
@@ -51,13 +51,14 @@ int main()
 	double next_game_tick = glfwGetTime() * 1000.0f;
 	uint32_t loops;
 	float interpolation;
+	uint32_t simulation_frame_index = 0;
 
 	while (platform->alive())
 	{
 		loops = 0;
 		while (glfwGetTime() * 1000.0f > next_game_tick && loops < max_frame_skip)
 		{
-			simulation->update(game_state);
+			simulation->update(game_state, simulation_frame_index++);
 
 			next_game_tick += skip_ticks;
 			loops++;

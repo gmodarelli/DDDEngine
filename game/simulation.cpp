@@ -22,14 +22,16 @@ void Simulation::cleanup()
 {
 }
 
-void Simulation::update(Game::State* game_state)
+void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index)
 {
 	Application::InputState input_state = platform->get_input_state();
 
 	// Player Movement
 
-	float head_target_distance = glm::distance(game_state->player_head_target_position, game_state->player_head_position);
-	if (head_target_distance <= 0.2f)
+	State::BodyPart& head = game_state->body_parts[game_state->player_head_id];
+	float head_target_distance = glm::distance(game_state->player_head_target_position, head.position);
+	// if (head_target_distance <= 0.2f)
+	if (head.direction == game_state->player_head_target_direction)
 	{
 		if (input_state.key_up)
 		{
@@ -52,63 +54,67 @@ void Simulation::update(Game::State* game_state)
 		}
 	}
 
-	// BODY
-	float body_target_distance = glm::distance(game_state->player_body_target_position, game_state->player_body_position);
-	if (body_target_distance - game_state->player_speed >= 0.0001f)
-	{
-		game_state->player_body_position += game_state->player_body_direction * game_state->player_speed;
-		game_state->transforms[game_state->player_body_id].position = game_state->player_body_position;
-	}
-	else
-	{
-		game_state->player_body_position = game_state->player_body_target_position;
-		game_state->transforms[game_state->player_body_id].position = game_state->player_body_position;
-
-		if (game_state->player_head_orientation != game_state->player_body_orientation || game_state->player_body_direction != game_state->player_body_target_direction)
-		{
-			game_state->player_body_orientation = game_state->player_head_orientation;
-			game_state->player_body_direction = game_state->player_body_target_direction;
-		}
-
-		game_state->player_body_target_position = game_state->player_body_position + glm::vec3(0.6f) * game_state->player_body_target_direction;
-	}
-
 	// HEAD
 	if (head_target_distance - game_state->player_speed >= 0.0001f)
 	{
-		game_state->player_head_position += game_state->player_head_direction * game_state->player_speed;
-		game_state->transforms[game_state->player_head_id].position = game_state->player_head_position;
+		head.position += head.direction * game_state->player_speed;
+		game_state->transforms[game_state->player_head_id].position = head.position;
 	}
 	else
 	{
-		game_state->player_head_position = game_state->player_head_target_position;
-		game_state->transforms[game_state->player_head_id].position = game_state->player_head_position;
+		head.position = game_state->player_head_target_position;
+		game_state->transforms[game_state->player_head_id].position = head.position;
 
-		if (game_state->player_head_direction != game_state->player_head_target_direction)
+		if (head.direction != game_state->player_head_target_direction)
 		{
-			float dot = glm::dot(game_state->player_head_direction, game_state->player_head_target_direction);
+			float dot = glm::dot(head.direction, game_state->player_head_target_direction);
 
 			// NOTE: Cannot turn to face the opposite direction. The snake can only turn by 90
 			// degrees left or right
 			if (dot == -1.0f)
 			{
-				game_state->player_head_target_direction = game_state->player_head_direction;
+				game_state->player_head_target_direction = head.direction;
 			}
 			else
 			{
 				// NOTE: acosf returns a value between 0 and PI radians, so we don't have information
 				// about the direction of the rotation. That's why we use atan2f instead.
-				float angle = atan2f(game_state->player_head_direction.z, game_state->player_head_target_direction.z) - atan2f(game_state->player_head_direction.x, game_state->player_head_target_direction.x);
-				game_state->player_head_orientation = glm::rotate(game_state->player_head_orientation, angle, glm::vec3(0.0f, 1.0f, 0.0f));
-				game_state->player_head_direction = game_state->player_head_target_direction;
-				game_state->player_body_target_direction = game_state->player_head_direction;
+				float tetha = atan2f(head.direction.z, game_state->player_head_target_direction.z) - atan2f(head.direction.x, game_state->player_head_target_direction.x);
+				head.orientation = glm::rotate(head.orientation, tetha, glm::vec3(0.0f, 1.0f, 0.0f));
+				head.direction = game_state->player_head_target_direction;
 			}
 		}
 
-		game_state->player_head_target_position = game_state->player_head_position + glm::vec3(0.6f) * game_state->player_head_direction;
+		State::PlayerMove player_move = {};
+		player_move.position = head.position;
+		player_move.direction = head.direction;
+		player_move.orientation = head.orientation;
+
+		game_state->player_moves[game_state->player_move_count++ % game_state->max_moves] = player_move;
+
+		game_state->player_head_target_position = head.position + glm::vec3(0.6f) * head.direction;
 	}
 
+	for (uint32_t i = game_state->player_tail_id; i < game_state->player_body_part_count; ++i)
+	{
+		State::BodyPart& body_part = game_state->body_parts[i];
+		State::PlayerMove& target_move = game_state->player_moves[body_part.target_move_index % game_state->max_moves];
+		float target_distance = glm::distance(target_move.position, body_part.position);
 
+		if (target_distance - game_state->player_speed >= 0.0001f)
+		{
+			body_part.position += body_part.direction * game_state->player_speed;
+		}
+		else
+		{
+			body_part.position = target_move.position;
+			body_part.direction = target_move.direction;
+			body_part.orientation = target_move.orientation;
+			body_part.target_move_index++;
+		}
+
+		game_state->transforms[i + 1].position = body_part.position;
+	}
 
 	// Swith cameras
 	if (input_state.key_1)

@@ -68,7 +68,7 @@ void Renderer::init()
 	style.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 	// Dimensions
 	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2(backend->wsi->swapchain_extent.width, backend->wsi->swapchain_extent.height);
+	io.DisplaySize = ImVec2((float)backend->wsi->swapchain_extent.width, (float)backend->wsi->swapchain_extent.height);
 	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
 	// Create ImGui Vulkan Resources
@@ -384,21 +384,18 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	glm::mat4 head_model = glm::mat4(1.0f);
-	game_state->player_head_view_position = game_state->player_head_position + (game_state->player_head_direction * game_state->player_speed * delta_time);
-	head_model = glm::translate(head_model, game_state->player_head_view_position);
-	head_model *= game_state->player_head_orientation;
+	for (uint32_t i = game_state->player_head_id; i < game_state->player_body_part_count; ++i)
+	{
+		glm::mat4 body_model = glm::mat4(1.0f);
+		Game::State::BodyPart& body = game_state->body_parts[i];
+		glm::vec3 view_position = body.position + (body.direction * game_state->player_speed * delta_time);
+		body_model = glm::translate(body_model, view_position);
+		body_model *= body.orientation;
 
-	game_state->player_matrices[game_state->player_head_id] = head_model;
+		game_state->player_matrices[i] = body_model;
+	}
 
-	glm::mat4 body_model = glm::mat4(1.0f);
-	game_state->player_body_view_position = game_state->player_body_position + (game_state->player_body_direction * game_state->player_speed * delta_time);
-	body_model = glm::translate(body_model, game_state->player_body_view_position);
-	body_model *= game_state->player_body_orientation;
-
-	game_state->player_matrices[game_state->player_body_id] = body_model;
-
-	for (uint32_t x = game_state->player_head_id; x < game_state->player_head_id + 3; ++x)
+	for (uint32_t x = game_state->player_head_id; x < game_state->player_body_part_count; ++x)
 	{
 		vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &game_state->player_matrices[x]);
 
@@ -428,8 +425,10 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetViewport(frame_resources.command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
-	// Rendere all other entities
-	for (uint32_t e_id = game_state->player_head_id + 3; e_id < game_state->entity_count; ++e_id)
+	// Render all other entities
+	// TODO: Move static entities to the top of the entities table, since they are static and won't grow
+	// during a level
+	for (uint32_t e_id = game_state->player_tail_id + 2; e_id < game_state->entity_count; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];
@@ -514,7 +513,7 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 	sprintf(gpu_title, "GPU - min: %.4fms max: %.4fms avg: %.4fms", backend->device->frame_gpu_min, backend->device->frame_gpu_max, backend->device->frame_gpu_avg);
 	ImGui::PlotLines("", gpu_frame_buffer, gpu_frame_buffer_size, 0, gpu_title, 0.0f, 2.0f, ImVec2(400.0f, 100.0f));
 
-	float position[] = {
+	float camera_position[] = {
 		game_state->current_camera->position.x,
 		game_state->current_camera->position.y,
 		game_state->current_camera->position.z,
@@ -529,39 +528,11 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 		ImGui::TextUnformatted("Debug Camera");
 	}
 
-	ImGui::InputFloat3("Camera Position", position, 4);
+	ImGui::InputFloat3("Camera Position", camera_position, 4);
 
-	float direction[] = {
-		game_state->player_head_direction.x,
-		game_state->player_head_direction.y,
-		game_state->player_head_direction.z,
-	};
-
-	ImGui::InputFloat3("Player Direction", direction, 2);
-
-	float target_direction[] = {
-		game_state->player_head_target_direction.x,
-		game_state->player_head_target_direction.y,
-		game_state->player_head_target_direction.z,
-	};
-
-	ImGui::InputFloat3("Player Target Direction", target_direction, 2);
-
-	float player_position[] = {
-		game_state->player_head_position.x,
-		game_state->player_head_position.y,
-		game_state->player_head_position.z,
-	};
-
-	ImGui::InputFloat3("Player Position", player_position, 6);
-
-	float player_target_position[] = {
-		game_state->player_head_target_position.x,
-		game_state->player_head_target_position.y,
-		game_state->player_head_target_position.z,
-	};
-
-	ImGui::InputFloat3("Player Target Position", player_target_position, 6);
+	char move_count[16];
+	sprintf(move_count, "Move count: %d", game_state->player_move_count);
+	ImGui::TextUnformatted(move_count);
 
 	ImGui::End();
 
