@@ -28,7 +28,7 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 
 	// Player Movement
 
-	State::BodyPart& head = game_state->body_parts[game_state->player_head_id];
+	State::BodyPart& head = game_state->body_parts[0];
 	float head_target_distance = glm::distance(game_state->player_head_target_position, head.position);
 	// if (head_target_distance <= 0.2f)
 	if (head.direction == game_state->player_head_target_direction)
@@ -93,7 +93,7 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 		game_state->player_head_target_position = head.position + glm::vec3(0.6f) * head.direction;
 	}
 
-	for (uint32_t i = game_state->player_head_id + 1; i < game_state->player_body_part_count; ++i)
+	for (uint32_t i = 1; i < game_state->player_body_part_count; ++i)
 	{
 		State::BodyPart& body_part = game_state->body_parts[i];
 		State::PlayerMove& target_move = game_state->player_moves[body_part.target_move_index % game_state->max_moves];

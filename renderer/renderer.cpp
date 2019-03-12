@@ -245,7 +245,7 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 
 			// For dynamic entities we do not apply the game_state->transforms, since their transforms
 			// will be determined by player input
-			if (e < game_state->player_body_part_count)
+			if (e >= game_state->player_head_id)
 			{
 				*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
 				*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
@@ -384,7 +384,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	for (uint32_t i = game_state->player_head_id; i < game_state->player_body_part_count; ++i)
+	for (uint32_t i = 0; i < game_state->player_body_part_count; ++i)
 	{
 		glm::mat4 body_model = glm::mat4(1.0f);
 		Game::State::BodyPart& body = game_state->body_parts[i];
@@ -395,12 +395,12 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		game_state->player_matrices[i] = body_model;
 	}
 
-	for (uint32_t x = game_state->player_head_id; x < game_state->player_body_part_count; ++x)
+	for (uint32_t x = 0; x < game_state->player_body_part_count; ++x)
 	{
 		vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &game_state->player_matrices[x]);
 
 		// Render the player
-		Entity& entity = game_state->entities[x];
+		Entity& entity = game_state->entities[x + game_state->player_head_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];
 		for (uint32_t n_id = 0; n_id < model.node_count; ++n_id)
 		{
@@ -426,9 +426,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	// Render all other entities
-	// TODO: Move static entities to the top of the entities table, since they are static and won't grow
-	// during a level
-	for (uint32_t e_id = game_state->player_body_part_count; e_id < game_state->entity_count; ++e_id)
+	for (uint32_t e_id = 0; e_id < game_state->player_head_id; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];
