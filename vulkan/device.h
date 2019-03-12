@@ -102,7 +102,9 @@ struct Device
 	// Query pool
 	VkQueryPool timestamp_query_pool;
 
-	double frame_gpu_avg = 0;
+	double frame_gpu_avg = 0.0f;
+	double frame_gpu_min = 100.0f;
+	double frame_gpu_max = -1.0f;
 
 	// TODO: Merge these 3 buffers into one
 	Vulkan::Buffer* vertex_buffer;

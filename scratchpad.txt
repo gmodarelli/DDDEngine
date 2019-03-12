@@ -24,7 +24,7 @@
 	- [DONE] upload_dynamic_transforms()
 	- upload_uniforms()
 	- ect...
-	- DebugDraw
+	- [WIP] DebugDraw
 		- We need to provide debug drawing functions to draw things like grids, lines, axis gizmos, camera frustums
 
 - [WIP] Implement a Camera struct that can function as a:

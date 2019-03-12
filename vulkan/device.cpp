@@ -463,6 +463,15 @@ void Device::end_draw_frame(FrameResources& current_frame)
 	double frame_gpu_end = double(timestamp_results[1]) * context->gpu_properties.limits.timestampPeriod * 1e-6;
 	frame_gpu_avg = frame_gpu_avg * 0.95 + (frame_gpu_end - frame_gpu_begin) * 0.05;
 
+	if (frame_gpu_avg < frame_gpu_min)
+	{
+		frame_gpu_min = frame_gpu_avg;
+	}
+	else if (frame_gpu_avg > frame_gpu_max)
+	{
+		frame_gpu_max = frame_gpu_avg;
+	}
+
 	result = vkEndCommandBuffer(current_frame.command_buffer);
 	assert(result == VK_SUCCESS);
 

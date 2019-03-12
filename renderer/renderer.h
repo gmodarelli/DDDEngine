@@ -79,9 +79,13 @@ struct Renderer
 	bool wait_on_semaphores = false;
 
 	double frame_cpu_avg = 0;
+	double frame_cpu_max = -1.0f;
+	double frame_cpu_min = 100.0f;
 
 	const static size_t cpu_frame_buffer_size = 128;
 	float cpu_frame_buffer[cpu_frame_buffer_size];
+	const static size_t gpu_frame_buffer_size = 128;
+	float gpu_frame_buffer[gpu_frame_buffer_size];
 
 	// Descriptor Pool helpers
 	VkDescriptorPool descriptor_pool;

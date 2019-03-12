@@ -384,14 +384,21 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	glm::mat4 model = glm::mat4(1.0f);
-	game_state->player_view_position = game_state->player_position + (game_state->player_direction * game_state->player_speed * delta_time);
-	model = glm::translate(model, game_state->player_view_position);
-	model *= game_state->player_orientation;
+	glm::mat4 head_model = glm::mat4(1.0f);
+	game_state->player_head_view_position = game_state->player_head_position + (game_state->player_head_direction * game_state->player_speed * delta_time);
+	head_model = glm::translate(head_model, game_state->player_head_view_position);
+	head_model *= game_state->player_head_orientation;
 
-	game_state->player_matrices[0] = model;
+	game_state->player_matrices[game_state->player_head_id] = head_model;
 
-	for (uint32_t x = game_state->player_entity_id; x < game_state->player_entity_id + 3; ++x)
+	glm::mat4 body_model = glm::mat4(1.0f);
+	game_state->player_body_view_position = game_state->player_body_position + (game_state->player_body_direction * game_state->player_speed * delta_time);
+	body_model = glm::translate(body_model, game_state->player_body_view_position);
+	body_model *= game_state->player_body_orientation;
+
+	game_state->player_matrices[game_state->player_body_id] = body_model;
+
+	for (uint32_t x = game_state->player_head_id; x < game_state->player_head_id + 3; ++x)
 	{
 		vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &game_state->player_matrices[x]);
 
@@ -422,7 +429,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	// Rendere all other entities
-	for (uint32_t e_id = game_state->player_entity_id + 3; e_id < game_state->entity_count; ++e_id)
+	for (uint32_t e_id = game_state->player_head_id + 3; e_id < game_state->entity_count; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];
@@ -443,7 +450,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	}
 
 	// Debug Draw
-	// if (game_state->show_grid)
+	if (game_state->show_grid)
 	{
 		vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, debug_pipeline.pipeline);
 
@@ -468,10 +475,21 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	auto frame_time = (frame_cpu_end - frame_cpu_start).count();
 	frame_cpu_avg = frame_cpu_avg * 0.95 +  frame_time * 1e-6 * 0.05;
 
+	if (frame_cpu_avg < frame_cpu_min)
+	{
+		frame_cpu_min = frame_cpu_avg;
+	}
+	else if (frame_cpu_avg > frame_cpu_max)
+	{
+		frame_cpu_max = frame_cpu_avg;
+	}
+
 	if (sampling_index % 30 == 0)
 	{
 		cpu_frame_buffer[frame_index] = (float)frame_cpu_avg;
-		frame_index = (frame_index + 1) % cpu_frame_buffer_size;
+		gpu_frame_buffer[frame_index] = (float)backend->device->frame_gpu_avg;
+
+		frame_index = (frame_index + 1) % gpu_frame_buffer_size;
 		sampling_index = 0;
 	}
 
@@ -484,12 +502,17 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 	ImGui::NewFrame();
 	ImGui::Begin("Stats");
 	ImGui::SetWindowPos({ 0, 0 });
-	ImGui::SetWindowSize({ 400, 200 });
+	ImGui::SetWindowSize({ 500, 1000 });
 
 	// Init ImGui windows and elements
 	ImVec4 clear_color = ImColor(144, 144, 154);
 
-	ImGui::PlotLines("CPU Frame Times", cpu_frame_buffer, cpu_frame_buffer_size);
+	char cpu_title[64];
+	sprintf(cpu_title, "CPU - min: %.4fms max: %.4fms avg: %.4fms", frame_cpu_min, frame_cpu_max, frame_cpu_avg);
+	ImGui::PlotLines("", cpu_frame_buffer, cpu_frame_buffer_size, 0, cpu_title, 0.0f, 2.0f, ImVec2(400.0f, 100.0f));
+	char gpu_title[64];
+	sprintf(gpu_title, "GPU - min: %.4fms max: %.4fms avg: %.4fms", backend->device->frame_gpu_min, backend->device->frame_gpu_max, backend->device->frame_gpu_avg);
+	ImGui::PlotLines("", gpu_frame_buffer, gpu_frame_buffer_size, 0, gpu_title, 0.0f, 2.0f, ImVec2(400.0f, 100.0f));
 
 	float position[] = {
 		game_state->current_camera->position.x,
@@ -509,33 +532,33 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 	ImGui::InputFloat3("Camera Position", position, 4);
 
 	float direction[] = {
-		game_state->player_direction.x,
-		game_state->player_direction.y,
-		game_state->player_direction.z,
+		game_state->player_head_direction.x,
+		game_state->player_head_direction.y,
+		game_state->player_head_direction.z,
 	};
 
 	ImGui::InputFloat3("Player Direction", direction, 2);
 
 	float target_direction[] = {
-		game_state->player_target_direction.x,
-		game_state->player_target_direction.y,
-		game_state->player_target_direction.z,
+		game_state->player_head_target_direction.x,
+		game_state->player_head_target_direction.y,
+		game_state->player_head_target_direction.z,
 	};
 
 	ImGui::InputFloat3("Player Target Direction", target_direction, 2);
 
 	float player_position[] = {
-		game_state->player_position.x,
-		game_state->player_position.y,
-		game_state->player_position.z,
+		game_state->player_head_position.x,
+		game_state->player_head_position.y,
+		game_state->player_head_position.z,
 	};
 
 	ImGui::InputFloat3("Player Position", player_position, 6);
 
 	float player_target_position[] = {
-		game_state->player_target_position.x,
-		game_state->player_target_position.y,
-		game_state->player_target_position.z,
+		game_state->player_head_target_position.x,
+		game_state->player_head_target_position.y,
+		game_state->player_head_target_position.z,
 	};
 
 	ImGui::InputFloat3("Player Target Position", player_target_position, 6);

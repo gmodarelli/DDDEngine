@@ -38,16 +38,31 @@ struct State
 	const Resources::AssetsInfo* assets_info;
 
 	// Player
-	uint32_t player_entity_id = 0;
-	glm::vec3 player_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 player_view_position = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 player_target_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	// NOTE: This must be equal to 0.6f / 25 where
+	//		 0.6f is the size of a quad in the game grid, and
+	//		 25 is the numbers of tick per seconds (ie the simulation
+	//		 is run 25 times per second.
+	float player_speed = 0.024f;
+	// Player Head
+	uint32_t player_head_id = 0;
+	uint32_t player_body_id = 1;
+
+	glm::vec3 player_head_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 player_head_target_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 player_head_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 player_head_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::mat4 player_head_orientation = glm::mat4(1.0f);
+
+	glm::vec3 player_body_position = glm::vec3(0.0f, 0.0f, -0.6f);
+	glm::vec3 player_body_target_position = glm::vec3(0.0f, 0.0f, -0.6f);
+	glm::vec3 player_body_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::vec3 player_body_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
+	glm::mat4 player_body_orientation = glm::mat4(1.0f);
+
 	glm::mat4 player_matrices[3] = { glm::mat4(1.0f), glm::mat4(1.0f), glm::mat4(1.0f) };
-	glm::mat4 player_orientation = glm::mat4(1.0f);
-	glm::vec3 player_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 player_target_direction = glm::vec3(0.0f, 0.0f, 1.0f);
-	float player_speed = 0.025f *2.0f;
-	float player_rotation_speed = 4.0f;
+	glm::vec3 player_head_view_position = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 player_body_view_position = glm::vec3(0.0f, 0.0f, -0.6f);
+
 
 	// Current camera
 	Renderer::Camera* current_camera;
@@ -57,7 +72,7 @@ struct State
 	Renderer::Camera* look_at_camera;
 
 	// Editor
-	bool show_grid = false;
+	bool show_grid = true;
 };
 
 }
