@@ -38,10 +38,16 @@ struct State
 	//		 0.6f is the size of a quad in the game grid, and
 	//		 25 is the numbers of tick per seconds (ie the simulation
 	//		 is run 25 times per second.
+	// NOTE: 25 ticks to move by 1 square
 	float player_speed = 0.024f;
+	// NOTE: 20 ticks to move by 1 square
+	// float player_speed = 0.03f;
+	// NOTE: 15 ticks to move by 1 square
+	// float player_speed = 0.04f;
+	// NOTE: 10 ticks to move by 1 square
+	// float player_speed = 0.06f;
 
 	uint32_t player_head_id = 0;
-	uint32_t player_tail_id = 1;
 
 	// NOTE: We store the positions where
 	struct PlayerMove

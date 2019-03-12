@@ -243,9 +243,9 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 			// Aligned offset
 			glm::mat4* model_matrix = (glm::mat4*)(((uint64_t)dynamic_ubo.model + (absolute_node_count * dynamic_alignment)));
 
-			// NOTE: Temporary solution
-			// For dynamic entities we do not apply the game_state->transforms beforehand
-			if (e < 3)
+			// For dynamic entities we do not apply the game_state->transforms, since their transforms
+			// will be determined by player input
+			if (e < game_state->player_body_part_count)
 			{
 				*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
 				*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
@@ -428,7 +428,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	// Render all other entities
 	// TODO: Move static entities to the top of the entities table, since they are static and won't grow
 	// during a level
-	for (uint32_t e_id = game_state->player_tail_id + 2; e_id < game_state->entity_count; ++e_id)
+	for (uint32_t e_id = game_state->player_body_part_count; e_id < game_state->entity_count; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];
@@ -508,7 +508,7 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 
 	char cpu_title[64];
 	sprintf(cpu_title, "CPU - min: %.4fms max: %.4fms avg: %.4fms", frame_cpu_min, frame_cpu_max, frame_cpu_avg);
-	ImGui::PlotLines("", cpu_frame_buffer, cpu_frame_buffer_size, 0, cpu_title, 0.0f, 2.0f, ImVec2(400.0f, 100.0f));
+	ImGui::PlotLines("", cpu_frame_buffer, cpu_frame_buffer_size, 0, cpu_title, 0.0f, 4.0f, ImVec2(400.0f, 100.0f));
 	char gpu_title[64];
 	sprintf(gpu_title, "GPU - min: %.4fms max: %.4fms avg: %.4fms", backend->device->frame_gpu_min, backend->device->frame_gpu_max, backend->device->frame_gpu_avg);
 	ImGui::PlotLines("", gpu_frame_buffer, gpu_frame_buffer_size, 0, gpu_title, 0.0f, 2.0f, ImVec2(400.0f, 100.0f));

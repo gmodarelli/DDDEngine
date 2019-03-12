@@ -58,12 +58,10 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 	if (head_target_distance - game_state->player_speed >= 0.0001f)
 	{
 		head.position += head.direction * game_state->player_speed;
-		game_state->transforms[game_state->player_head_id].position = head.position;
 	}
 	else
 	{
 		head.position = game_state->player_head_target_position;
-		game_state->transforms[game_state->player_head_id].position = head.position;
 
 		if (head.direction != game_state->player_head_target_direction)
 		{
@@ -95,7 +93,7 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 		game_state->player_head_target_position = head.position + glm::vec3(0.6f) * head.direction;
 	}
 
-	for (uint32_t i = game_state->player_tail_id; i < game_state->player_body_part_count; ++i)
+	for (uint32_t i = game_state->player_head_id + 1; i < game_state->player_body_part_count; ++i)
 	{
 		State::BodyPart& body_part = game_state->body_parts[i];
 		State::PlayerMove& target_move = game_state->player_moves[body_part.target_move_index % game_state->max_moves];
@@ -112,8 +110,6 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 			body_part.orientation = target_move.orientation;
 			body_part.target_move_index++;
 		}
-
-		game_state->transforms[i + 1].position = body_part.position;
 	}
 
 	// Swith cameras

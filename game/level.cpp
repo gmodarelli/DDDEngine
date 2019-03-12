@@ -18,7 +18,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	float grid_size = 0.6f;
 	uint32_t entity_index = 0;
 	uint32_t transform_offset = 0;
-	uint32_t player_length = 1;
+	uint32_t player_length = 2;
 
 	// NOTE: Initial player move.
 	State::PlayerMove player_move = {};
