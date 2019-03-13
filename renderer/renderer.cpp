@@ -172,7 +172,7 @@ void Renderer::upload_buffers(const Game::State* game_state)
 	index_staging_buffer->destroy(backend->device->context->device);
 }
 
-void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
+void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state, uint32_t entity_id_offset, uint32_t entity_count)
 {
 	// NOTE: The game_state->entities table contains a list of entities,
 	// where the index in the table represent the entity id.
@@ -213,7 +213,7 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 	size_t min_ubo_alignment = backend->device->context->gpu_properties.limits.minUniformBufferOffsetAlignment;
 	size_t nodes = 0;
 
-	for (uint32_t e = 0; e < game_state->entity_count; ++e)
+	for (uint32_t e = entity_id_offset; e < entity_count; ++e)
 	{
 		const Entity& entity = game_state->entities[e];
 		const Resources::Model& model = game_state->assets_info->models[entity.model_id];
@@ -230,18 +230,17 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 	dynamic_ubo.model = (glm::mat4*)_aligned_malloc(buffer_size, dynamic_alignment);
 	assert(dynamic_ubo.model);
 
-	uint32_t absolute_node_count = 0;
-
-	for (uint32_t e = 0; e < game_state->entity_count; ++e)
+	for (uint32_t e = entity_id_offset; e < entity_count; ++e)
 	{
 		Entity& entity = game_state->entities[e];
 		entity.node_offset = absolute_node_count;
 		const Resources::Model& model = game_state->assets_info->models[entity.model_id];
+		uint32_t modifier = entity_id_offset > 0 ? 0 : 1;
 
 		for (uint32_t n = 0; n < model.node_count; ++n)
 		{
 			// Aligned offset
-			glm::mat4* model_matrix = (glm::mat4*)(((uint64_t)dynamic_ubo.model + (absolute_node_count * dynamic_alignment)));
+			glm::mat4* model_matrix = (glm::mat4*)(((uint64_t)dynamic_ubo.model + (modifier * absolute_node_count * dynamic_alignment)));
 
 			// For dynamic entities we do not apply the game_state->transforms, since their transforms
 			// will be determined by player input
@@ -264,6 +263,11 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 		}
 	}
 
+	VkDescriptorBufferInfo buffer_info = {};
+	buffer_info.buffer = backend->device->uniform_buffer->buffer;
+	buffer_info.offset = dynamic_buffer_offset;
+	buffer_info.range = buffer_size;
+
 	Vulkan::Buffer* uniform_staging_buffer = new Vulkan::Buffer(
 		backend->device->context->device,
 		backend->device->context->gpu,
@@ -276,14 +280,9 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state)
 	memcpy(uniform_data, dynamic_ubo.model, buffer_size);
 	vkUnmapMemory(backend->device->context->device, uniform_staging_buffer->device_memory);
 
-	VkDeviceSize offset = backend->device->upload_uniform_buffer(uniform_staging_buffer);
+	dynamic_buffer_offset = backend->device->upload_uniform_buffer(uniform_staging_buffer);
 	uniform_staging_buffer->destroy(backend->device->context->device);
 	_aligned_free(dynamic_ubo.model);
-
-	VkDescriptorBufferInfo buffer_info = {};
-	buffer_info.buffer = backend->device->uniform_buffer->buffer;
-	buffer_info.offset = 0;
-	buffer_info.range = buffer_size;
 
 	node_descriptor_set = VK_NULL_HANDLE;
 

@@ -10,7 +10,7 @@
 namespace Game
 {
 
-Simulation::Simulation(Application::Platform* platform) : platform(platform)
+Simulation::Simulation(Application::Platform* platform, Renderer::Renderer* renderer) : platform(platform), renderer(renderer)
 {
 }
 
@@ -88,12 +88,48 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 		player_move.direction = head.direction;
 		player_move.orientation = head.orientation;
 
+		if (game_state->growing)
+		{
+			game_state->growing = false;
+		}
+
 		game_state->player_moves[game_state->player_move_count++ % game_state->max_moves] = player_move;
 
 		game_state->player_head_target_position = head.position + glm::vec3(0.6f) * head.direction;
 	}
 
-	for (uint32_t i = 1; i < game_state->player_body_part_count; ++i)
+	if (game_state->growing && !game_state->grown)
+	{
+		// Player Body Part
+		game_state->entities[game_state->entity_count] = {};
+		game_state->entities[game_state->entity_count].model_id = 1; // Player Body
+		memcpy(game_state->entities[game_state->entity_count].name, "Snake Body", 11);
+		game_state->entity_count++;
+
+		// Player Body transform
+		// TODO: Replace the hardcoded 0.6f
+		glm::vec3 player_body_position = head.position - (glm::vec3(0.6f) * head.direction);
+		State::BodyPart body_part = {};
+		body_part.target_move_index = (game_state->player_move_count - 1) % game_state->max_moves;
+		body_part.position = player_body_position;
+		body_part.direction = head.direction;
+		body_part.orientation = head.orientation;
+		game_state->body_parts[game_state->player_body_part_count] = body_part;
+
+		game_state->player_matrices[game_state->player_body_part_count++] = glm::translate(glm::mat4(1.0f), player_body_position);
+		// assert(game_state->entity_count == ++transform_offset);
+		game_state->grown = true;
+
+		renderer->upload_dynamic_uniform_buffers(game_state, game_state->entity_count - 1, game_state->entity_count);
+	}
+
+	uint32_t player_body_offset = 1;
+	if (game_state->growing)
+	{
+		player_body_offset = game_state->player_body_part_count - 1;
+	}
+
+	for (uint32_t i = player_body_offset; i < game_state->player_body_part_count; ++i)
 	{
 		State::BodyPart& body_part = game_state->body_parts[i];
 		State::PlayerMove& target_move = game_state->player_moves[body_part.target_move_index % game_state->max_moves];
@@ -109,6 +145,15 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 			body_part.direction = target_move.direction;
 			body_part.orientation = target_move.orientation;
 			body_part.target_move_index++;
+		}
+	}
+
+	if (input_state.key_space)
+	{
+		if (!game_state->growing)
+		{
+			game_state->growing = true;
+			game_state->grown = false;
 		}
 	}
 

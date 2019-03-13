@@ -48,6 +48,8 @@ struct State
 	// float player_speed = 0.06f;
 
 	uint32_t player_head_id = 0;
+	bool growing = false;
+	bool grown = true;
 
 	// NOTE: We store the positions where
 	struct PlayerMove

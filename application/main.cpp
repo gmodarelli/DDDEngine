@@ -18,7 +18,7 @@ int main()
 	Renderer::Renderer* renderer = new Renderer::Renderer(platform);
 	renderer->init();
 
-	Game::Simulation* simulation = new Game::Simulation(platform);
+	Game::Simulation* simulation = new Game::Simulation(platform, renderer);
 	simulation->init();
 
 	Game::State* game_state = new Game::State();
@@ -41,7 +41,7 @@ int main()
 	// Upload vertices and indices data to the GPU
 	renderer->upload_buffers(game_state);
 	// Upload nodes UBOs data to the GPU
-	renderer->upload_dynamic_uniform_buffers(game_state);
+	renderer->upload_dynamic_uniform_buffers(game_state, 0, game_state->entity_count);
 
 	// TODO: Explain how this works
 	const uint32_t ticks_per_second = 25;

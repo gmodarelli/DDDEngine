@@ -42,7 +42,7 @@ struct Renderer
 	void cleanup();
 
 	void upload_buffers(const Game::State* game_state);
-	void upload_dynamic_uniform_buffers(const Game::State* game_state);
+	void upload_dynamic_uniform_buffers(const Game::State* game_state, uint32_t entity_id_offset, uint32_t entity_count);
 
 	void create_pipelines();
 	Pipeline create_pipeline(const char* vertex_shader_path, const char* fragment_shader_path, VkPipelineVertexInputStateCreateInfo vertex_input_ci, VkPipelineInputAssemblyStateCreateInfo input_assembly_ci,
@@ -63,6 +63,9 @@ struct Renderer
 
 	// TODO: Should we store these together with the pipelines?
 	size_t dynamic_alignment;
+	uint32_t absolute_node_count = 0;
+	size_t dynamic_buffer_offset = 0;
+
 	uint32_t descriptor_set_layout_count = 0;
 	uint32_t descriptor_set_layout_offset = 0;
 	VkDescriptorSetLayout descriptor_set_layouts[16];
