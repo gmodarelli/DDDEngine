@@ -19,7 +19,7 @@ void Level::load_level(Game::State* game_state, const char* _path)
 	uint32_t entity_index = 0;
 	uint32_t transform_offset = 0;
 	// NOTE: Minus head and tail
-	uint32_t initial_body_parts = 2;
+	uint32_t initial_body_parts = 1;
 
 	// NOTE: Write some notes about why. (Stack analogy might be good here)
 	// Load Static Entities first

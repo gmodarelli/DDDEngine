@@ -265,7 +265,7 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state, uin
 
 	VkDescriptorBufferInfo buffer_info = {};
 	buffer_info.buffer = backend->device->uniform_buffer->buffer;
-	buffer_info.offset = dynamic_buffer_offset;
+	buffer_info.offset = 0;
 	buffer_info.range = buffer_size;
 
 	Vulkan::Buffer* uniform_staging_buffer = new Vulkan::Buffer(
@@ -385,6 +385,8 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 
 	for (uint32_t i = 0; i < game_state->player_body_part_count; ++i)
 	{
+		if (game_state->growing && i != 0 && i != game_state->player_body_part_count - 1) continue;
+
 		glm::mat4 body_model = glm::mat4(1.0f);
 		Game::State::BodyPart& body = game_state->body_parts[i];
 		glm::vec3 view_position = body.position + (body.direction * game_state->player_speed * delta_time);

@@ -39,17 +39,17 @@ struct State
 	//		 25 is the numbers of tick per seconds (ie the simulation
 	//		 is run 25 times per second.
 	// NOTE: 25 ticks to move by 1 square
-	float player_speed = 0.024f;
+	// float player_speed = 0.024f;
 	// NOTE: 20 ticks to move by 1 square
 	// float player_speed = 0.03f;
 	// NOTE: 15 ticks to move by 1 square
-	// float player_speed = 0.04f;
+	float player_speed = 0.04f;
 	// NOTE: 10 ticks to move by 1 square
 	// float player_speed = 0.06f;
 
 	uint32_t player_head_id = 0;
+	bool queued_growing = false;
 	bool growing = false;
-	bool grown = true;
 
 	// NOTE: We store the positions where
 	struct PlayerMove
