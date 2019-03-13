@@ -383,17 +383,20 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdBindVertexBuffers(frame_resources.command_buffer, 0, 1, vertex_buffers, offsets);
 	vkCmdBindIndexBuffer(frame_resources.command_buffer, backend->device->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT16);
 
-	for (uint32_t i = 0; i < game_state->player_body_part_count; ++i)
+	if (!game_state->paused)
 	{
-		if (game_state->growing && i != 0 && i != game_state->player_body_part_count - 1) continue;
+		for (uint32_t i = 0; i < game_state->player_body_part_count; ++i)
+		{
+			if (game_state->growing && i != 0 && i != game_state->player_body_part_count - 1) continue;
 
-		glm::mat4 body_model = glm::mat4(1.0f);
-		Game::State::BodyPart& body = game_state->body_parts[i];
-		glm::vec3 view_position = body.position + (body.direction * game_state->player_speed * delta_time);
-		body_model = glm::translate(body_model, view_position);
-		body_model *= body.orientation;
+			glm::mat4 body_model = glm::mat4(1.0f);
+			Game::State::BodyPart& body = game_state->body_parts[i];
+			glm::vec3 view_position = body.position + (body.direction * game_state->player_speed * delta_time);
+			body_model = glm::translate(body_model, view_position);
+			body_model *= body.orientation;
 
-		game_state->player_matrices[i] = body_model;
+			game_state->player_matrices[i] = body_model;
+		}
 	}
 
 	for (uint32_t x = 0; x < game_state->player_body_part_count; ++x)
@@ -528,6 +531,11 @@ void Renderer::imgui_new_frame(Vulkan::FrameResources& frame_resources, const Ga
 	}
 
 	ImGui::InputFloat3("Camera Position", camera_position, 4);
+
+	if (game_state->paused)
+		ImGui::TextUnformatted("Game Paused");
+	else
+		ImGui::TextUnformatted("Game Running");
 
 	char move_count[16];
 	sprintf(move_count, "Move count: %d", game_state->player_move_count);

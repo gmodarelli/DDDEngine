@@ -33,6 +33,8 @@ struct State
 
 	const Resources::AssetsInfo* assets_info;
 
+	bool paused = true;
+
 	// Player
 	// NOTE: This must be equal to 0.6f / 25 where
 	//		 0.6f is the size of a quad in the game grid, and

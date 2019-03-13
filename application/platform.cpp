@@ -280,6 +280,18 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 		}
 	}
 
+	if (key == GLFW_KEY_P)
+	{
+		if (action == GLFW_PRESS)
+		{
+			platform->input_state.key_p = true;
+		}
+		else if (action == GLFW_RELEASE)
+		{
+			platform->input_state.key_p = false;
+		}
+	}
+
 	if (key == GLFW_KEY_SPACE)
 	{
 		if (action == GLFW_PRESS)
