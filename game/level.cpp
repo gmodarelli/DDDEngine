@@ -48,6 +48,16 @@ void Level::load_level(Game::State* game_state, const char* _path)
 		assert(entity_index == transform_offset);
 	}
 
+	// Apple
+	game_state->apple_id = entity_index;
+	game_state->entities[entity_index] = {};
+	game_state->entities[entity_index].model_id = 5; // Apple Mesh
+	memcpy(game_state->entities[entity_index].name, "Apple", 6);
+	entity_index++;
+
+	game_state->transforms[transform_offset++] = { glm::vec3(-1.8f, 0.0f, -1.2f), glm::vec3(1.0f) };
+	assert(entity_index == transform_offset);
+
 	// Loading Snake Entities
 	//
 	// A head, a tail and `initial_body_parts` body pieces

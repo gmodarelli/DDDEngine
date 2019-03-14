@@ -49,6 +49,7 @@ struct State
 	// NOTE: 10 ticks to move by 1 square
 	// float player_speed = 0.06f;
 
+	uint32_t apple_id = 0;
 	uint32_t player_head_id = 0;
 	bool queued_growing = false;
 	bool growing = false;

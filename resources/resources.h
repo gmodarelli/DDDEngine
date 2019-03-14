@@ -73,8 +73,8 @@ typedef uint16_t Index16;
 typedef uint16_t Index32;
 
 
-const size_t vertex_buffer_size = 2048;
-const size_t index_buffer_size = 4096;
+const size_t vertex_buffer_size = 4096;
+const size_t index_buffer_size = 8192;
 const size_t uniform_buffer_size = 1024;
 
 struct AssetsInfo

@@ -31,8 +31,6 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 		// Player Movement
 
 		State::BodyPart& head = game_state->body_parts[0];
-		float head_target_distance = glm::distance(game_state->player_head_target_position, head.position);
-		// if (head_target_distance <= 0.2f)
 		if (head.direction == game_state->player_head_target_direction)
 		{
 			if (input_state.key_up)
@@ -57,7 +55,8 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 		}
 
 		// HEAD
-		if (head_target_distance - game_state->player_speed >= 0.0001f)
+		float distance = glm::distance(game_state->player_head_target_position, head.position);
+		if (distance - game_state->player_speed >= 0.0001f)
 		{
 			head.position += head.direction * game_state->player_speed;
 		}
@@ -92,6 +91,21 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 			game_state->player_moves[game_state->player_move_count++ % game_state->max_moves] = player_move;
 			game_state->player_head_target_position = head.position + glm::vec3(0.6f) * head.direction;
 
+
+			// Check for collisions
+			// printf("\nChecking for collisions");
+			for (uint32_t i = 1; i < game_state->player_body_part_count; ++i)
+			{
+				State::BodyPart& body_part = game_state->body_parts[i];
+				State::PlayerMove& target_move = game_state->player_moves[body_part.target_move_index];
+				float distance = glm::distance(game_state->player_head_target_position, target_move.position);
+				if (distance < 0.001f)
+				{
+					// printf("\n%d: %.4f", i, distance);
+					printf("\nCollided with body part at index %d", i);
+				}
+			}
+
 			if (game_state->growing)
 			{
 				game_state->growing = false;
@@ -122,6 +136,19 @@ void Simulation::update(Game::State* game_state, uint32_t simulation_frame_index
 				// assert(game_state->entity_count == ++transform_offset);
 
 				renderer->upload_dynamic_uniform_buffers(game_state, game_state->entity_count - 1, game_state->entity_count);
+			}
+		}
+
+		// Check for collisions with apple
+		if (!game_state->queued_growing && !game_state->growing)
+		{
+			Renderer::Transform& apple_transform = game_state->transforms[game_state->apple_id];
+			float apple_distance = glm::distance(head.position, apple_transform.position);
+			if (apple_distance <= game_state->player_speed)
+			{
+				game_state->queued_growing = true;
+				// TODO: Move to a random, free, square on the grid
+				apple_transform.position += 1.2f * glm::vec3(1.0f, 0.0f, 1.0f);
 			}
 		}
 

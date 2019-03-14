@@ -244,7 +244,7 @@ void Renderer::upload_dynamic_uniform_buffers(const Game::State* game_state, uin
 
 			// For dynamic entities we do not apply the game_state->transforms, since their transforms
 			// will be determined by player input
-			if (e >= game_state->player_head_id)
+			if (e >= game_state->apple_id)
 			{
 				*model_matrix = glm::translate(glm::mat4(1.0f), model.nodes[n].translation);
 				*model_matrix = glm::scale(*model_matrix, model.nodes[n].scale);
@@ -422,6 +422,32 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 		}
 	}
 
+	// Apple
+	glm::mat4 body_model = glm::mat4(1.0f);
+	Transform& transform = game_state->transforms[game_state->apple_id];
+	body_model = glm::translate(body_model, transform.position);
+	// body_model *= transform.rotation;
+
+	vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &body_model);
+
+	// Render the apple
+	Entity& entity = game_state->entities[game_state->apple_id];
+	Resources::Model model = game_state->assets_info->models[entity.model_id];
+	for (uint32_t n_id = 0; n_id < model.node_count; ++n_id)
+	{
+		uint32_t dynamic_offset = (entity.node_offset + n_id) * static_cast<uint32_t>(dynamic_alignment);
+		Resources::Node node = model.nodes[n_id];
+		vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, dynamic_pipeline.pipeline_layout, 1, 1, &node_descriptor_set, 1, &dynamic_offset);
+		Resources::Mesh mesh = game_state->assets_info->meshes[node.mesh_id];
+		for (uint32_t p_id = 0; p_id < mesh.primitive_count; ++p_id)
+		{
+			Resources::Primitive primitive = mesh.primitives[p_id];
+			Resources::Material material = game_state->assets_info->materials[primitive.material_id];
+			vkCmdPushConstants(frame_resources.command_buffer, dynamic_pipeline.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(Resources::Material::PBRMetallicRoughness), &material.pbr_metallic_roughness);
+			vkCmdDrawIndexed(frame_resources.command_buffer, primitive.index_count, 1, primitive.index_offset, 0, 0);
+		}
+	}
+
 	vkCmdBindPipeline(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline);
 
 	vkCmdBindDescriptorSets(frame_resources.command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, static_pipeline.pipeline_layout, 0, 1, &frame->view_descriptor_set, 0, nullptr);
@@ -430,7 +456,7 @@ void Renderer::render_frame(Game::State* game_state, float delta_time)
 	vkCmdSetScissor(frame_resources.command_buffer, 0, 1, &scissor);
 
 	// Render all other entities
-	for (uint32_t e_id = 0; e_id < game_state->player_head_id; ++e_id)
+	for (uint32_t e_id = 0; e_id < game_state->apple_id; ++e_id)
 	{
 		Entity& entity = game_state->entities[e_id];
 		Resources::Model model = game_state->assets_info->models[entity.model_id];

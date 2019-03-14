@@ -33,6 +33,7 @@ int main()
 	uint32_t snake_tail_id = Resources::Loader::load_model("../data/models/snake_tail.glb", "snake_tail", assets_info);
 	uint32_t wall_id = Resources::Loader::load_model("../data/models/wall.glb", "wall", assets_info);
 	uint32_t ground_id = Resources::Loader::load_model("../data/models/ground.glb", "ground", assets_info);
+	uint32_t apple_id = Resources::Loader::load_model("../data/models/apple.glb", "apple", assets_info);
 	game_state->assets_info = assets_info;
  
 	// Load a level data
